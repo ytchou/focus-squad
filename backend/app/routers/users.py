@@ -2,6 +2,8 @@ from typing import Optional, List, Dict
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.core.auth import AuthUser, get_current_user
+
 router = APIRouter()
 
 
@@ -29,16 +31,19 @@ class UserProfileUpdate(BaseModel):
 
 
 @router.get("/me", response_model=UserProfile)
-async def get_current_user():
+async def get_my_profile(current_user: AuthUser = Depends(get_current_user)):
     """Get current user's profile."""
-    # TODO: Implement with auth
+    # TODO: Implement database lookup using current_user.auth_id
     raise HTTPException(status_code=501, detail="Not implemented")
 
 
 @router.patch("/me", response_model=UserProfile)
-async def update_current_user(update: UserProfileUpdate):
+async def update_my_profile(
+    update: UserProfileUpdate,
+    current_user: AuthUser = Depends(get_current_user)
+):
     """Update current user's profile."""
-    # TODO: Implement with auth
+    # TODO: Implement database update using current_user.auth_id
     raise HTTPException(status_code=501, detail="Not implemented")
 
 
