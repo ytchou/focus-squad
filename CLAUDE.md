@@ -131,3 +131,16 @@ mypy .                         # Type check
 - Database schema: `supabase/migrations/001_initial_schema.sql`
 - API routes: `backend/app/routers/`
 - Full spec: `SPEC.md`
+
+## 🛡️ Security & Privacy Guardrails
+Strict Rules for AI Operations:
+
+- Zero-Secrets Policy: NEVER read, edit, or commit .env files or any file containing API keys/tokens. If you encounter a string that looks like a secret, STOP and notify the user immediately.
+
+- Git Safety: Refuse to perform git push or git commit if the changes include hardcoded credentials. Always run a local secret scan before proposing a commit.
+
+- Local-Only Context: Use the file PRIVATE_CONTEXT.md for sensitive business logic or "secret sauce" prompts. This file is listed in .gitignore and should be read by Claude only when explicitly requested.
+
+- Redaction: When outputting logs or stack traces to the terminal, automatically redact JWTs, passwords, and tokens.
+
+- Path Isolation: Respect all entries in .claudeignore and never attempt to access files in parent directories or sensitive system paths (e.g., ~/.ssh, ~/.aws).

@@ -43,3 +43,8 @@ npm-debug.log*
 .vercel
 .turbo
 *.pem
+
+CLAUDE.md
+PRD.md
+SPEC.md
+TODO.md

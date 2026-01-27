@@ -1,0 +1,41 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+
+from app.core.config import get_settings
+from app.routers import health, users, sessions, credits
+
+settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events."""
+    # Startup
+    print(f"Starting {settings.app_name}...")
+    yield
+    # Shutdown
+    print(f"Shutting down {settings.app_name}...")
+
+
+app = FastAPI(
+    title=settings.app_name,
+    description="Body doubling platform API for Focus Squad",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(health.router, tags=["Health"])
+app.include_router(users.router, prefix=f"{settings.api_prefix}/users", tags=["Users"])
+app.include_router(sessions.router, prefix=f"{settings.api_prefix}/sessions", tags=["Sessions"])
+app.include_router(credits.router, prefix=f"{settings.api_prefix}/credits", tags=["Credits"])
