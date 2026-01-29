@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import get_settings
+from app.core.middleware import JWTValidationMiddleware
 from app.routers import health, users, sessions, credits
 
 settings = get_settings()
@@ -33,6 +34,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# JWT validation middleware (runs after CORS, before routes)
+app.add_middleware(JWTValidationMiddleware)
 
 # Include routers
 app.include_router(health.router, tags=["Health"])

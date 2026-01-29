@@ -3,11 +3,15 @@ Authentication module for Supabase JWT validation.
 
 Provides FastAPI dependencies for extracting and validating
 JWT tokens from Supabase Auth using JWKS (asymmetric keys).
+
+Two modes of operation:
+1. Standalone: Dependencies validate tokens directly (legacy)
+2. With middleware: Dependencies read from request.state (recommended)
 """
 
 from typing import Optional
 import httpx
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError, jwk
 from jose.utils import base64url_decode
@@ -193,3 +197,52 @@ async def get_optional_user(
         pass
 
     return AuthOptionalUser(is_authenticated=False)
+
+
+async def get_user_from_state(request: Request) -> AuthOptionalUser:
+    """
+    Get user from request.state (populated by JWTValidationMiddleware).
+
+    This is more efficient than get_current_user/get_optional_user as
+    it avoids re-validating the token when middleware has already done so.
+
+    Usage:
+        @router.get("/example")
+        async def example(user: AuthOptionalUser = Depends(get_user_from_state)):
+            if user.is_authenticated:
+                return {"user_id": user.auth_id}
+            return {"message": "anonymous"}
+    """
+    user = getattr(request.state, "user", None)
+    if user is not None:
+        return user
+    return AuthOptionalUser(is_authenticated=False)
+
+
+async def require_auth_from_state(request: Request) -> AuthUser:
+    """
+    Require authenticated user from request.state (populated by middleware).
+
+    Raises 401 if user is not authenticated.
+
+    Usage:
+        @router.get("/protected")
+        async def protected(user: AuthUser = Depends(require_auth_from_state)):
+            return {"user_id": user.auth_id}
+    """
+    user = getattr(request.state, "user", None)
+
+    if user is None or not user.is_authenticated:
+        # Check if there was a token error for better error messages
+        token_error = getattr(request.state, "token_error", None)
+        detail = "Authentication required"
+        if token_error:
+            detail = f"Authentication failed: {token_error}"
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return AuthUser(auth_id=user.auth_id, email=user.email or "")
