@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import get_settings
 from app.core.middleware import JWTValidationMiddleware
+from app.core.redis import init_redis, close_redis
 from app.routers import health, users, sessions, credits
 
 settings = get_settings()
@@ -14,9 +15,13 @@ async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
     print(f"Starting {settings.app_name}...")
+    await init_redis()
+    print("Redis connection initialized")
     yield
     # Shutdown
     print(f"Shutting down {settings.app_name}...")
+    await close_redis()
+    print("Redis connection closed")
 
 
 app = FastAPI(
