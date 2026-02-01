@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -24,6 +25,7 @@ TIER_CREDITS = {
 
 class CreditBalance(BaseModel):
     """User's credit balance information."""
+
     tier: UserTier
     credits_remaining: int
     credits_used_this_week: int
@@ -35,12 +37,14 @@ class CreditBalance(BaseModel):
 
 class GiftCreditsRequest(BaseModel):
     """Request to gift credits to another user."""
+
     recipient_id: str
     amount: int = 1
 
 
 class ReferralInfo(BaseModel):
     """Referral program information."""
+
     referral_code: str
     referrals_completed: int
     credits_earned_from_referrals: int

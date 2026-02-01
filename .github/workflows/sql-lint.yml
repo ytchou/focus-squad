@@ -1,0 +1,38 @@
+name: SQL Lint
+
+on:
+  push:
+    branches: [main, 'ytchou/**']
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/.sqlfluff'
+      - '.github/workflows/sql-lint.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/.sqlfluff'
+      - '.github/workflows/sql-lint.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sqlfluff:
+    name: sqlfluff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install sqlfluff
+        run: pip install sqlfluff
+
+      - name: Lint SQL migrations
+        run: sqlfluff lint supabase/migrations/
+        continue-on-error: true

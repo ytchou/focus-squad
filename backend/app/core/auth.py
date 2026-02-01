@@ -10,14 +10,12 @@ Two modes of operation:
 """
 
 from typing import Optional
+
 import httpx
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError, jwk
-from jose.utils import base64url_decode
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 from pydantic import BaseModel
-import json
-from functools import lru_cache
 
 from app.core.config import get_settings
 
@@ -32,6 +30,7 @@ _jwks_cache: Optional[dict] = None
 
 class AuthUser(BaseModel):
     """Authenticated user context from JWT token."""
+
     auth_id: str  # Supabase auth.uid()
     email: str
     # Add more claims as needed
@@ -39,6 +38,7 @@ class AuthUser(BaseModel):
 
 class AuthOptionalUser(BaseModel):
     """Optional authenticated user (for endpoints that work with or without auth)."""
+
     auth_id: Optional[str] = None
     email: Optional[str] = None
     is_authenticated: bool = False
@@ -62,7 +62,7 @@ def get_jwks() -> dict:
     except httpx.HTTPError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Failed to fetch JWKS: {str(e)}"
+            detail=f"Failed to fetch JWKS: {str(e)}",
         )
 
 
@@ -118,7 +118,7 @@ def decode_supabase_token(token: str) -> dict:
             token,
             signing_key,
             algorithms=["RS256", "ES256"],  # Supabase uses RS256 or ES256
-            audience="authenticated"
+            audience="authenticated",
         )
         return payload
     except JWTError as e:
@@ -130,7 +130,7 @@ def decode_supabase_token(token: str) -> dict:
 
 
 async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> AuthUser:
     """
     FastAPI dependency to get the current authenticated user.
@@ -164,7 +164,7 @@ async def get_current_user(
 
 
 async def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> AuthOptionalUser:
     """
     FastAPI dependency to get an optional authenticated user.
@@ -188,11 +188,7 @@ async def get_optional_user(
         email = payload.get("email")
 
         if auth_id:
-            return AuthOptionalUser(
-                auth_id=auth_id,
-                email=email,
-                is_authenticated=True
-            )
+            return AuthOptionalUser(auth_id=auth_id, email=email, is_authenticated=True)
     except HTTPException:
         pass
 

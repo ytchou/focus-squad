@@ -1,5 +1,7 @@
 from typing import Optional
-from redis.asyncio import Redis, ConnectionPool
+
+from redis.asyncio import ConnectionPool, Redis
+
 from app.core.config import get_settings
 
 settings = get_settings()
