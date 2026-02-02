@@ -47,11 +47,8 @@ npm-debug.log*
 # Output Files
 output/
 
-CLAUDE.md
 PRD.md
 SPEC.md
-
-
 TODO.md
 .temp
 TODO.md.env
