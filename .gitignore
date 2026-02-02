@@ -44,12 +44,16 @@ npm-debug.log*
 .turbo
 *.pem
 
-# Claude Code generated outputs (explanations, reviews, etc.)
+# Output Files
 output/
 
 CLAUDE.md
 PRD.md
 SPEC.md
+
+
+TODO.md
+.temp
 TODO.md.env
 .mcp.json
 .env

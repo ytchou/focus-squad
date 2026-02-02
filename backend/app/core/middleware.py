@@ -5,14 +5,15 @@ Intercepts all requests, validates JWT tokens if present,
 and attaches user context to request.state for downstream use.
 """
 
-from typing import Optional, Awaitable, Callable
+import time
+from typing import Optional
+
 from fastapi import Request
+from jose import JWTError, jwt
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
-from jose import jwt, JWTError
-import time
 
-from app.core.auth import get_signing_key, get_jwks, AuthUser, AuthOptionalUser
+from app.core.auth import AuthOptionalUser, get_signing_key
 
 
 class JWTValidationMiddleware(BaseHTTPMiddleware):
@@ -33,9 +34,7 @@ class JWTValidationMiddleware(BaseHTTPMiddleware):
             return {"message": "anonymous"}
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # Initialize with unauthenticated user
         request.state.user = AuthOptionalUser(is_authenticated=False)
         request.state.token_error = None
@@ -53,7 +52,7 @@ class JWTValidationMiddleware(BaseHTTPMiddleware):
                     request.state.user = AuthOptionalUser(
                         auth_id=user_info.get("sub"),
                         email=user_info.get("email"),
-                        is_authenticated=True
+                        is_authenticated=True,
                     )
             except JWTError as e:
                 # Store error for potential logging/debugging
@@ -76,10 +75,7 @@ class JWTValidationMiddleware(BaseHTTPMiddleware):
             signing_key = get_signing_key(token)
 
             payload = jwt.decode(
-                token,
-                signing_key,
-                algorithms=["RS256", "ES256"],
-                audience="authenticated"
+                token, signing_key, algorithms=["RS256", "ES256"], audience="authenticated"
             )
 
             # Check expiration explicitly (jose should handle this, but be safe)
@@ -102,9 +98,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     Useful for debugging and audit trails.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # Log request info if user is authenticated
         user = getattr(request.state, "user", None)
 

@@ -1,4 +1,5 @@
-from typing import Optional, List, Dict
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -9,11 +10,12 @@ router = APIRouter()
 
 class UserProfile(BaseModel):
     """User profile response model."""
+
     id: str
     username: str
     display_name: Optional[str] = None
     bio: Optional[str] = None
-    avatar_config: Optional[Dict] = None
+    avatar_config: Optional[dict] = None
     reliability_score: float = 100.0
     total_focus_hours: float = 0.0
     session_count: int = 0
@@ -22,12 +24,13 @@ class UserProfile(BaseModel):
 
 class UserProfileUpdate(BaseModel):
     """User profile update request model."""
+
     username: Optional[str] = None
     display_name: Optional[str] = None
     bio: Optional[str] = None
-    avatar_config: Optional[Dict] = None
-    social_links: Optional[Dict] = None
-    study_interests: Optional[List[str]] = None
+    avatar_config: Optional[dict] = None
+    social_links: Optional[dict] = None
+    study_interests: Optional[list[str]] = None
 
 
 @router.get("/me", response_model=UserProfile)
@@ -39,8 +42,7 @@ async def get_my_profile(current_user: AuthUser = Depends(get_current_user)):
 
 @router.patch("/me", response_model=UserProfile)
 async def update_my_profile(
-    update: UserProfileUpdate,
-    current_user: AuthUser = Depends(get_current_user)
+    update: UserProfileUpdate, current_user: AuthUser = Depends(get_current_user)
 ):
     """Update current user's profile."""
     # TODO: Implement database update using current_user.auth_id
