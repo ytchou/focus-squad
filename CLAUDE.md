@@ -1,4 +1,4 @@
-# Focus Squad - Context Anchor
+# CLAUDE.MD - Context Anchor
 
 ## What You're Building
 **Focus Squad** is a body-doubling platform with 4-person audio study tables, credit economy, and collectibles. Taiwan market focus.
