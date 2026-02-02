@@ -202,8 +202,10 @@ async def test_credit_deduction():
 ### 1. Plan Mode Default
 - Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
 - If something goes sideways, STOP and re-plan immediately - don't keep pushing
-- Use plan mode for verification steps, not just building
 - Write detailed specs upfront to reduce ambiguity
+- **Every plan MUST include a "Verification" section** with specific validation steps (tests to run, commands to execute, expected outputs)
+- **Run ALL verification steps** after implementation completes - no exceptions
+- **Fix failures immediately** - if any validation fails, fix the issue before marking the task complete
 
 ### 2. Subagent Strategy
 - Use subagents liberally to keep main context window clean
