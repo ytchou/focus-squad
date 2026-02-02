@@ -10,7 +10,7 @@ Handles:
 
 import random
 import string
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Optional, cast
 
 from supabase import Client
 
@@ -40,7 +40,7 @@ class UserService:
     """Service for user profile operations."""
 
     # Default notification event types for new users
-    DEFAULT_NOTIFICATION_EVENTS: List[str] = [
+    DEFAULT_NOTIFICATION_EVENTS: list[str] = [
         "session_start",
         "match_found",
         "credit_refresh",
@@ -94,30 +94,18 @@ class UserService:
             UserServiceError: If unable to find unique username after max attempts
         """
         # Try base username first
-        result = (
-            self.supabase.table("users")
-            .select("id")
-            .eq("username", base_username)
-            .execute()
-        )
+        result = self.supabase.table("users").select("id").eq("username", base_username).execute()
         if not result.data:
             return base_username
 
         # Try with random suffixes
         for _ in range(max_attempts):
             candidate = f"{base_username}_{self._generate_random_suffix()}"
-            result = (
-                self.supabase.table("users")
-                .select("id")
-                .eq("username", candidate)
-                .execute()
-            )
+            result = self.supabase.table("users").select("id").eq("username", candidate).execute()
             if not result.data:
                 return candidate
 
-        raise UserServiceError(
-            f"Unable to generate unique username after {max_attempts} attempts"
-        )
+        raise UserServiceError(f"Unable to generate unique username after {max_attempts} attempts")
 
     def get_user_by_auth_id(self, auth_id: str) -> Optional[UserProfile]:
         """
@@ -129,9 +117,7 @@ class UserService:
         Returns:
             UserProfile if found, None otherwise
         """
-        result = (
-            self.supabase.table("users").select("*").eq("auth_id", auth_id).execute()
-        )
+        result = self.supabase.table("users").select("*").eq("auth_id", auth_id).execute()
 
         if not result.data:
             return None
@@ -182,9 +168,7 @@ class UserService:
 
         return UserPublicProfile(**result.data[0])
 
-    def create_user_if_not_exists(
-        self, auth_id: str, email: str
-    ) -> Tuple[UserProfile, bool]:
+    def create_user_if_not_exists(self, auth_id: str, email: str) -> tuple[UserProfile, bool]:
         """
         Create user if not exists (upsert for first OAuth login).
 
@@ -223,7 +207,7 @@ class UserService:
             raise UserServiceError("Failed to create user record")
 
         # Cast result.data to expected type for mypy
-        data_list = cast(List[Dict[str, Any]], result.data)
+        data_list = cast(list[dict[str, Any]], result.data)
         user_row = data_list[0]
         user_id = cast(str, user_row["id"])
 
@@ -261,7 +245,7 @@ class UserService:
         ).execute()
 
         # Create default notification preferences
-        notification_prefs: List[Dict[str, Any]] = [
+        notification_prefs: list[dict[str, Any]] = [
             {
                 "user_id": user_id,
                 "event_type": event_type,
@@ -270,13 +254,9 @@ class UserService:
             }
             for event_type in self.DEFAULT_NOTIFICATION_EVENTS
         ]
-        self.supabase.table("notification_preferences").insert(
-            notification_prefs
-        ).execute()
+        self.supabase.table("notification_preferences").insert(notification_prefs).execute()
 
-    def update_user_profile(
-        self, auth_id: str, update: UserProfileUpdate
-    ) -> UserProfile:
+    def update_user_profile(self, auth_id: str, update: UserProfileUpdate) -> UserProfile:
         """
         Update user profile fields.
 
@@ -299,7 +279,7 @@ class UserService:
             raise UserNotFoundError(f"User with auth_id {auth_id} not found")
 
         # Build update dict from non-None fields
-        update_data: Dict[str, Any] = {}
+        update_data: dict[str, Any] = {}
         update_dict = update.model_dump(exclude_unset=True)
 
         for key, value in update_dict.items():
@@ -315,24 +295,14 @@ class UserService:
             if new_username != current.username:
                 # Check if username is taken
                 conflict_check = (
-                    self.supabase.table("users")
-                    .select("id")
-                    .eq("username", new_username)
-                    .execute()
+                    self.supabase.table("users").select("id").eq("username", new_username).execute()
                 )
 
                 if conflict_check.data:
-                    raise UsernameConflictError(
-                        f"Username '{new_username}' is already taken"
-                    )
+                    raise UsernameConflictError(f"Username '{new_username}' is already taken")
 
         # Perform update
-        result = (
-            self.supabase.table("users")
-            .update(update_data)
-            .eq("auth_id", auth_id)
-            .execute()
-        )
+        result = self.supabase.table("users").update(update_data).eq("auth_id", auth_id).execute()
 
         if not result.data:
             raise UserServiceError("Failed to update user profile")

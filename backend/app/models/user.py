@@ -10,7 +10,7 @@ Models:
 import re
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -29,9 +29,9 @@ class UserProfile(BaseModel):
     bio: Optional[str] = None
 
     # Avatar & Social
-    avatar_config: Dict[str, Any] = Field(default_factory=dict)
-    social_links: Dict[str, Any] = Field(default_factory=dict)
-    study_interests: List[str] = Field(default_factory=list)
+    avatar_config: dict[str, Any] = Field(default_factory=dict)
+    social_links: dict[str, Any] = Field(default_factory=dict)
+    study_interests: list[str] = Field(default_factory=list)
     preferred_language: str = "en"
 
     # Stats
@@ -65,8 +65,8 @@ class UserPublicProfile(BaseModel):
     username: str
     display_name: Optional[str] = None
     bio: Optional[str] = None
-    avatar_config: Dict[str, Any] = Field(default_factory=dict)
-    study_interests: List[str] = Field(default_factory=list)
+    avatar_config: dict[str, Any] = Field(default_factory=dict)
+    study_interests: list[str] = Field(default_factory=list)
 
     # Public stats only
     reliability_score: Decimal = Decimal("100.00")
@@ -85,9 +85,9 @@ class UserProfileUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=30)
     display_name: Optional[str] = Field(None, max_length=50)
     bio: Optional[str] = Field(None, max_length=500)
-    avatar_config: Optional[Dict[str, Any]] = None
-    social_links: Optional[Dict[str, Any]] = None
-    study_interests: Optional[List[str]] = None
+    avatar_config: Optional[dict[str, Any]] = None
+    social_links: Optional[dict[str, Any]] = None
+    study_interests: Optional[list[str]] = None
     preferred_language: Optional[str] = None
     activity_tracking_enabled: Optional[bool] = None
     email_notifications_enabled: Optional[bool] = None
@@ -100,9 +100,7 @@ class UserProfileUpdate(BaseModel):
             return v
         # Alphanumeric and underscores only, lowercase
         if not re.match(r"^[a-zA-Z0-9_]+$", v):
-            raise ValueError(
-                "Username can only contain letters, numbers, and underscores"
-            )
+            raise ValueError("Username can only contain letters, numbers, and underscores")
         return v.lower()
 
     @field_validator("preferred_language")

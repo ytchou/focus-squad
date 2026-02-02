@@ -12,9 +12,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.auth import AuthUser, require_auth_from_state
 from app.models.user import UserProfile, UserProfileUpdate, UserPublicProfile
 from app.services.user_service import (
+    UsernameConflictError,
     UserNotFoundError,
     UserService,
-    UsernameConflictError,
 )
 
 router = APIRouter()

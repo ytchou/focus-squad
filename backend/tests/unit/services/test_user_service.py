@@ -2,16 +2,16 @@
 
 from datetime import datetime
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from app.models.user import UserProfileUpdate
 from app.services.user_service import (
+    UsernameConflictError,
     UserNotFoundError,
     UserService,
     UserServiceError,
-    UsernameConflictError,
 )
 
 
@@ -151,9 +151,7 @@ class TestGetUserByAuthId:
         """Returns UserProfile when user exists."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
-        mock_table.select.return_value.eq.return_value.execute.return_value.data = [
-            sample_user_row
-        ]
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [sample_user_row]
 
         result = user_service.get_user_by_auth_id("auth-123")
 
@@ -181,13 +179,9 @@ class TestCreateUserIfNotExists:
         """Existing user returned without creating new one."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
-        mock_table.select.return_value.eq.return_value.execute.return_value.data = [
-            sample_user_row
-        ]
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [sample_user_row]
 
-        profile, created = user_service.create_user_if_not_exists(
-            "auth-123", "john@example.com"
-        )
+        profile, created = user_service.create_user_if_not_exists("auth-123", "john@example.com")
 
         assert not created
         assert profile.id == "user-123"
@@ -215,9 +209,7 @@ class TestCreateUserIfNotExists:
         mock_table.select.return_value.eq.return_value.execute = mock_select_execute
         mock_table.insert.return_value.execute.return_value.data = [sample_user_row]
 
-        profile, created = user_service.create_user_if_not_exists(
-            "auth-123", "john@example.com"
-        )
+        profile, created = user_service.create_user_if_not_exists("auth-123", "john@example.com")
 
         assert created
         assert profile.username == "johndoe"
@@ -276,16 +268,12 @@ class TestUpdateUserProfile:
         mock_supabase.table.return_value = mock_table
 
         # Get current user
-        mock_table.select.return_value.eq.return_value.execute.return_value.data = [
-            sample_user_row
-        ]
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [sample_user_row]
 
         # Update returns updated user
         updated_row = sample_user_row.copy()
         updated_row["display_name"] = "New Name"
-        mock_table.update.return_value.eq.return_value.execute.return_value.data = [
-            updated_row
-        ]
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = [updated_row]
 
         update = UserProfileUpdate(display_name="New Name")
         result = user_service.update_user_profile("auth-123", update)
@@ -297,9 +285,7 @@ class TestUpdateUserProfile:
         """No update when no fields changed."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
-        mock_table.select.return_value.eq.return_value.execute.return_value.data = [
-            sample_user_row
-        ]
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [sample_user_row]
 
         # Empty update - all fields None
         update = UserProfileUpdate()
@@ -332,9 +318,7 @@ class TestGetPublicProfile:
 
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
-        mock_table.select.return_value.eq.return_value.execute.return_value.data = [
-            public_data
-        ]
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [public_data]
 
         result = user_service.get_public_profile("user-123")
 

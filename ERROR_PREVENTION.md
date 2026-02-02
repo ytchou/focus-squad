@@ -47,6 +47,64 @@ id UUID PRIMARY KEY DEFAULT gen_random_uuid()
 
 ---
 
+## Python/Ruff Linting
+
+### Error: Deprecated typing imports (UP035/UP006)
+**Symptom:** Ruff lint errors like:
+- `UP035: typing.Dict is deprecated, use dict instead`
+- `UP035: typing.List is deprecated, use list instead`
+- `UP006: Use dict instead of Dict for type annotation`
+
+**Root Cause:** Python 3.9+ supports using built-in types (`dict`, `list`, `tuple`) directly in type annotations (PEP 585). The `typing.Dict`, `typing.List`, `typing.Tuple` are now deprecated.
+
+**Prevention:**
+```python
+# ❌ DON'T USE (deprecated in Python 3.9+)
+from typing import Dict, List, Tuple
+def process(data: Dict[str, Any]) -> List[str]: ...
+def get_pair() -> Tuple[str, int]: ...
+
+# ✅ USE INSTEAD (built-in generics)
+from typing import Any, Optional  # Only import what you actually need
+def process(data: dict[str, Any]) -> list[str]: ...
+def get_pair() -> tuple[str, int]: ...
+```
+
+**Quick Fix:**
+```bash
+# Auto-fix with ruff (requires --unsafe-fixes for type annotation changes)
+ruff check --fix --unsafe-fixes .
+ruff format .
+```
+
+**When this happens:**
+- Writing new Python code with type hints
+- Copying code from older Python tutorials/examples
+- IDE auto-importing from `typing` instead of built-ins
+
+**IDE Configuration:** Configure your IDE to prefer built-in types for auto-imports when targeting Python 3.9+
+
+---
+
+### Error: Unsorted imports (I001)
+**Symptom:** `I001: Import block is un-sorted or un-formatted`
+
+**Root Cause:** Ruff enforces isort-style import ordering
+
+**Prevention:**
+```bash
+# Run ruff format before committing
+ruff check --fix .  # Fixes import sorting
+ruff format .       # Fixes formatting
+```
+
+**Import Order (enforced by ruff):**
+1. Standard library imports
+2. Third-party imports
+3. Local application imports
+
+---
+
 ## General Patterns
 
 ### When encountering a new error:
@@ -83,5 +141,5 @@ id UUID PRIMARY KEY DEFAULT gen_random_uuid()
 
 ---
 
-*Last updated: 2026-02-01*
-*Errors documented: 2*
+*Last updated: 2026-02-02*
+*Errors documented: 4*
