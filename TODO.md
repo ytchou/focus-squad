@@ -46,11 +46,12 @@
   - [x] `GET /api/v1/users/{user_id}` - Return public profile
 
 ### Authentication (Frontend)
-- [ ] Configure NextAuth with Google OAuth provider
-- [ ] Create auth middleware for protected routes
-- [ ] Build login page with Google OAuth button
-- [ ] Build onboarding flow (username selection)
-- [ ] Set up Supabase client (SSR-compatible)
+- [x] Configure NextAuth with Google OAuth provider
+  - Note: Used Supabase Auth directly instead of NextAuth for simpler integration with backend JWT validation
+- [x] Create auth middleware for protected routes
+- [x] Build login page with Google OAuth button
+- [x] Build onboarding flow (username selection)
+- [x] Set up Supabase client (SSR-compatible)
 
 ### Frontend Foundation
 - [ ] Implement design system (earth tones, warm accents)
