@@ -88,10 +88,7 @@ export default function OnboardingPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="displayName"
-              className="mb-1 block text-sm font-medium text-[#3D3D3D]"
-            >
+            <label htmlFor="displayName" className="mb-1 block text-sm font-medium text-[#3D3D3D]">
               Display Name (optional)
             </label>
             <input
