@@ -1,26 +1,89 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Focus Squad Design System - Earth Tones */
+
+  /* Core Colors */
+  --background: #FAF7F2;        /* Warm off-white - main background */
+  --foreground: #3D3D3D;        /* Soft black - body text */
+  --surface: #F5EFE6;           /* Cream - cards, surfaces */
+
+  /* Brand Colors */
+  --primary: #8B7355;           /* Coffee brown - primary actions */
+  --primary-foreground: #FAFAFA;
+  --accent: #D4A574;            /* Warm tan - CTAs, highlights */
+  --accent-foreground: #3D3D3D;
+
+  /* Semantic Colors */
+  --success: #7D9B76;           /* Sage green - "Green" ratings, positive */
+  --success-foreground: #FAFAFA;
+  --warning: #C9A962;           /* Gold - caution, warnings */
+  --warning-foreground: #3D3D3D;
+  --destructive: #B85C5C;       /* Muted red - "Red" ratings, errors */
+  --destructive-foreground: #FAFAFA;
+
+  /* UI Elements */
+  --card: #F5EFE6;
+  --card-foreground: #3D3D3D;
+  --border: #E5DDD3;            /* Subtle warm border */
+  --input: #FFFFFF;
+  --ring: #8B7355;
+  --muted: #EDE8E0;
+  --muted-foreground: #6B6B6B;
+
+  /* Radius - soft, rounded corners for "lo-fi cozy" feel */
+  --radius: 0.75rem;
 }
 
 @theme inline {
+  /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
+  --radius-2xl: calc(var(--radius) + 12px);
+
+  /* Typography */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Focus ring styles */
+.focus-visible\:ring-ring:focus-visible {
+  --tw-ring-color: var(--ring);
+}
+
+/* Smooth transitions for interactive elements */
+* {
+  transition-property: color, background-color, border-color, outline-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }

@@ -26,7 +26,7 @@ export function LoginButton({ redirectTo }: LoginButtonProps) {
   return (
     <button
       onClick={handleLogin}
-      className="flex w-full items-center justify-center gap-3 rounded-full bg-[#8B7355] px-6 py-3 text-white transition-colors hover:bg-[#7a6549]"
+      className="flex w-full items-center justify-center gap-3 rounded-full bg-primary px-6 py-3 text-primary-foreground transition-colors hover:bg-primary/90"
     >
       <GoogleIcon />
       <span>Continue with Google</span>
