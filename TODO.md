@@ -29,21 +29,21 @@
 - [x] Run migration in Supabase
 
 ### User System (Backend)
-- [ ] Create Pydantic models (`backend/app/models/user.py`)
-  - [ ] `UserProfile` (full profile for authenticated user)
-  - [ ] `UserPublicProfile` (limited fields for other users)
-  - [ ] `UserProfileUpdate` (partial update model)
-- [ ] Create `UserService` (`backend/app/services/user_service.py`)
-  - [ ] `get_user_by_auth_id()` - Fetch user from Supabase
-  - [ ] `create_user_if_not_exists()` - Upsert for first OAuth login
-  - [ ] `update_user_profile()` - Patch profile fields
-  - [ ] `get_public_profile()` - Public profile for other users
-  - [ ] Auto-generate username from email with collision handling
-  - [ ] Auto-create associated records (credits, essence, notification_preferences)
-- [ ] Wire up router endpoints (`backend/app/routers/users.py`)
-  - [ ] `GET /api/v1/users/me` - Return full profile (upsert on first call)
-  - [ ] `PATCH /api/v1/users/me` - Update profile with conflict handling
-  - [ ] `GET /api/v1/users/{user_id}` - Return public profile
+- [x] Create Pydantic models (`backend/app/models/user.py`)
+  - [x] `UserProfile` (full profile for authenticated user)
+  - [x] `UserPublicProfile` (limited fields for other users)
+  - [x] `UserProfileUpdate` (partial update model)
+- [x] Create `UserService` (`backend/app/services/user_service.py`)
+  - [x] `get_user_by_auth_id()` - Fetch user from Supabase
+  - [x] `create_user_if_not_exists()` - Upsert for first OAuth login
+  - [x] `update_user_profile()` - Patch profile fields
+  - [x] `get_public_profile()` - Public profile for other users
+  - [x] Auto-generate username from email with collision handling
+  - [x] Auto-create associated records (credits, essence, notification_preferences)
+- [x] Wire up router endpoints (`backend/app/routers/users.py`)
+  - [x] `GET /api/v1/users/me` - Return full profile (upsert on first call)
+  - [x] `PATCH /api/v1/users/me` - Update profile with conflict handling
+  - [x] `GET /api/v1/users/{user_id}` - Return public profile
 
 ### Authentication (Frontend)
 - [ ] Configure NextAuth with Google OAuth provider
