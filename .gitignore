@@ -50,5 +50,10 @@ output/
 CLAUDE.md
 PRD.md
 SPEC.md
+
+
 TODO.md
 .temp
+TODO.md.env
+.mcp.json
+.env
