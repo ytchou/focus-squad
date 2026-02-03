@@ -1,53 +1,89 @@
-import { createClient } from "@/lib/supabase/server";
-import { LogoutButton } from "@/components/auth/logout-button";
+"use client";
 
-export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useCreditsStore, useUserStore } from "@/stores";
+import { AppShell } from "@/components/layout";
+import { StatCard } from "@/components/ui/stat-card";
+import { ReliabilityBadge } from "@/components/ui/reliability-badge";
+import { Clock, Flame, Coins } from "lucide-react";
+
+export default function DashboardPage() {
+  const { refreshProfile } = useAuth();
+  const user = useUserStore((state) => state.user);
+  const credits = useCreditsStore((state) => state.balance);
+
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2]">
-      <header className="border-b border-[#D4A574] bg-[#F5EFE6] px-6 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <h1 className="text-xl font-semibold text-[#3D3D3D]">Focus Squad</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-[#8B7355]">{user?.email}</span>
-            <LogoutButton />
+    <AppShell>
+      <div className="space-y-6">
+        {/* Welcome section */}
+        <div className="rounded-2xl bg-card p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-foreground">
+                Welcome back, {user?.display_name ?? user?.username ?? "Friend"}!
+              </h1>
+              <p className="mt-1 text-muted-foreground">Ready for your next focus session?</p>
+            </div>
+            {user && <ReliabilityBadge score={user.reliability_score} />}
           </div>
         </div>
-      </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="rounded-2xl bg-[#F5EFE6] p-8 shadow-lg">
-          <h2 className="mb-4 text-2xl font-semibold text-[#3D3D3D]">Welcome to Focus Squad!</h2>
-          <p className="text-[#8B7355]">
-            Your dashboard is ready. This is where you&apos;ll find your upcoming sessions, stats,
-            and more.
-          </p>
+        {/* Stats grid */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <StatCard
+            title="Sessions"
+            value={user?.session_count ?? 0}
+            subtitle="completed this week"
+            icon={Clock}
+          />
+          <StatCard
+            title="Focus Time"
+            value={`${user?.total_focus_minutes ?? 0} min`}
+            subtitle="total focus time"
+            icon={Flame}
+          />
+          <StatCard title="Credits" value={credits} subtitle="available this week" icon={Coins} />
+        </div>
 
-          <div className="mt-8 grid gap-6 md:grid-cols-3">
-            <div className="rounded-xl bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-medium text-[#3D3D3D]">Sessions</h3>
-              <p className="mt-2 text-3xl font-bold text-[#8B7355]">0</p>
-              <p className="mt-1 text-sm text-[#8B7355]">completed this week</p>
-            </div>
-
-            <div className="rounded-xl bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-medium text-[#3D3D3D]">Focus Time</h3>
-              <p className="mt-2 text-3xl font-bold text-[#8B7355]">0 min</p>
-              <p className="mt-1 text-sm text-[#8B7355]">total focus time</p>
-            </div>
-
-            <div className="rounded-xl bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-medium text-[#3D3D3D]">Credits</h3>
-              <p className="mt-2 text-3xl font-bold text-[#8B7355]">2</p>
-              <p className="mt-1 text-sm text-[#8B7355]">available this week</p>
-            </div>
+        {/* Quick actions */}
+        <div className="rounded-2xl bg-card p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Quick Actions</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <button className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20 text-accent">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Find a Table</p>
+                <p className="text-sm text-muted-foreground">Join a study session</p>
+              </div>
+            </button>
+            <button className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/20 text-success">
+                <Flame className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">View History</p>
+                <p className="text-sm text-muted-foreground">Past sessions & stats</p>
+              </div>
+            </button>
+            <button className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                <Coins className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Get More Credits</p>
+                <p className="text-sm text-muted-foreground">Upgrade your plan</p>
+              </div>
+            </button>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }
