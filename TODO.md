@@ -54,11 +54,35 @@
 - [x] Set up Supabase client (SSR-compatible)
 
 ### Frontend Foundation
-- [ ] Implement design system (earth tones, warm accents)
-- [ ] Create base layout component
-- [ ] Set up Zustand stores (user, ui)
-- [ ] Create reusable UI components (Button, Card, Avatar, etc.)
-- [ ] Configure Tailwind with custom color palette
+- [x] Configure Tailwind with design tokens in globals.css
+  - [x] Add earth-tone color palette (background, surface, primary, accent, etc.)
+  - [x] Configure @theme inline for Tailwind v4
+  - [x] Add radius and shadow variables
+- [x] Set up shadcn/ui component library
+  - [x] Install dependencies (class-variance-authority, clsx, tailwind-merge)
+  - [x] Create lib/utils.ts with cn() function
+  - [x] Create components.json configuration
+  - [x] Add core components (Button, Card, Input, Badge, Avatar, Dialog, Sonner, etc.)
+- [x] Create custom UI components
+  - [x] StatCard (dashboard stats)
+  - [x] CreditBadge (credit display)
+  - [x] ReliabilityBadge (user reliability indicator)
+- [x] Set up Zustand stores (extended scope)
+  - [x] user-store.ts (already exists)
+  - [x] ui-store.ts (sidebar, modal, theme)
+  - [x] session-store.ts (phase, timer, tableId, participants)
+  - [x] credits-store.ts (balance, tier, weeklyUsed)
+  - [x] notifications-store.ts (notifications array)
+  - [x] stores/index.ts (barrel export)
+- [x] Create base layout components
+  - [x] AppShell (main wrapper)
+  - [x] Header (top bar with logo, credits, user menu)
+  - [x] Sidebar (collapsible navigation)
+- [x] Migrate existing pages to use design tokens
+  - [x] login/page.tsx
+  - [x] onboarding/page.tsx
+  - [x] dashboard/page.tsx
+  - [x] login-button.tsx, logout-button.tsx
 
 ### Testing Foundation
 - [x] Set up pytest with async support (backend)

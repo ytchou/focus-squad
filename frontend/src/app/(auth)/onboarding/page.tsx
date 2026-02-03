@@ -63,14 +63,14 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FAF7F2]">
-      <div className="w-full max-w-md rounded-2xl bg-[#F5EFE6] p-8 shadow-lg">
-        <h1 className="mb-2 text-2xl font-semibold text-[#3D3D3D]">Choose your username</h1>
-        <p className="mb-6 text-[#8B7355]">This is how others will see you in study sessions.</p>
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="w-full max-w-md rounded-2xl bg-card p-8 shadow-lg">
+        <h1 className="mb-2 text-2xl font-semibold text-foreground">Choose your username</h1>
+        <p className="mb-6 text-primary">This is how others will see you in study sessions.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="username" className="mb-1 block text-sm font-medium text-[#3D3D3D]">
+            <label htmlFor="username" className="mb-1 block text-sm font-medium text-foreground">
               Username
             </label>
             <input
@@ -78,17 +78,17 @@ export default function OnboardingPage() {
               type="text"
               value={username}
               onChange={handleUsernameChange}
-              className="w-full rounded-lg border border-[#D4A574] bg-white px-4 py-2 text-[#3D3D3D] focus:border-[#8B7355] focus:outline-none"
+              className="w-full rounded-lg border border-accent bg-input px-4 py-2 text-foreground focus:border-primary focus:outline-none"
               placeholder="your_username"
               minLength={3}
               maxLength={30}
               required
             />
-            <p className="mt-1 text-xs text-[#8B7355]">Letters, numbers, and underscores only</p>
+            <p className="mt-1 text-xs text-primary">Letters, numbers, and underscores only</p>
           </div>
 
           <div>
-            <label htmlFor="displayName" className="mb-1 block text-sm font-medium text-[#3D3D3D]">
+            <label htmlFor="displayName" className="mb-1 block text-sm font-medium text-foreground">
               Display Name (optional)
             </label>
             <input
@@ -96,20 +96,20 @@ export default function OnboardingPage() {
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full rounded-lg border border-[#D4A574] bg-white px-4 py-2 text-[#3D3D3D] focus:border-[#8B7355] focus:outline-none"
+              className="w-full rounded-lg border border-accent bg-input px-4 py-2 text-foreground focus:border-primary focus:outline-none"
               placeholder="How you want to be called"
               maxLength={50}
             />
           </div>
 
           {error && (
-            <div className="rounded-lg bg-[#B85C5C]/10 p-3 text-sm text-[#B85C5C]">{error}</div>
+            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}
 
           <button
             type="submit"
             disabled={isLoading || username.length < 3}
-            className="w-full rounded-full bg-[#8B7355] py-3 text-white transition-colors hover:bg-[#7a6549] disabled:opacity-50"
+            className="w-full rounded-full bg-primary py-3 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {isLoading ? "Saving..." : "Continue"}
           </button>
