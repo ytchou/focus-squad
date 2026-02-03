@@ -109,9 +109,28 @@ supabase db push                   # Push migrations to remote
 ## Testing Standards (Test-Driven Development)
 
 ### Philosophy
-- **Test-first for critical paths**: Credits, matching, ratings, session state
+- **Test-first for critical paths**: Credits, matching, ratings, session state, authentication
 - **Test-after for UI/simple features**: Components, utilities
 - **Minimum coverage**: ~20% overall, 80%+ for critical business logic
+
+### TDD Enforcement Rules (MANDATORY)
+1. **Before implementing critical business logic**: Write failing tests first
+2. **Before merging any PR**: All tests must pass
+3. **When modifying existing code**: Add tests for uncovered edge cases
+4. **When fixing bugs**: Write a regression test that fails before fix, passes after
+5. **Coverage gates**:
+   - Critical paths (auth, credits, sessions, ratings): 80%+ required
+   - Services: 70%+ recommended
+   - Overall codebase: 20%+ minimum
+
+### Critical Paths Requiring Tests
+These areas MUST have tests before implementation:
+- `backend/app/core/auth.py` - JWT validation, user context
+- `backend/app/core/middleware.py` - Request authentication
+- `backend/app/services/credit_service.py` - Credit transactions
+- `backend/app/services/session_service.py` - Session matching
+- `backend/app/services/rating_service.py` - Peer review scoring
+- `frontend/src/stores/` - State management stores
 
 ### Frontend Testing (Vitest)
 ```bash

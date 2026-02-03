@@ -85,11 +85,16 @@
   - [x] login-button.tsx, logout-button.tsx
 
 ### Testing Foundation
-- [ ] Set up pytest with async support (backend)
-- [ ] Write tests for auth middleware
+- [x] Set up pytest with async support (backend)
+  - [x] Enhanced conftest.py with JWT/JWKS fixtures
+  - [x] Added cryptography dependency for RSA key generation
+- [x] Write tests for auth middleware
+  - [x] Unit tests for auth.py (31 tests, 100% coverage)
+  - [x] Unit tests for middleware.py (14 tests, 98% coverage)
+  - [x] Integration tests (9 tests)
 - [x] Set up Jest/Vitest for frontend
 - [x] Add store tests (credits-store, session-store)
-- [ ] Add CI workflow for running tests
+- [x] Add CI workflow for running tests (backend-ci.yml, frontend-ci.yml exist)
 
 ---
 
