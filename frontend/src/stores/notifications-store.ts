@@ -71,7 +71,6 @@ export const useNotify = () => {
       addNotification({ type: "error", title, message, duration: 0 }), // Errors persist
     warning: (title: string, message?: string) =>
       addNotification({ type: "warning", title, message }),
-    info: (title: string, message?: string) =>
-      addNotification({ type: "info", title, message }),
+    info: (title: string, message?: string) => addNotification({ type: "info", title, message }),
   };
 };

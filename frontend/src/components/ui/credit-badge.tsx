@@ -45,9 +45,7 @@ export function CreditBadge({
       {showIcon && <Coins className={iconSizes[size]} />}
       <span>
         {credits}
-        {maxCredits !== undefined && (
-          <span className="text-muted-foreground">/{maxCredits}</span>
-        )}
+        {maxCredits !== undefined && <span className="text-muted-foreground">/{maxCredits}</span>}
       </span>
     </div>
   );

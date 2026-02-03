@@ -30,19 +30,14 @@ export function Header() {
         .join("")
         .toUpperCase()
         .slice(0, 2)
-    : user?.username?.slice(0, 2).toUpperCase() ?? "?";
+    : (user?.username?.slice(0, 2).toUpperCase() ?? "?");
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-surface px-4 py-3 md:px-6">
       <div className="flex items-center justify-between">
         {/* Left side */}
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="md:hidden"
-          >
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden">
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle sidebar</span>
           </Button>
@@ -85,9 +80,7 @@ export function Header() {
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium">{user?.display_name ?? user?.username}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
-                <p className="mt-1 text-xs text-muted-foreground capitalize">
-                  {tier} tier
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground capitalize">{tier} tier</p>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>

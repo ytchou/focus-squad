@@ -27,9 +27,7 @@ export default function DashboardPage() {
               <h1 className="text-2xl font-semibold text-foreground">
                 Welcome back, {user?.display_name ?? user?.username ?? "Friend"}!
               </h1>
-              <p className="mt-1 text-muted-foreground">
-                Ready for your next focus session?
-              </p>
+              <p className="mt-1 text-muted-foreground">Ready for your next focus session?</p>
             </div>
             {user && <ReliabilityBadge score={user.reliability_score} />}
           </div>
@@ -49,19 +47,12 @@ export default function DashboardPage() {
             subtitle="total focus time"
             icon={Flame}
           />
-          <StatCard
-            title="Credits"
-            value={credits}
-            subtitle="available this week"
-            icon={Coins}
-          />
+          <StatCard title="Credits" value={credits} subtitle="available this week" icon={Coins} />
         </div>
 
         {/* Quick actions */}
         <div className="rounded-2xl bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">
-            Quick Actions
-          </h2>
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Quick Actions</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <button className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20 text-accent">

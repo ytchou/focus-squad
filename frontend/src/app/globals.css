@@ -4,32 +4,32 @@
   /* Focus Squad Design System - Earth Tones */
 
   /* Core Colors */
-  --background: #FAF7F2;        /* Warm off-white - main background */
-  --foreground: #3D3D3D;        /* Soft black - body text */
-  --surface: #F5EFE6;           /* Cream - cards, surfaces */
+  --background: #faf7f2; /* Warm off-white - main background */
+  --foreground: #3d3d3d; /* Soft black - body text */
+  --surface: #f5efe6; /* Cream - cards, surfaces */
 
   /* Brand Colors */
-  --primary: #8B7355;           /* Coffee brown - primary actions */
-  --primary-foreground: #FAFAFA;
-  --accent: #D4A574;            /* Warm tan - CTAs, highlights */
-  --accent-foreground: #3D3D3D;
+  --primary: #8b7355; /* Coffee brown - primary actions */
+  --primary-foreground: #fafafa;
+  --accent: #d4a574; /* Warm tan - CTAs, highlights */
+  --accent-foreground: #3d3d3d;
 
   /* Semantic Colors */
-  --success: #7D9B76;           /* Sage green - "Green" ratings, positive */
-  --success-foreground: #FAFAFA;
-  --warning: #C9A962;           /* Gold - caution, warnings */
-  --warning-foreground: #3D3D3D;
-  --destructive: #B85C5C;       /* Muted red - "Red" ratings, errors */
-  --destructive-foreground: #FAFAFA;
+  --success: #7d9b76; /* Sage green - "Green" ratings, positive */
+  --success-foreground: #fafafa;
+  --warning: #c9a962; /* Gold - caution, warnings */
+  --warning-foreground: #3d3d3d;
+  --destructive: #b85c5c; /* Muted red - "Red" ratings, errors */
+  --destructive-foreground: #fafafa;
 
   /* UI Elements */
-  --card: #F5EFE6;
-  --card-foreground: #3D3D3D;
-  --border: #E5DDD3;            /* Subtle warm border */
-  --input: #FFFFFF;
-  --ring: #8B7355;
-  --muted: #EDE8E0;
-  --muted-foreground: #6B6B6B;
+  --card: #f5efe6;
+  --card-foreground: #3d3d3d;
+  --border: #e5ddd3; /* Subtle warm border */
+  --input: #ffffff;
+  --ring: #8b7355;
+  --muted: #ede8e0;
+  --muted-foreground: #6b6b6b;
 
   /* Radius - soft, rounded corners for "lo-fi cozy" feel */
   --radius: 0.75rem;
@@ -83,7 +83,9 @@ body {
 
 /* Smooth transitions for interactive elements */
 * {
-  transition-property: color, background-color, border-color, outline-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-property:
+    color, background-color, border-color, outline-color, fill, stroke, opacity, box-shadow,
+    transform, filter, backdrop-filter;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }

@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Home,
-  Users,
-  Clock,
-  Trophy,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Home, Users, Clock, Trophy, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores";
 import { cn } from "@/lib/utils";

@@ -4,14 +4,7 @@ import { create } from "zustand";
  * Session phases match the 55-minute structure from SPEC.md:
  * idle -> setup (3min) -> work1 (25min) -> break (2min) -> work2 (20min) -> social (5min) -> completed
  */
-export type SessionPhase =
-  | "idle"
-  | "setup"
-  | "work1"
-  | "break"
-  | "work2"
-  | "social"
-  | "completed";
+export type SessionPhase = "idle" | "setup" | "work1" | "break" | "work2" | "social" | "completed";
 
 export interface Participant {
   id: string;
