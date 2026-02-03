@@ -2,7 +2,6 @@
 
 import base64
 import time
-from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,7 +11,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import Request
 from fastapi.security import HTTPAuthorizationCredentials
 from jose import jwt
-
 
 # =============================================================================
 # RSA Key Fixtures (for RS256 JWT signing/verification)
