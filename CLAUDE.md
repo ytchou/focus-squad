@@ -41,6 +41,7 @@ cd frontend
 npm install && npm run dev     # Dev server :3000
 npm run build                  # Production build
 npm run lint                   # ESLint
+npm run format                 # Prettier (run before push to avoid CI failure)
 ```
 
 ### Backend
