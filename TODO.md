@@ -101,29 +101,53 @@
 ## Phase 2: Core Loop (Week 3-4)
 
 ### Session System (Backend)
-- [ ] Implement `SessionService` for table management
-- [ ] Complete `POST /api/v1/sessions/quick-match` (matching algorithm)
-- [ ] Complete `GET /api/v1/sessions/upcoming` (time slot listing)
-- [ ] Complete `GET /api/v1/sessions/{session_id}` (session details)
-- [ ] Complete `POST /api/v1/sessions/{session_id}/leave` (early exit)
-- [ ] Implement session state machine (Setup → Work_1 → Break → Work_2 → Social → Ended)
-- [ ] Add AI companion seat filling logic
+- [x] Create session Pydantic models (`backend/app/models/session.py`)
+  - [x] Enums: `TableMode`, `SessionPhase`, `ParticipantType`
+  - [x] Request models: `SessionFilters`, `QuickMatchRequest`, `LeaveSessionRequest`
+  - [x] Response models: `ParticipantInfo`, `SessionInfo`, `QuickMatchResponse`, `UpcomingSession`
+  - [x] Database models: `SessionDB`, `ParticipantDB`
+- [x] Implement `SessionService` (`backend/app/services/session_service.py`)
+  - [x] `calculate_next_slot()` - Find next :00/:30 time slot
+  - [x] `get_session_by_id()` - Fetch session with participants
+  - [x] `get_user_sessions()` - List upcoming sessions for user
+  - [x] `find_matching_session()` - Find session with available seats
+  - [x] `create_session()` - Create new session with LiveKit room
+  - [x] `add_participant()` - Join session, assign seat (1-4)
+  - [x] `remove_participant()` - Leave session early
+  - [x] `add_ai_companions()` - Fill empty seats with AI
+  - [x] `calculate_current_phase()` - Determine phase from elapsed time
+  - [x] `generate_livekit_token()` - Create LiveKit access token
+- [x] Implement `CreditService` (minimal) (`backend/app/services/credit_service.py`)
+  - [x] `get_balance()` - Returns credits_remaining, tier
+  - [x] `has_sufficient_credits()` - Check balance >= amount
+  - [x] `deduct_credit()` - Deduct and log transaction
+  - [x] `add_credit()` - Add and log transaction
+- [x] Complete session router endpoints (`backend/app/routers/sessions.py`)
+  - [x] `POST /api/v1/sessions/quick-match` - Quick match with credit deduction
+  - [x] `GET /api/v1/sessions/upcoming` - List user's upcoming sessions
+  - [x] `GET /api/v1/sessions/{session_id}` - Get session details
+  - [x] `POST /api/v1/sessions/{session_id}/leave` - Leave early (no refund)
+- [x] Implement session state machine (Setup → Work_1 → Break → Work_2 → Social → Ended)
+- [x] Add AI companion seat filling logic
+- [x] Write unit tests (TDD) with 89%+ coverage
+  - [x] `test_session_service.py` - 32 tests
+  - [x] `test_credit_service.py` - 8 tests
 
 ### LiveKit Integration
-- [ ] Implement LiveKit token generation endpoint
-- [ ] Create LiveKit room management service
-- [ ] Handle participant join/leave events
+- [x] Implement LiveKit token generation (in SessionService)
+- [ ] Create LiveKit room management service (room creation/deletion)
+- [ ] Handle participant join/leave events (webhooks)
 - [ ] Implement audio-only room configuration
 - [ ] Add Quiet Mode (muted by default) support
 
 ### Credit System (Backend)
-- [ ] Implement `CreditService` for credit operations
+- [x] Implement `CreditService` (minimal - balance, deduct, add)
+- [x] Add credit transaction logging (in CreditService)
 - [ ] Complete `GET /api/v1/credits/balance` endpoint
 - [ ] Complete `POST /api/v1/credits/gift` endpoint
 - [ ] Complete `GET /api/v1/credits/referral` endpoint
 - [ ] Complete `POST /api/v1/credits/referral/apply` endpoint
 - [ ] Implement weekly credit refresh (cron job or trigger)
-- [ ] Add credit transaction logging
 
 ### Session UI (Frontend)
 - [ ] Build dashboard/home page (upcoming sessions, stats)
