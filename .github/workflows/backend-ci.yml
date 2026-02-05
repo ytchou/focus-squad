@@ -86,7 +86,15 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run tests
-        run: pytest
+        run: pytest --cov=app --cov-report=xml:coverage.xml
         continue-on-error: true
         env:
           REDIS_URL: redis://localhost:6379
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-backend
+          path: backend/coverage.xml
+          retention-days: 1

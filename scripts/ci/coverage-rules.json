@@ -1,0 +1,18 @@
+{
+  "backend": {
+    "critical_paths": [
+      "core/auth.py",
+      "core/middleware.py",
+      "services/credit_service.py",
+      "services/session_service.py",
+      "services/rating_service.py"
+    ],
+    "critical_threshold": 80,
+    "warning_threshold": 70
+  },
+  "frontend": {
+    "critical_patterns": ["/Users/ytchou/Project/focus-squad/frontend/src/stores/*.ts"],
+    "critical_threshold": 80,
+    "warning_threshold": 70
+  }
+}
