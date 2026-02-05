@@ -44,6 +44,9 @@ npm-debug.log*
 .turbo
 *.pem
 
+# Git worktrees
+.worktrees/
+
 # Output Files
 output/
 
@@ -60,3 +63,5 @@ coverage-final.json
 
 # Backend Coverage
 coverage.xml
+
+TODO.md
