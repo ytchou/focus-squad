@@ -54,3 +54,9 @@ TODO.md
 TODO.md.env
 .mcp.json
 .env
+
+# Frontend Coverage
+coverage-final.json
+
+# Backend Coverage
+coverage.xml
