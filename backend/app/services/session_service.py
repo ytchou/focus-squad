@@ -147,12 +147,7 @@ class SessionService:
         Returns:
             Session data dict or None if not found
         """
-        result = (
-            self.supabase.table("sessions")
-            .select("*")
-            .eq("id", session_id)
-            .execute()
-        )
+        result = self.supabase.table("sessions").select("*").eq("id", session_id).execute()
 
         if not result.data:
             return None
@@ -359,11 +354,7 @@ class SessionService:
             "seat_number": available_seat,
         }
 
-        result = (
-            self.supabase.table("session_participants")
-            .insert(participant_data)
-            .execute()
-        )
+        result = self.supabase.table("session_participants").insert(participant_data).execute()
 
         if not result.data:
             raise SessionServiceError("Failed to add participant")
@@ -386,9 +377,9 @@ class SessionService:
         """
         now = datetime.now(timezone.utc)
 
-        self.supabase.table("session_participants").update(
-            {"left_at": now.isoformat()}
-        ).eq("session_id", session_id).eq("user_id", user_id).execute()
+        self.supabase.table("session_participants").update({"left_at": now.isoformat()}).eq(
+            "session_id", session_id
+        ).eq("user_id", user_id).execute()
 
     # =========================================================================
     # AI Companions
@@ -434,11 +425,7 @@ class SessionService:
                 "ai_companion_avatar": {"type": "ai", "style": name.lower().replace(" ", "_")},
             }
 
-            result = (
-                self.supabase.table("session_participants")
-                .insert(companion_data)
-                .execute()
-            )
+            result = self.supabase.table("session_participants").insert(companion_data).execute()
 
             if result.data:
                 companions.append(result.data[0])

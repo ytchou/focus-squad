@@ -79,8 +79,7 @@ class InsufficientCreditsError(CreditServiceError):
         self.required = required
         self.available = available
         super().__init__(
-            f"Insufficient credits for user {user_id}: "
-            f"required {required}, available {available}"
+            f"Insufficient credits for user {user_id}: required {required}, available {available}"
         )
 
 
@@ -207,11 +206,7 @@ class CreditService:
             "related_user_id": related_user_id,
         }
 
-        result = (
-            self.supabase.table("credit_transactions")
-            .insert(transaction_data)
-            .execute()
-        )
+        result = self.supabase.table("credit_transactions").insert(transaction_data).execute()
 
         if not result.data:
             raise CreditServiceError("Failed to create transaction record")
@@ -245,9 +240,9 @@ class CreditService:
         # Update balance (increment credits_remaining)
         new_remaining = balance.credits_remaining + amount
 
-        self.supabase.table("credits").update(
-            {"credits_remaining": new_remaining}
-        ).eq("user_id", user_id).execute()
+        self.supabase.table("credits").update({"credits_remaining": new_remaining}).eq(
+            "user_id", user_id
+        ).execute()
 
         # Log transaction (positive amount for earning)
         transaction_data = {
@@ -258,11 +253,7 @@ class CreditService:
             "related_user_id": related_user_id,
         }
 
-        result = (
-            self.supabase.table("credit_transactions")
-            .insert(transaction_data)
-            .execute()
-        )
+        result = self.supabase.table("credit_transactions").insert(transaction_data).execute()
 
         if not result.data:
             raise CreditServiceError("Failed to create transaction record")
