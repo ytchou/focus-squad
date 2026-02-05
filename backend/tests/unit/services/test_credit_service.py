@@ -87,9 +87,7 @@ class TestHasSufficientCredits:
     """Tests for has_sufficient_credits() method."""
 
     @pytest.mark.unit
-    def test_returns_true_when_sufficient(
-        self, credit_service, mock_supabase, sample_credit_row
-    ):
+    def test_returns_true_when_sufficient(self, credit_service, mock_supabase, sample_credit_row):
         """Returns True when user has enough credits."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table

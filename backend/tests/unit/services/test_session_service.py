@@ -15,12 +15,10 @@ import pytest
 # These imports will fail until SessionService is implemented
 # That's expected in TDD - tests come first
 from app.models.session import (
-    ParticipantType,
     SessionFilters,
     SessionPhase,
     TableMode,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -265,9 +263,7 @@ class TestGetUserSessions:
         mock_supabase.table.return_value = mock_table
 
         # No upcoming sessions
-        mock_table.select.return_value.eq.return_value.is_.return_value.neq.return_value.execute.return_value.data = (
-            []
-        )
+        mock_table.select.return_value.eq.return_value.is_.return_value.neq.return_value.execute.return_value.data = []
 
         result = session_service.get_user_sessions("user-123")
 
@@ -386,7 +382,9 @@ class TestCreateSession:
     """Tests for create_session() method."""
 
     @pytest.mark.unit
-    def test_creates_session_with_defaults(self, session_service, mock_supabase, sample_session_row):
+    def test_creates_session_with_defaults(
+        self, session_service, mock_supabase, sample_session_row
+    ):
         """Creates session with default values."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -547,7 +545,9 @@ class TestAddParticipant:
         assert result["seat_number"] == 2
 
     @pytest.mark.unit
-    def test_session_full_raises_error(self, session_service, mock_supabase, sample_participant_row):
+    def test_session_full_raises_error(
+        self, session_service, mock_supabase, sample_participant_row
+    ):
         """Raises SessionFullError when all 4 seats taken."""
         from app.services.session_service import SessionFullError
 
@@ -653,9 +653,7 @@ class TestAddAICompanions:
             {**sample_participant_row, "seat_number": 1},
             {**sample_participant_row, "seat_number": 2, "user_id": "user-456"},
         ]
-        mock_table.select.return_value.eq.return_value.is_.return_value.execute.return_value.data = (
-            existing
-        )
+        mock_table.select.return_value.eq.return_value.is_.return_value.execute.return_value.data = existing
 
         # Insert returns AI companions
         ai_companion = {
@@ -677,9 +675,7 @@ class TestAddAICompanions:
         mock_supabase.table.return_value = mock_table
 
         # No existing participants
-        mock_table.select.return_value.eq.return_value.is_.return_value.execute.return_value.data = (
-            []
-        )
+        mock_table.select.return_value.eq.return_value.is_.return_value.execute.return_value.data = []
 
         # Capture insert calls
         ai_companion = {
