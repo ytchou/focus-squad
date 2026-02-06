@@ -21,6 +21,7 @@ export default function WaitingRoomPage() {
   const [isLeaving, setIsLeaving] = useState(false);
 
   // Track "waiting_room_resumed" event on mount (page reload)
+  // We intentionally only run this once on mount to track page reloads, not re-renders
   useEffect(() => {
     if (sessionId && sessionStartTime) {
       const minutesBeforeStart = Math.floor(
@@ -38,6 +39,7 @@ export default function WaitingRoomPage() {
         })
         .catch(() => {}); // Ignore errors
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
   // Calculate time remaining and handle countdown
@@ -180,7 +182,7 @@ export default function WaitingRoomPage() {
               <div className="space-y-1">
                 <p className="text-sm font-medium">Audio will connect automatically</p>
                 <p className="text-xs text-muted-foreground">
-                  Your microphone will be unmuted when the session begins. Make sure you're in a quiet
+                  Your microphone will be unmuted when the session begins. Make sure you are in a quiet
                   space and ready to focus.
                 </p>
               </div>

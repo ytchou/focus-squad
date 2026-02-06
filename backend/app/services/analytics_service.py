@@ -6,7 +6,6 @@ Tracks waiting room behavior for no-show analysis and user engagement metrics.
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
-import json
 
 from supabase import Client
 

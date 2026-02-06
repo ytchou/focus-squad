@@ -29,6 +29,7 @@ from app.models.session import (
     UpcomingSession,
     UpcomingSessionsResponse,
 )
+from app.services.analytics_service import AnalyticsService
 from app.services.credit_service import (
     CreditService,
     InsufficientCreditsError,
@@ -40,7 +41,6 @@ from app.services.session_service import (
     SessionService,
 )
 from app.services.user_service import UserService
-from app.services.analytics_service import AnalyticsService
 
 router = APIRouter()
 
