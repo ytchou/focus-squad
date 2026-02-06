@@ -525,10 +525,7 @@ class SessionService:
         settings = get_settings()
 
         # Return placeholder token if LiveKit not configured (dev mode)
-        if (
-            not settings.livekit_api_key
-            or settings.livekit_api_key == "your-livekit-api-key"
-        ):
+        if not settings.livekit_api_key or settings.livekit_api_key == "your-livekit-api-key":
             return "dev-placeholder-token"
 
         token = api.AccessToken(

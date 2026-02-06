@@ -149,9 +149,7 @@ export default function WaitingRoomPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold">Waiting Room</CardTitle>
-          <CardDescription>
-            Session starts at {formatStartTime(sessionStartTime)}
-          </CardDescription>
+          <CardDescription>Session starts at {formatStartTime(sessionStartTime)}</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -182,8 +180,8 @@ export default function WaitingRoomPage() {
               <div className="space-y-1">
                 <p className="text-sm font-medium">Audio will connect automatically</p>
                 <p className="text-xs text-muted-foreground">
-                  Your microphone will be unmuted when the session begins. Make sure you are in a quiet
-                  space and ready to focus.
+                  Your microphone will be unmuted when the session begins. Make sure you are in a
+                  quiet space and ready to focus.
                 </p>
               </div>
             </div>

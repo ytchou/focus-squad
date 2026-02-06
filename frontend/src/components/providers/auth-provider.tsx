@@ -31,10 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const profile = await api.get<UserProfile>("/users/me");
           useUserStore.getState().setUser(profile);
-          useCreditsStore.getState().setCredits(
-            profile.credits_remaining,
-            profile.credits_used_this_week
-          );
+          useCreditsStore
+            .getState()
+            .setCredits(profile.credits_remaining, profile.credits_used_this_week);
           useCreditsStore.getState().setTier(profile.credit_tier as CreditTier);
           if (profile.credit_refresh_date) {
             useCreditsStore.getState().setRefreshDate(profile.credit_refresh_date);

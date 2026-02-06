@@ -79,77 +79,77 @@ export const useSessionStore = create<SessionState>()(
     (set, get) => ({
       ...initialState,
 
-  setSession: (sessionId, tableId, participants) =>
-    set({
-      sessionId,
-      tableId,
-      participants,
-      currentPhase: "setup",
-      isMatching: false,
-      matchingStartedAt: null,
-    }),
+      setSession: (sessionId, tableId, participants) =>
+        set({
+          sessionId,
+          tableId,
+          participants,
+          currentPhase: "setup",
+          isMatching: false,
+          matchingStartedAt: null,
+        }),
 
-  setPhase: (phase) => set({ currentPhase: phase }),
+      setPhase: (phase) => set({ currentPhase: phase }),
 
-  setTimeRemaining: (time) => set({ timeRemaining: time }),
+      setTimeRemaining: (time) => set({ timeRemaining: time }),
 
-  decrementTime: () => {
-    const { timeRemaining } = get();
-    if (timeRemaining > 0) {
-      set({ timeRemaining: timeRemaining - 1 });
-    }
-  },
+      decrementTime: () => {
+        const { timeRemaining } = get();
+        if (timeRemaining > 0) {
+          set({ timeRemaining: timeRemaining - 1 });
+        }
+      },
 
-  updateParticipant: (participantId, updates) =>
-    set((state) => ({
-      participants: state.participants.map((p) =>
-        p.id === participantId ? { ...p, ...updates } : p
-      ),
-    })),
+      updateParticipant: (participantId, updates) =>
+        set((state) => ({
+          participants: state.participants.map((p) =>
+            p.id === participantId ? { ...p, ...updates } : p
+          ),
+        })),
 
-  removeParticipant: (participantId) =>
-    set((state) => ({
-      participants: state.participants.filter((p) => p.id !== participantId),
-    })),
+      removeParticipant: (participantId) =>
+        set((state) => ({
+          participants: state.participants.filter((p) => p.id !== participantId),
+        })),
 
-  addParticipant: (participant) =>
-    set((state) => ({
-      participants: [...state.participants, participant],
-    })),
+      addParticipant: (participant) =>
+        set((state) => ({
+          participants: [...state.participants, participant],
+        })),
 
-  setMatching: (isMatching) =>
-    set({
-      isMatching,
-      matchingStartedAt: isMatching ? new Date() : null,
-    }),
+      setMatching: (isMatching) =>
+        set({
+          isMatching,
+          matchingStartedAt: isMatching ? new Date() : null,
+        }),
 
-  setMuted: (isMuted) => set({ isMuted }),
+      setMuted: (isMuted) => set({ isMuted }),
 
-  setQuietMode: (isQuietMode) => set({ isQuietMode }),
+      setQuietMode: (isQuietMode) => set({ isQuietMode }),
 
-  setWaitingRoom: (startTime, waitMinutes, isImmediate) =>
-    set({
-      sessionStartTime: startTime,
-      waitMinutes,
-      isWaiting: true,
-      isImmediate,
-    }),
+      setWaitingRoom: (startTime, waitMinutes, isImmediate) =>
+        set({
+          sessionStartTime: startTime,
+          waitMinutes,
+          isWaiting: true,
+          isImmediate,
+        }),
 
-  clearWaitingRoom: () =>
-    set({
-      sessionStartTime: null,
-      waitMinutes: null,
-      isWaiting: false,
-      isImmediate: false,
-    }),
+      clearWaitingRoom: () =>
+        set({
+          sessionStartTime: null,
+          waitMinutes: null,
+          isWaiting: false,
+          isImmediate: false,
+        }),
 
-  leaveSession: () =>
-    set({
-      ...initialState,
-      currentPhase: "idle",
-    }),
+      leaveSession: () =>
+        set({
+          ...initialState,
+          currentPhase: "idle",
+        }),
 
-  reset: () => set(initialState),
+      reset: () => set(initialState),
     }),
     {
       name: "focus-squad-session",
