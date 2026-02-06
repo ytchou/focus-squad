@@ -152,6 +152,15 @@ class LeaveSessionResponse(BaseModel):
     session_id: str
 
 
+class CancelSessionResponse(BaseModel):
+    """Response from cancel session endpoint."""
+
+    status: str = "cancelled"
+    session_id: str
+    credit_refunded: bool
+    message: str
+
+
 # --- Database Row Models ---
 
 

@@ -4,6 +4,7 @@ Celery tasks for LiveKit room management.
 Handles:
 - Scheduled room creation (T-30s before session)
 - Room cleanup after sessions end
+- Referral bonus awards on session completion
 """
 
 import asyncio
@@ -12,6 +13,7 @@ import logging
 from app.core.celery_app import celery_app
 from app.core.database import get_supabase
 from app.models.session import TableMode
+from app.services.credit_service import CreditService
 from app.services.livekit_service import LiveKitService, LiveKitServiceError
 
 logger = logging.getLogger(__name__)
@@ -90,12 +92,13 @@ def cleanup_ended_session(self, session_id: str) -> dict:
     Clean up a LiveKit room after session ends.
 
     This task is scheduled to run ROOM_CLEANUP_DELAY_MINUTES after session end.
+    Also triggers referral bonus awards for participants who completed their first session.
 
     Args:
         session_id: Session UUID
 
     Returns:
-        Dict with cleanup status
+        Dict with cleanup status and referral awards
     """
     logger.info(f"Cleaning up LiveKit room for session {session_id}")
 
@@ -131,7 +134,56 @@ def cleanup_ended_session(self, session_id: str) -> dict:
         "id", session_id
     ).execute()
 
-    return {"status": "cleaned_up" if deleted else "already_deleted", "room_name": room_name}
+    # Award referral bonuses for participants who completed their first session
+    referrals_awarded = _award_referral_bonuses(supabase, session_id)
+
+    return {
+        "status": "cleaned_up" if deleted else "already_deleted",
+        "room_name": room_name,
+        "referrals_awarded": referrals_awarded,
+    }
+
+
+def _award_referral_bonuses(supabase, session_id: str) -> int:
+    """
+    Award referral bonuses to participants who completed their first session.
+
+    Args:
+        supabase: Supabase client
+        session_id: Session UUID
+
+    Returns:
+        Count of referral bonuses awarded
+    """
+    # Get all human participants who completed the session (not left early)
+    participants = (
+        supabase.table("session_participants")
+        .select("user_id")
+        .eq("session_id", session_id)
+        .eq("participant_type", "human")
+        .is_("left_at", "null")  # Didn't leave early
+        .execute()
+    )
+
+    if not participants.data:
+        return 0
+
+    credit_service = CreditService(supabase=supabase)
+    awards = 0
+
+    for participant in participants.data:
+        user_id = participant.get("user_id")
+        if not user_id:
+            continue
+
+        try:
+            if credit_service.award_referral_bonus(user_id):
+                awards += 1
+                logger.info(f"Awarded referral bonus to user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to award referral bonus to user {user_id}: {e}")
+
+    return awards
 
 
 @celery_app.task

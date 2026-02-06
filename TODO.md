@@ -154,13 +154,42 @@
 - [x] Integrate Celery tasks with quick-match endpoint
 
 ### Credit System (Backend)
+> **Design Doc:** [output/plan/2025-02-06-credit-system-redesign.md](output/plan/2025-02-06-credit-system-redesign.md)
+
+**Completed (Foundation):**
 - [x] Implement `CreditService` (minimal - balance, deduct, add)
 - [x] Add credit transaction logging (in CreditService)
-- [ ] Complete `GET /api/v1/credits/balance` endpoint
-- [ ] Complete `POST /api/v1/credits/gift` endpoint
-- [ ] Complete `GET /api/v1/credits/referral` endpoint
-- [ ] Complete `POST /api/v1/credits/referral/apply` endpoint
-- [ ] Implement weekly credit refresh (cron job or trigger)
+
+**Schema & Models:**
+- [x] Create migration `005_credit_system_redesign.sql` (add `credit_cycle_start`, refund tracking)
+- [x] Consolidate duplicate models to `backend/app/models/credit.py`
+
+**CreditService Updates:**
+- [x] Add `refund_credit(user_id, session_id)` method
+- [x] Add `refresh_credits_for_user(user_id)` method (rolling 7-day, 2x cap)
+- [x] Add `gift_credit(sender_id, recipient_id, amount)` method
+- [x] Add `apply_referral_code(user_id, code)` method
+- [x] Add `award_referral_bonus(user_id, session_id)` method
+- [x] Add `get_referral_info(user_id)` method
+
+**API Endpoints:**
+- [x] Implement `GET /api/v1/credits/balance` endpoint
+- [x] Implement `POST /api/v1/credits/gift` endpoint (Pro/Elite only, 4/week limit)
+- [x] Implement `GET /api/v1/credits/referral` endpoint
+- [x] Implement `POST /api/v1/credits/referral/apply` endpoint
+- [x] Implement `POST /api/v1/sessions/{session_id}/cancel` endpoint (refund if ≥1hr before)
+
+**Background Tasks:**
+- [x] Create `backend/app/tasks/credit_tasks.py` with daily refresh task
+- [x] Add Celery beat schedule (daily 00:05 UTC)
+
+**Integration:**
+- [x] Add referral award logic to session end handler
+- [x] Update user onboarding to set `credit_cycle_start = CURRENT_DATE`
+
+**Testing:**
+- [x] Write unit tests for new CreditService methods (126 tests passing)
+- [x] Write integration tests for credit endpoints (13 tests, 139 total passing)
 
 ### Session UI (Frontend)
 - [ ] Build dashboard/home page (upcoming sessions, stats)
