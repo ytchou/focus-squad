@@ -17,8 +17,6 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
-
-logger = logging.getLogger(__name__)
 from app.models.session import (
     LeaveSessionRequest,
     LeaveSessionResponse,
@@ -45,6 +43,8 @@ from app.services.session_service import (
     SessionService,
 )
 from app.services.user_service import UserService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

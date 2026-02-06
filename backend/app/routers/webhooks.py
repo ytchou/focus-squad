@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
-
 from livekit import api
 
 from app.core.config import get_settings
