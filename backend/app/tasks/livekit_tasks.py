@@ -8,10 +8,8 @@ Handles:
 
 import asyncio
 import logging
-from typing import Optional
 
 from app.core.celery_app import celery_app
-from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES
 from app.core.database import get_supabase
 from app.models.session import TableMode
 from app.services.livekit_service import LiveKitService, LiveKitServiceError
