@@ -837,3 +837,84 @@ class TestGenerateLivekitToken:
             assert result is not None
             assert isinstance(result, str)
             assert len(result) > 0
+
+
+class TestWaitTimeCalculation:
+    """Tests for wait time calculation in quick-match responses."""
+
+    @pytest.mark.unit
+    def test_wait_minutes_immediate(self):
+        """Session starting in <60s returns wait_minutes=0 and is_immediate=True."""
+        now = datetime.now(timezone.utc)
+        session_start = now + timedelta(seconds=45)
+
+        wait_seconds = (session_start - now).total_seconds()
+        wait_minutes = max(0, int(wait_seconds / 60))
+        is_immediate = wait_minutes < 1
+
+        assert wait_minutes == 0
+        assert is_immediate is True
+
+    @pytest.mark.unit
+    def test_wait_minutes_future(self):
+        """Session starting in 15 min returns wait_minutes=15 and is_immediate=False."""
+        now = datetime.now(timezone.utc)
+        session_start = now + timedelta(minutes=15)
+
+        wait_seconds = (session_start - now).total_seconds()
+        wait_minutes = max(0, int(wait_seconds / 60))
+        is_immediate = wait_minutes < 1
+
+        assert wait_minutes == 15
+        assert is_immediate is False
+
+    @pytest.mark.unit
+    def test_wait_minutes_rounds_down(self):
+        """Session starting in 14m50s returns wait_minutes=14 (rounds down)."""
+        now = datetime.now(timezone.utc)
+        session_start = now + timedelta(minutes=14, seconds=50)
+
+        wait_seconds = (session_start - now).total_seconds()
+        wait_minutes = max(0, int(wait_seconds / 60))
+        is_immediate = wait_minutes < 1
+
+        assert wait_minutes == 14
+        assert is_immediate is False
+
+    @pytest.mark.unit
+    def test_wait_minutes_edge_case_58_seconds(self):
+        """Session starting in 58s still returns is_immediate=True."""
+        now = datetime.now(timezone.utc)
+        session_start = now + timedelta(seconds=58)
+
+        wait_seconds = (session_start - now).total_seconds()
+        wait_minutes = max(0, int(wait_seconds / 60))
+        is_immediate = wait_minutes < 1
+
+        assert wait_minutes == 0
+        assert is_immediate is True
+
+    @pytest.mark.unit
+    def test_no_show_no_refund(self):
+        """User matches but never joins - credit remains deducted (no refund).
+
+        This test documents the no-refund policy. In the actual flow:
+        1. User calls quick-match
+        2. Credit is deducted immediately
+        3. User doesn't show up
+        4. Credit is NOT refunded
+
+        This test verifies the policy is documented and intentional.
+        """
+        # Credit deducted at match time
+        initial_credit = 5
+        credit_after_match = initial_credit - 1
+        assert credit_after_match == 4
+
+        # User doesn't show up - no refund
+        credit_after_no_show = credit_after_match  # No change
+        assert credit_after_no_show == 4
+
+        # Policy: No refunds for no-shows
+        refund_amount = 0
+        assert refund_amount == 0

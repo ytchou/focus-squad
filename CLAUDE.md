@@ -88,6 +88,13 @@ supabase db push                   # Push migrations to remote
 - Tailwind for all styling (no CSS files)
 - Zustand for client state
 
+### UI/Design System (MANDATORY)
+- **All UI must follow the design system** defined in `SPEC.md § Design System` and `frontend/src/app/globals.css`
+- Use design system CSS variables: `bg-warning`, `text-primary`, `bg-accent`, etc.
+- **Never use raw Tailwind colors** (e.g., `bg-amber-500`, `text-blue-600`) - always use semantic tokens
+- Lo-fi cozy aesthetic: soft shadows, rounded corners, earth tones
+- For unbuilt features in dev mode: show "Coming Soon" placeholder with `Construction` icon
+
 ### Python (Backend)
 - Type hints on all functions
 - Use `Optional[X]` not `X | None` (Python 3.9 compat)

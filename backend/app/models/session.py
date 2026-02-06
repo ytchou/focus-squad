@@ -119,6 +119,8 @@ class QuickMatchResponse(BaseModel):
     livekit_token: str
     seat_number: int = Field(..., ge=1, le=4)
     credit_deducted: bool = True
+    wait_minutes: int = Field(..., description="Minutes until session starts (0 if immediate)")
+    is_immediate: bool = Field(..., description="True if session starts within 1 minute")
 
 
 class UpcomingSession(BaseModel):

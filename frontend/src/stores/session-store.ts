@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 /**
  * Session phases match the 55-minute structure from SPEC.md:
@@ -34,6 +35,12 @@ interface SessionState {
   isMuted: boolean;
   isQuietMode: boolean;
 
+  // Waiting room state
+  sessionStartTime: Date | null; // Absolute UTC start time
+  waitMinutes: number | null; // From API response
+  isWaiting: boolean; // True when in waiting room
+  isImmediate: boolean; // True if <1 min until start
+
   // Actions
   setSession: (sessionId: string, tableId: string, participants: Participant[]) => void;
   setPhase: (phase: SessionPhase) => void;
@@ -45,6 +52,8 @@ interface SessionState {
   setMatching: (isMatching: boolean) => void;
   setMuted: (isMuted: boolean) => void;
   setQuietMode: (isQuietMode: boolean) => void;
+  setWaitingRoom: (startTime: Date, waitMinutes: number, isImmediate: boolean) => void;
+  clearWaitingRoom: () => void;
   leaveSession: () => void;
   reset: () => void;
 }
@@ -59,10 +68,16 @@ const initialState = {
   matchingStartedAt: null,
   isMuted: false,
   isQuietMode: false,
+  sessionStartTime: null,
+  waitMinutes: null,
+  isWaiting: false,
+  isImmediate: false,
 };
 
-export const useSessionStore = create<SessionState>((set, get) => ({
-  ...initialState,
+export const useSessionStore = create<SessionState>()(
+  persist(
+    (set, get) => ({
+      ...initialState,
 
   setSession: (sessionId, tableId, participants) =>
     set({
@@ -112,6 +127,22 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   setQuietMode: (isQuietMode) => set({ isQuietMode }),
 
+  setWaitingRoom: (startTime, waitMinutes, isImmediate) =>
+    set({
+      sessionStartTime: startTime,
+      waitMinutes,
+      isWaiting: true,
+      isImmediate,
+    }),
+
+  clearWaitingRoom: () =>
+    set({
+      sessionStartTime: null,
+      waitMinutes: null,
+      isWaiting: false,
+      isImmediate: false,
+    }),
+
   leaveSession: () =>
     set({
       ...initialState,
@@ -119,4 +150,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }),
 
   reset: () => set(initialState),
-}));
+    }),
+    {
+      name: "focus-squad-session",
+      partialize: (state) => ({
+        sessionId: state.sessionId,
+        sessionStartTime: state.sessionStartTime,
+        isWaiting: state.isWaiting,
+        waitMinutes: state.waitMinutes,
+        isImmediate: state.isImmediate,
+      }),
+    }
+  )
+);

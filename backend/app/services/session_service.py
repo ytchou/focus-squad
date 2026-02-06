@@ -207,6 +207,38 @@ class SessionService:
 
         return sessions
 
+    def get_user_session_at_time(
+        self,
+        user_id: str,
+        start_time: datetime,
+    ) -> Optional[dict[str, Any]]:
+        """
+        Check if user already has a session at a specific time slot.
+
+        Args:
+            user_id: User UUID
+            start_time: Session start time to check
+
+        Returns:
+            Session data dict if user has a session, None otherwise
+        """
+        result = (
+            self.supabase.table("session_participants")
+            .select("sessions(*)")
+            .eq("user_id", user_id)
+            .eq("sessions.start_time", start_time.isoformat())
+            .is_("left_at", "null")
+            .execute()
+        )
+
+        if result.data:
+            for row in result.data:
+                session = row.get("sessions")
+                if session:
+                    return session
+
+        return None
+
     # =========================================================================
     # Session Matching
     # =========================================================================
@@ -243,16 +275,19 @@ class SessionService:
         if filters.language:
             query = query.eq("language", filters.language)
 
-        # Only sessions with available seats (< 4 participants)
-        query = query.lt("session_participants.count", self.MAX_PARTICIPANTS)
-
         result = query.execute()
 
         if not result.data:
             return None
 
-        # Return first matching session
-        return result.data[0]
+        # Filter for sessions with available seats (< 4 participants)
+        # Note: PostgREST doesn't support WHERE on embedded aggregates
+        for session in result.data:
+            participant_count = session.get("session_participants", [{}])[0].get("count", 0)
+            if participant_count < self.MAX_PARTICIPANTS:
+                return session
+
+        return None
 
     def create_session(
         self,
@@ -485,9 +520,16 @@ class SessionService:
             participant_name: Display name for the participant
 
         Returns:
-            JWT access token string
+            JWT access token string (or placeholder in dev mode)
         """
         settings = get_settings()
+
+        # Return placeholder token if LiveKit not configured (dev mode)
+        if (
+            not settings.livekit_api_key
+            or settings.livekit_api_key == "your-livekit-api-key"
+        ):
+            return "dev-placeholder-token"
 
         token = api.AccessToken(
             settings.livekit_api_key,
