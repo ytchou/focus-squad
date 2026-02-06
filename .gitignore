@@ -67,3 +67,5 @@ coverage-final.json
 coverage.xml
 
 TODO.md
+
+celerybeat-schedule.db
