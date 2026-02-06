@@ -43,18 +43,16 @@ vi.mock("@/components/ui/badge", () => ({
 }));
 
 describe("WaitingRoomPage", () => {
-  let timers: ReturnType<typeof vi.useFakeTimers>;
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockPush.mockClear();
 
     // Use fake timers for controlling time
-    timers = vi.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    timers.restoreMocks();
+    vi.useRealTimers();
   });
 
   it("displays countdown timer in MM:SS format", () => {
@@ -89,7 +87,7 @@ describe("WaitingRoomPage", () => {
 
     // Fast-forward 6 seconds (now at T-9s)
     act(() => {
-      timers.advanceTimersByTime(6000);
+      vi.advanceTimersByTime(6000);
     });
 
     // Now "Get Ready!" should appear
@@ -111,7 +109,7 @@ describe("WaitingRoomPage", () => {
 
     // Fast-forward past the start time
     act(() => {
-      timers.advanceTimersByTime(4000);
+      vi.advanceTimersByTime(4000);
     });
 
     // Should redirect to active session
