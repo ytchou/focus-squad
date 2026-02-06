@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getAuthToken } from "@/lib/auth-token";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -14,6 +15,18 @@ export class ApiError extends Error {
 
 class ApiClient {
   private async getAuthHeaders(): Promise<HeadersInit> {
+    // First check cached token (set by AuthProvider when auth state changes)
+    // This avoids race condition where getSession() returns null before
+    // Supabase finishes recovering session from storage
+    const cachedToken = getAuthToken();
+    if (cachedToken) {
+      return {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cachedToken}`,
+      };
+    }
+
+    // Fallback to getSession for calls made outside of auth flow
     const supabase = createClient();
     const {
       data: { session },

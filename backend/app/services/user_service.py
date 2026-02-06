@@ -109,7 +109,7 @@ class UserService:
 
     def get_user_by_auth_id(self, auth_id: str) -> Optional[UserProfile]:
         """
-        Fetch user by Supabase auth ID.
+        Fetch user by Supabase auth ID with credit information.
 
         Args:
             auth_id: Supabase auth.uid()
@@ -122,11 +122,28 @@ class UserService:
         if not result.data:
             return None
 
-        return UserProfile(**result.data[0])
+        user_data = result.data[0]
+
+        # Fetch credits for this user
+        credits_result = (
+            self.supabase.table("credits")
+            .select("credits_remaining, credits_used_this_week, tier, week_start_date")
+            .eq("user_id", user_data["id"])
+            .execute()
+        )
+
+        if credits_result.data:
+            credit_row = credits_result.data[0]
+            user_data["credits_remaining"] = credit_row.get("credits_remaining", 0)
+            user_data["credits_used_this_week"] = credit_row.get("credits_used_this_week", 0)
+            user_data["credit_tier"] = credit_row.get("tier", "free")
+            user_data["credit_refresh_date"] = credit_row.get("week_start_date")
+
+        return UserProfile(**user_data)
 
     def get_user_by_id(self, user_id: str) -> Optional[UserProfile]:
         """
-        Fetch user by internal user ID.
+        Fetch user by internal user ID with credit information.
 
         Args:
             user_id: Internal user UUID
@@ -139,7 +156,24 @@ class UserService:
         if not result.data:
             return None
 
-        return UserProfile(**result.data[0])
+        user_data = result.data[0]
+
+        # Fetch credits for this user
+        credits_result = (
+            self.supabase.table("credits")
+            .select("credits_remaining, credits_used_this_week, tier, week_start_date")
+            .eq("user_id", user_id)
+            .execute()
+        )
+
+        if credits_result.data:
+            credit_row = credits_result.data[0]
+            user_data["credits_remaining"] = credit_row.get("credits_remaining", 0)
+            user_data["credits_used_this_week"] = credit_row.get("credits_used_this_week", 0)
+            user_data["credit_tier"] = credit_row.get("tier", "free")
+            user_data["credit_refresh_date"] = credit_row.get("week_start_date")
+
+        return UserProfile(**user_data)
 
     def get_public_profile(self, user_id: str) -> Optional[UserPublicProfile]:
         """

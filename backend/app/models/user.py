@@ -42,6 +42,12 @@ class UserProfile(BaseModel):
     longest_streak: int = 0
     last_session_date: Optional[date] = None
 
+    # Credits (joined from credits table)
+    credits_remaining: int = 0
+    credits_used_this_week: int = 0
+    credit_tier: str = "free"
+    credit_refresh_date: Optional[datetime] = None
+
     # Settings
     activity_tracking_enabled: bool = False
     email_notifications_enabled: bool = True

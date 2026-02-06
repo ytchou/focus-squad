@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 /**
  * Session phases match the 55-minute structure from SPEC.md:
@@ -34,6 +35,12 @@ interface SessionState {
   isMuted: boolean;
   isQuietMode: boolean;
 
+  // Waiting room state
+  sessionStartTime: Date | null; // Absolute UTC start time
+  waitMinutes: number | null; // From API response
+  isWaiting: boolean; // True when in waiting room
+  isImmediate: boolean; // True if <1 min until start
+
   // Actions
   setSession: (sessionId: string, tableId: string, participants: Participant[]) => void;
   setPhase: (phase: SessionPhase) => void;
@@ -45,6 +52,8 @@ interface SessionState {
   setMatching: (isMatching: boolean) => void;
   setMuted: (isMuted: boolean) => void;
   setQuietMode: (isQuietMode: boolean) => void;
+  setWaitingRoom: (startTime: Date, waitMinutes: number, isImmediate: boolean) => void;
+  clearWaitingRoom: () => void;
   leaveSession: () => void;
   reset: () => void;
 }
@@ -59,64 +68,98 @@ const initialState = {
   matchingStartedAt: null,
   isMuted: false,
   isQuietMode: false,
+  sessionStartTime: null,
+  waitMinutes: null,
+  isWaiting: false,
+  isImmediate: false,
 };
 
-export const useSessionStore = create<SessionState>((set, get) => ({
-  ...initialState,
-
-  setSession: (sessionId, tableId, participants) =>
-    set({
-      sessionId,
-      tableId,
-      participants,
-      currentPhase: "setup",
-      isMatching: false,
-      matchingStartedAt: null,
-    }),
-
-  setPhase: (phase) => set({ currentPhase: phase }),
-
-  setTimeRemaining: (time) => set({ timeRemaining: time }),
-
-  decrementTime: () => {
-    const { timeRemaining } = get();
-    if (timeRemaining > 0) {
-      set({ timeRemaining: timeRemaining - 1 });
-    }
-  },
-
-  updateParticipant: (participantId, updates) =>
-    set((state) => ({
-      participants: state.participants.map((p) =>
-        p.id === participantId ? { ...p, ...updates } : p
-      ),
-    })),
-
-  removeParticipant: (participantId) =>
-    set((state) => ({
-      participants: state.participants.filter((p) => p.id !== participantId),
-    })),
-
-  addParticipant: (participant) =>
-    set((state) => ({
-      participants: [...state.participants, participant],
-    })),
-
-  setMatching: (isMatching) =>
-    set({
-      isMatching,
-      matchingStartedAt: isMatching ? new Date() : null,
-    }),
-
-  setMuted: (isMuted) => set({ isMuted }),
-
-  setQuietMode: (isQuietMode) => set({ isQuietMode }),
-
-  leaveSession: () =>
-    set({
+export const useSessionStore = create<SessionState>()(
+  persist(
+    (set, get) => ({
       ...initialState,
-      currentPhase: "idle",
-    }),
 
-  reset: () => set(initialState),
-}));
+      setSession: (sessionId, tableId, participants) =>
+        set({
+          sessionId,
+          tableId,
+          participants,
+          currentPhase: "setup",
+          isMatching: false,
+          matchingStartedAt: null,
+        }),
+
+      setPhase: (phase) => set({ currentPhase: phase }),
+
+      setTimeRemaining: (time) => set({ timeRemaining: time }),
+
+      decrementTime: () => {
+        const { timeRemaining } = get();
+        if (timeRemaining > 0) {
+          set({ timeRemaining: timeRemaining - 1 });
+        }
+      },
+
+      updateParticipant: (participantId, updates) =>
+        set((state) => ({
+          participants: state.participants.map((p) =>
+            p.id === participantId ? { ...p, ...updates } : p
+          ),
+        })),
+
+      removeParticipant: (participantId) =>
+        set((state) => ({
+          participants: state.participants.filter((p) => p.id !== participantId),
+        })),
+
+      addParticipant: (participant) =>
+        set((state) => ({
+          participants: [...state.participants, participant],
+        })),
+
+      setMatching: (isMatching) =>
+        set({
+          isMatching,
+          matchingStartedAt: isMatching ? new Date() : null,
+        }),
+
+      setMuted: (isMuted) => set({ isMuted }),
+
+      setQuietMode: (isQuietMode) => set({ isQuietMode }),
+
+      setWaitingRoom: (startTime, waitMinutes, isImmediate) =>
+        set({
+          sessionStartTime: startTime,
+          waitMinutes,
+          isWaiting: true,
+          isImmediate,
+        }),
+
+      clearWaitingRoom: () =>
+        set({
+          sessionStartTime: null,
+          waitMinutes: null,
+          isWaiting: false,
+          isImmediate: false,
+        }),
+
+      leaveSession: () =>
+        set({
+          ...initialState,
+          currentPhase: "idle",
+        }),
+
+      reset: () => set(initialState),
+    }),
+    {
+      name: "focus-squad-session",
+      partialize: (state) => ({
+        sessionId: state.sessionId,
+        sessionStartTime: state.sessionStartTime,
+        isWaiting: state.isWaiting,
+        waitMinutes: state.waitMinutes,
+        isImmediate: state.isImmediate,
+      }),
+    }
+  )
+);

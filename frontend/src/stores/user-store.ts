@@ -16,6 +16,11 @@ export interface UserProfile {
   language: string;
   created_at: string;
   updated_at: string;
+  // Credit info (joined from credits table)
+  credits_remaining: number;
+  credits_used_this_week: number;
+  credit_tier: "free" | "pro" | "elite" | "infinite";
+  credit_refresh_date: string | null;
 }
 
 interface UserState {

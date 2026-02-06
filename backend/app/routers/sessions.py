@@ -29,6 +29,7 @@ from app.models.session import (
     UpcomingSession,
     UpcomingSessionsResponse,
 )
+from app.services.analytics_service import AnalyticsService
 from app.services.credit_service import (
     CreditService,
     InsufficientCreditsError,
@@ -62,6 +63,13 @@ def get_credit_service() -> CreditService:
 def get_user_service() -> UserService:
     """Get UserService instance."""
     return UserService()
+
+
+def get_analytics_service() -> AnalyticsService:
+    """Get AnalyticsService instance."""
+    from app.core.database import get_supabase
+
+    return AnalyticsService(supabase=get_supabase())
 
 
 # =============================================================================
@@ -130,6 +138,7 @@ async def quick_match(
     session_service: SessionService = Depends(get_session_service),
     credit_service: CreditService = Depends(get_credit_service),
     user_service: UserService = Depends(get_user_service),
+    analytics_service: AnalyticsService = Depends(get_analytics_service),
 ):
     """
     Quick match into the next available session slot.
@@ -172,6 +181,18 @@ async def quick_match(
     # Calculate next time slot
     next_slot = session_service.calculate_next_slot()
 
+    # Check if user already has a session at this time slot
+    existing_session = session_service.get_user_session_at_time(profile.id, next_slot)
+    if existing_session:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "You already have a session at this time slot",
+                "existing_session_id": existing_session["id"],
+                "start_time": existing_session["start_time"],
+            },
+        )
+
     # Get filters (default if not provided)
     filters = request.filters or SessionFilters()
 
@@ -182,10 +203,13 @@ async def quick_match(
             start_time=next_slot,
             user_id=profile.id,
         )
-    except AlreadyInSessionError:
+    except AlreadyInSessionError as e:
         raise HTTPException(
             status_code=409,
-            detail="You are already in a session at this time slot",
+            detail={
+                "message": "You are already in a session at this time slot",
+                "existing_session_id": e.session_id,
+            },
         )
     except SessionFullError:
         raise HTTPException(
@@ -219,11 +243,32 @@ async def quick_match(
     # Build response
     session_info = _build_session_info(session_data)
 
+    # Calculate wait time
+    now = datetime.now(timezone.utc)
+    matched_session_start = _parse_datetime(session_data["start_time"])
+    wait_seconds = (matched_session_start - now).total_seconds()
+    wait_minutes = max(0, int(wait_seconds / 60))  # Round down, never negative
+    is_immediate = wait_minutes < 1
+
+    # Track analytics event (fire-and-forget)
+    await analytics_service.track_event(
+        user_id=profile.id,
+        session_id=session_data["id"],
+        event_type="waiting_room_entered",
+        metadata={
+            "wait_minutes": wait_minutes,
+            "is_immediate": is_immediate,
+            "mode": session_data["mode"],
+        },
+    )
+
     return QuickMatchResponse(
         session=session_info,
         livekit_token=livekit_token,
         seat_number=seat_number,
         credit_deducted=True,
+        wait_minutes=wait_minutes,
+        is_immediate=is_immediate,
     )
 
 
