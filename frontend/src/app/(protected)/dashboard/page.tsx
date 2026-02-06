@@ -265,7 +265,7 @@ export default function DashboardPage() {
                 of the next :00/:30 slot.
               </p>
               <p className="text-xs text-muted-foreground">
-                Click "Join a Table" to test the flow.
+                Click &quot;Join a Table&quot; to test the flow.
               </p>
             </div>
           ) : (

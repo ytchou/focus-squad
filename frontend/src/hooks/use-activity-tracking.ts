@@ -60,7 +60,6 @@ export function useActivityTracking({
   // Set up event listeners
   useEffect(() => {
     if (!enabled) {
-      setIsActive(false);
       return;
     }
 
@@ -82,19 +81,9 @@ export function useActivityTracking({
     };
   }, [enabled, handleActivity]);
 
-  // Reset when disabled
-  useEffect(() => {
-    if (!enabled) {
-      setIsActive(false);
-      setLastActivityAt(null);
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    }
-  }, [enabled]);
-
+  // Return false/null when disabled to avoid need for state reset
   return {
-    isActive,
-    lastActivityAt,
+    isActive: enabled ? isActive : false,
+    lastActivityAt: enabled ? lastActivityAt : null,
   };
 }

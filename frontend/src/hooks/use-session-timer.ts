@@ -59,10 +59,8 @@ export function useSessionTimer({
       return;
     }
 
-    // Initial calculation
-    updateTimer();
-
-    // Update every second
+    // Initial state is already calculated in useState initializer.
+    // The interval handles all subsequent updates, starting immediately.
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);

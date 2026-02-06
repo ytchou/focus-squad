@@ -269,7 +269,7 @@ export default function SessionPage() {
         serverUrl={livekitServerUrl}
         isQuietMode={isQuietMode}
       >
-        <SessionPageContent
+        <LiveKitSessionContent
           sessionId={sessionId}
           phase={phase}
           timeRemaining={timeRemaining}
@@ -307,6 +307,21 @@ export default function SessionPage() {
   );
 }
 
+// Wrapper component that uses LiveKit hooks (must be inside LiveKitRoomProvider)
+function LiveKitSessionContent(props: Omit<SessionPageContentProps, "disableAudio">) {
+  const { isMuted, toggleMute } = useLocalMicrophone();
+  const speakingParticipantIds = useActiveSpeakers();
+
+  return (
+    <SessionPageContent
+      {...props}
+      isMuted={isMuted}
+      toggleMute={toggleMute}
+      speakingParticipantIds={speakingParticipantIds}
+    />
+  );
+}
+
 interface SessionPageContentProps {
   sessionId: string;
   phase: SessionPhase;
@@ -315,7 +330,7 @@ interface SessionPageContentProps {
   progress: number;
   participants: Array<{
     id: string;
-    livekitIdentity: string | null; // LiveKit identity for speaking detection
+    livekitIdentity: string | null;
     seatNumber: number;
     username: string | null;
     displayName: string | null;
@@ -331,6 +346,10 @@ interface SessionPageContentProps {
   onEndModalClose: () => void;
   disableAudio?: boolean;
   isAdmin?: boolean;
+  // LiveKit state (optional - defaults used when outside LiveKit context)
+  isMuted?: boolean;
+  toggleMute?: () => void;
+  speakingParticipantIds?: Set<string>;
 }
 
 function SessionPageContent({
@@ -347,22 +366,10 @@ function SessionPageContent({
   onEndModalClose,
   disableAudio = false,
   isAdmin = false,
+  isMuted = true,
+  toggleMute = () => {},
+  speakingParticipantIds = new Set<string>(),
 }: SessionPageContentProps) {
-  // Try to use LiveKit hooks (will return defaults if not in LiveKit context)
-  let isMuted = true;
-  let toggleMute = () => {};
-  let speakingParticipantIds = new Set<string>();
-
-  try {
-    const micState = useLocalMicrophone();
-    const speakers = useActiveSpeakers();
-    isMuted = micState.isMuted;
-    toggleMute = micState.toggleMute;
-    speakingParticipantIds = speakers;
-  } catch {
-    // Not in LiveKit context, use defaults
-  }
-
   return (
     <>
       <SessionLayout

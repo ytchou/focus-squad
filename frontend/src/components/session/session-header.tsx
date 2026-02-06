@@ -23,7 +23,7 @@ interface SessionHeaderProps {
   onLeave?: () => Promise<void>;
 }
 
-export function SessionHeader({ sessionId, phase, onLeave }: SessionHeaderProps) {
+export function SessionHeader({ sessionId: _sessionId, phase, onLeave }: SessionHeaderProps) {
   const router = useRouter();
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);

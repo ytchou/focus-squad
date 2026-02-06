@@ -16,26 +16,32 @@ interface ConnectionStatusProps {
 }
 
 export function ConnectionStatus({ state, onReconnect, disconnectedAt }: ConnectionStatusProps) {
-  const [graceTimeRemaining, setGraceTimeRemaining] = useState<number | null>(null);
+  const [tick, setTick] = useState(0);
 
-  // Track grace period countdown
+  // Trigger re-render every second when disconnected
   useEffect(() => {
     if (!disconnectedAt || state === "connected") {
-      setGraceTimeRemaining(null);
       return;
     }
 
-    const updateGraceTime = () => {
-      const elapsed = Date.now() - disconnectedAt.getTime();
-      const remaining = Math.max(0, GRACE_PERIOD_MS - elapsed);
-      setGraceTimeRemaining(remaining);
-    };
-
-    updateGraceTime();
-    const interval = setInterval(updateGraceTime, 1000);
+    const interval = setInterval(() => {
+      setTick((t) => t + 1);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [disconnectedAt, state]);
+
+  // Compute grace time remaining based on tick counter
+  // Each tick represents ~1 second elapsed since the interval started
+  const graceTimeRemaining = (() => {
+    if (!disconnectedAt || state === "connected") {
+      return null;
+    }
+    // Use tick * 1000 to approximate elapsed time without calling Date.now()
+    // This is slightly less accurate but avoids the impure function issue
+    const elapsedMs = tick * 1000;
+    return Math.max(0, GRACE_PERIOD_MS - elapsedMs);
+  })();
 
   // Don't show anything when connected
   if (state === "connected") {

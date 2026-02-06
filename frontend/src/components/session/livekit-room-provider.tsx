@@ -126,20 +126,15 @@ export function useActiveSpeakers(): Set<string> {
  */
 export function useLocalMicrophone() {
   const { localParticipant } = useLocalParticipant();
-  const [isMuted, setIsMuted] = useState(false);
 
-  useEffect(() => {
-    if (localParticipant) {
-      setIsMuted(!localParticipant.isMicrophoneEnabled);
-    }
-  }, [localParticipant, localParticipant?.isMicrophoneEnabled]);
+  // Derive muted state directly from participant (no useState needed)
+  const isMuted = localParticipant ? !localParticipant.isMicrophoneEnabled : true;
 
   const toggleMute = useCallback(async () => {
     if (!localParticipant) return;
 
     try {
       await localParticipant.setMicrophoneEnabled(isMuted);
-      setIsMuted(!isMuted);
     } catch (error) {
       console.error("Failed to toggle microphone:", error);
     }

@@ -19,7 +19,7 @@ export interface ParticipantSeatProps {
 }
 
 export function ParticipantSeat({
-  seatNumber,
+  seatNumber: _seatNumber,
   username,
   displayName,
   isAI,
