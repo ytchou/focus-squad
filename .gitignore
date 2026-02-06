@@ -7,7 +7,9 @@ __pycache__/
 venv/
 env/
 .venv/
-.claude
+# Claude Code (keep commands for team sharing)
+.claude/*
+!.claude/commands/
 
 # Build outputs
 .next/
