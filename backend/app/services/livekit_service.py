@@ -126,9 +126,7 @@ class LiveKitService:
 
         try:
             lk_api = self._get_api()
-            await lk_api.room.delete_room(
-                api.DeleteRoomRequest(room=room_name)
-            )
+            await lk_api.room.delete_room(api.DeleteRoomRequest(room=room_name))
             return True
         except Exception as e:
             raise LiveKitServiceError(f"Failed to delete room: {e}") from e
@@ -148,9 +146,7 @@ class LiveKitService:
 
         try:
             lk_api = self._get_api()
-            response = await lk_api.room.list_rooms(
-                api.ListRoomsRequest(names=[room_name])
-            )
+            response = await lk_api.room.list_rooms(api.ListRoomsRequest(names=[room_name]))
             if response.rooms:
                 room = response.rooms[0]
                 return {

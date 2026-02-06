@@ -108,10 +108,7 @@ async def _handle_participant_joined(event_data: dict) -> None:
     # Find session by room name
     supabase = get_supabase()
     session_result = (
-        supabase.table("sessions")
-        .select("id")
-        .eq("livekit_room_name", room_name)
-        .execute()
+        supabase.table("sessions").select("id").eq("livekit_room_name", room_name).execute()
     )
 
     if not session_result.data:
@@ -122,10 +119,12 @@ async def _handle_participant_joined(event_data: dict) -> None:
 
     # Update participant connection status
     now = datetime.now(timezone.utc).isoformat()
-    supabase.table("session_participants").update({
-        "connected_at": now,
-        "is_connected": True,
-    }).eq("session_id", session_id).eq("user_id", identity).execute()
+    supabase.table("session_participants").update(
+        {
+            "connected_at": now,
+            "is_connected": True,
+        }
+    ).eq("session_id", session_id).eq("user_id", identity).execute()
 
     logger.info(f"Updated connection status for {identity} in session {session_id}")
 
@@ -149,10 +148,7 @@ async def _handle_participant_left(event_data: dict) -> None:
     # Find session by room name
     supabase = get_supabase()
     session_result = (
-        supabase.table("sessions")
-        .select("id")
-        .eq("livekit_room_name", room_name)
-        .execute()
+        supabase.table("sessions").select("id").eq("livekit_room_name", room_name).execute()
     )
 
     if not session_result.data:
@@ -163,10 +159,12 @@ async def _handle_participant_left(event_data: dict) -> None:
 
     # Update participant disconnection status
     now = datetime.now(timezone.utc).isoformat()
-    supabase.table("session_participants").update({
-        "disconnected_at": now,
-        "is_connected": False,
-    }).eq("session_id", session_id).eq("user_id", identity).execute()
+    supabase.table("session_participants").update(
+        {
+            "disconnected_at": now,
+            "is_connected": False,
+        }
+    ).eq("session_id", session_id).eq("user_id", identity).execute()
 
     logger.info(f"Updated disconnection status for {identity} in session {session_id}")
 
@@ -217,15 +215,21 @@ def _event_to_dict(event: api.WebhookEvent) -> dict:
         "room": {
             "name": event.room.name if event.room else None,
             "sid": event.room.sid if event.room else None,
-        } if event.room else {},
+        }
+        if event.room
+        else {},
         "participant": {
             "identity": event.participant.identity if event.participant else None,
             "sid": event.participant.sid if event.participant else None,
             "name": event.participant.name if event.participant else None,
-        } if event.participant else {},
+        }
+        if event.participant
+        else {},
         "track": {
             "type": event.track.type if event.track else None,
             "source": event.track.source if event.track else None,
             "sid": event.track.sid if event.track else None,
-        } if event.track else {},
+        }
+        if event.track
+        else {},
     }

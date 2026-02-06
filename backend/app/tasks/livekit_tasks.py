@@ -72,9 +72,9 @@ def create_livekit_room(self, session_id: str) -> dict:
     room_info = run_async(_create())
 
     # Update session with room creation timestamp
-    supabase.table("sessions").update(
-        {"livekit_room_created_at": "now()"}
-    ).eq("id", session_id).execute()
+    supabase.table("sessions").update({"livekit_room_created_at": "now()"}).eq(
+        "id", session_id
+    ).execute()
 
     return room_info
 
@@ -127,9 +127,9 @@ def cleanup_ended_session(self, session_id: str) -> dict:
     deleted = run_async(_delete())
 
     # Update session with cleanup timestamp
-    supabase.table("sessions").update(
-        {"livekit_room_deleted_at": "now()"}
-    ).eq("id", session_id).execute()
+    supabase.table("sessions").update({"livekit_room_deleted_at": "now()"}).eq(
+        "id", session_id
+    ).execute()
 
     return {"status": "cleaned_up" if deleted else "already_deleted", "room_name": room_name}
 
