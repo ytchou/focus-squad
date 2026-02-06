@@ -80,11 +80,11 @@ export default function WaitingRoomPage() {
       }
     };
 
-    // Initial update
-    updateCountdown();
-
     // Update every second
     const interval = setInterval(updateCountdown, 1000);
+
+    // Initial update (after interval is defined so clearInterval works)
+    updateCountdown();
 
     return () => clearInterval(interval);
   }, [sessionStartTime, sessionId, router, clearWaitingRoom]);

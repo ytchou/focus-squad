@@ -9,12 +9,14 @@ Endpoints:
 - POST /{session_id}/rate: Rate a participant (Phase 3 - not implemented)
 """
 
-from datetime import datetime, timezone
+import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.auth import AuthUser, require_auth_from_state
+from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
 from app.models.session import (
     LeaveSessionRequest,
     LeaveSessionResponse,
@@ -41,6 +43,8 @@ from app.services.session_service import (
     SessionService,
 )
 from app.services.user_service import UserService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -203,6 +207,10 @@ async def quick_match(
             start_time=next_slot,
             user_id=profile.id,
         )
+
+        # Schedule LiveKit room creation and cleanup tasks
+        _schedule_livekit_tasks(session_data, next_slot)
+
     except AlreadyInSessionError as e:
         raise HTTPException(
             status_code=409,
@@ -394,3 +402,59 @@ async def rate_participant(session_id: str, participant_id: str, rating: str):
     NOT IMPLEMENTED - This belongs to Phase 3: Peer Review System.
     """
     raise HTTPException(status_code=501, detail="Not implemented - Phase 3")
+
+
+# =============================================================================
+# Task Scheduling
+# =============================================================================
+
+
+def _schedule_livekit_tasks(session_data: dict, start_time: datetime) -> None:
+    """
+    Schedule Celery tasks for LiveKit room management.
+
+    Tasks:
+    1. Room creation: T-30s before session start
+    2. Room cleanup: 5 minutes after session end
+
+    Args:
+        session_data: Session dict with id, end_time, etc.
+        start_time: Session start time
+    """
+    try:
+        from app.tasks.livekit_tasks import cleanup_ended_session, create_livekit_room
+
+        session_id = session_data["id"]
+        end_time = _parse_datetime(session_data["end_time"])
+
+        # Calculate task execution times
+        room_creation_time = start_time - timedelta(seconds=ROOM_CREATION_LEAD_TIME_SECONDS)
+        cleanup_time = end_time + timedelta(minutes=ROOM_CLEANUP_DELAY_MINUTES)
+
+        now = datetime.now(timezone.utc)
+
+        # Schedule room creation (if not already past)
+        if room_creation_time > now:
+            create_livekit_room.apply_async(
+                args=[session_id],
+                eta=room_creation_time,
+                task_id=f"create-room-{session_id}",
+            )
+            logger.info(f"Scheduled room creation for session {session_id} at {room_creation_time}")
+        else:
+            # Create immediately if we're past the scheduled time
+            create_livekit_room.delay(session_id)
+            logger.info(f"Creating room immediately for session {session_id}")
+
+        # Schedule cleanup
+        cleanup_ended_session.apply_async(
+            args=[session_id],
+            eta=cleanup_time,
+            task_id=f"cleanup-session-{session_id}",
+        )
+        logger.info(f"Scheduled cleanup for session {session_id} at {cleanup_time}")
+
+    except Exception as e:
+        # Don't fail the request if task scheduling fails
+        # Room will be auto-created by LiveKit when first participant joins
+        logger.warning(f"Failed to schedule LiveKit tasks: {e}")

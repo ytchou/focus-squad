@@ -106,11 +106,14 @@ class TestGetSigningKey:
     @pytest.mark.unit
     def test_raises_401_on_invalid_token_header(self):
         """Raises 401 for malformed token header."""
-        with pytest.raises(HTTPException) as exc_info:
-            get_signing_key("not.a.valid.token")
+        with patch("app.core.auth.get_jwks") as mock_get_jwks:
+            mock_get_jwks.return_value = {"keys": [{"kid": "test-key"}]}
 
-        assert exc_info.value.status_code == 401
-        assert "Invalid token header" in exc_info.value.detail
+            with pytest.raises(HTTPException) as exc_info:
+                get_signing_key("not.a.valid.token")
+
+            assert exc_info.value.status_code == 401
+            assert "Invalid token header" in exc_info.value.detail
 
     @pytest.mark.unit
     def test_raises_401_when_no_keys_in_jwks(self, valid_jwt_token):

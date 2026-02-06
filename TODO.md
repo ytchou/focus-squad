@@ -135,10 +135,23 @@
 
 ### LiveKit Integration
 - [x] Implement LiveKit token generation (in SessionService)
-- [ ] Create LiveKit room management service (room creation/deletion)
-- [ ] Handle participant join/leave events (webhooks)
-- [ ] Implement audio-only room configuration
-- [ ] Add Quiet Mode (muted by default) support
+- [x] Create LiveKit room management service (room creation/deletion)
+  - [x] Add `constants.py` with timing values (grace period, room lead time, etc.)
+  - [x] Create `LiveKitService` with `create_room()`, `delete_room()`, `get_room()`, `generate_token()`
+  - [x] Mode-aware token generation (Forced Audio: canPublish=true, Quiet Mode: canPublish=false)
+- [x] Setup Celery for scheduled tasks
+  - [x] Add `celery[redis]` to requirements.txt
+  - [x] Create `celery_app.py` configuration
+  - [x] Create `tasks/livekit_tasks.py` (room creation at T-30s, cleanup after session)
+- [x] Handle participant join/leave events (webhooks)
+  - [x] Create `routers/webhooks.py` with `POST /api/v1/webhooks/livekit`
+  - [x] Validate webhook signature with `WebhookReceiver`
+  - [x] Handle events: participant_joined, participant_left, track_published, room_finished
+  - [x] Update participant connection status in database
+- [x] Implement audio-only room configuration
+- [x] Add Quiet Mode (muted by default) support
+- [x] Add migration for session_participants columns (connected_at, disconnected_at, is_connected)
+- [x] Integrate Celery tasks with quick-match endpoint
 
 ### Credit System (Backend)
 - [x] Implement `CreditService` (minimal - balance, deduct, add)
