@@ -495,24 +495,30 @@ async def rate_participant(session_id: str, participant_id: str, rating: str):
 
 def _schedule_livekit_tasks(session_data: dict, start_time: datetime) -> None:
     """
-    Schedule Celery tasks for LiveKit room management.
+    Schedule Celery tasks for LiveKit room management and session setup.
 
     Tasks:
     1. Room creation: T-30s before session start
-    2. Room cleanup: 5 minutes after session end
+    2. Fill empty seats with AI: T+0 (at session start)
+    3. Room cleanup: 5 minutes after session end
 
     Args:
         session_data: Session dict with id, end_time, etc.
         start_time: Session start time
     """
     try:
-        from app.tasks.livekit_tasks import cleanup_ended_session, create_livekit_room
+        from app.tasks.livekit_tasks import (
+            cleanup_ended_session,
+            create_livekit_room,
+            fill_empty_seats_with_ai,
+        )
 
         session_id = session_data["id"]
         end_time = _parse_datetime(session_data["end_time"])
 
         # Calculate task execution times
         room_creation_time = start_time - timedelta(seconds=ROOM_CREATION_LEAD_TIME_SECONDS)
+        ai_fill_time = start_time  # T+0: Fill AI companions right at session start
         cleanup_time = end_time + timedelta(minutes=ROOM_CLEANUP_DELAY_MINUTES)
 
         now = datetime.now(timezone.utc)
@@ -530,6 +536,19 @@ def _schedule_livekit_tasks(session_data: dict, start_time: datetime) -> None:
             create_livekit_room.delay(session_id)
             logger.info(f"Creating room immediately for session {session_id}")
 
+        # Schedule AI companion fill (if not already past)
+        if ai_fill_time > now:
+            fill_empty_seats_with_ai.apply_async(
+                args=[session_id],
+                eta=ai_fill_time,
+                task_id=f"fill-ai-{session_id}",
+            )
+            logger.info(f"Scheduled AI companion fill for session {session_id} at {ai_fill_time}")
+        else:
+            # Fill immediately if we're past the scheduled time
+            fill_empty_seats_with_ai.delay(session_id)
+            logger.info(f"Filling AI companions immediately for session {session_id}")
+
         # Schedule cleanup
         cleanup_ended_session.apply_async(
             args=[session_id],
@@ -542,3 +561,72 @@ def _schedule_livekit_tasks(session_data: dict, start_time: datetime) -> None:
         # Don't fail the request if task scheduling fails
         # Room will be auto-created by LiveKit when first participant joins
         logger.warning(f"Failed to schedule LiveKit tasks: {e}")
+
+
+# =============================================================================
+# Debug Endpoints (Admin Only)
+# =============================================================================
+
+
+@router.post("/{session_id}/debug/complete")
+async def debug_complete_session(
+    session_id: str,
+    auth_user: AuthUser = Depends(require_auth_from_state),
+) -> dict:
+    """
+    [DEBUG/ADMIN ONLY] Trigger session completion stats update.
+
+    This endpoint bypasses the scheduled cleanup task and immediately
+    updates user stats as if the session completed normally.
+
+    Only available to users with admin tier.
+    """
+    from app.core.database import get_supabase
+    from app.models.credit import UserTier
+
+    supabase = get_supabase()
+
+    # Verify user is admin tier
+    user_profile = UserService(supabase=supabase).get_by_auth_id(auth_user.user_id)
+    credit_record = (
+        supabase.table("credits").select("tier").eq("user_id", user_profile.id).execute()
+    )
+
+    user_tier = credit_record.data[0]["tier"] if credit_record.data else "free"
+    if user_tier != UserTier.ADMIN.value:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    # Verify session exists
+    session_result = supabase.table("sessions").select("id").eq("id", session_id).execute()
+    if not session_result.data:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Get all human participants who haven't left early
+    participants = (
+        supabase.table("session_participants")
+        .select("user_id")
+        .eq("session_id", session_id)
+        .eq("participant_type", "human")
+        .is_("left_at", "null")
+        .execute()
+    )
+
+    if not participants.data:
+        return {"message": "No participants to update", "updated": 0}
+
+    # Update stats for each participant
+    user_service = UserService(supabase=supabase)
+    focus_minutes = 45  # Standard session focus time
+
+    updated = 0
+    for participant in participants.data:
+        user_id = participant.get("user_id")
+        if user_id:
+            try:
+                user_service.record_session_completion(user_id, focus_minutes)
+                updated += 1
+                logger.info(f"[DEBUG] Updated stats for user {user_id}")
+            except Exception as e:
+                logger.error(f"[DEBUG] Failed to update stats for user {user_id}: {e}")
+
+    return {"message": f"Updated stats for {updated} participants", "updated": updated}

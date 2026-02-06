@@ -8,15 +8,28 @@ import { api, ApiError } from "@/lib/api/client";
 import { AppShell } from "@/components/layout";
 import { StatCard } from "@/components/ui/stat-card";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
-import { Clock, Flame, Coins, Loader2 } from "lucide-react";
+import { Clock, Flame, Coins, Loader2, Bug } from "lucide-react";
 import { toast } from "sonner";
+import { VoiceModeModal } from "@/components/session/voice-mode-modal";
+
+// Debug mode: session starts in 1 minute instead of next :00/:30 slot
+const DEBUG_WAIT_MINUTES = 1;
 
 export default function DashboardPage() {
   const router = useRouter();
   const user = useUserStore((state) => state.user);
   const credits = useCreditsStore((state) => state.balance);
-  const { isWaiting, sessionId, sessionStartTime, setWaitingRoom } = useSessionStore();
+  const {
+    isWaiting,
+    sessionId,
+    sessionStartTime,
+    setWaitingRoom,
+    setLiveKitConnection,
+    setQuietMode,
+  } = useSessionStore();
   const [isMatching, setIsMatching] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
+  const [showModeModal, setShowModeModal] = useState(false);
 
   // Auto-redirect to waiting room if user has a pending session
   useEffect(() => {
@@ -37,60 +50,92 @@ export default function DashboardPage() {
   // NOTE: Profile is loaded by AuthProvider on INITIAL_SESSION
   // No need to call refreshProfile here
 
-  const handleQuickMatch = async () => {
+  const handleQuickMatch = async (mode: "forced_audio" | "quiet") => {
     try {
       setIsMatching(true);
 
       // Use api client to call FastAPI backend (not Next.js /api route)
       const data = await api.post<{
-        session: { id: string; start_time: string };
+        session: { id: string; start_time: string; mode: string };
+        livekit_token: string;
         wait_minutes: number;
         is_immediate: boolean;
-      }>("/sessions/quick-match", {});
+      }>("/sessions/quick-match", {
+        filters: { mode },
+      });
 
       // Update session store with waiting room state
-      setWaitingRoom(new Date(data.session.start_time), data.wait_minutes, data.is_immediate);
+      // In debug mode, override start time to 3 minutes from now
+      const startTime = debugMode
+        ? new Date(Date.now() + DEBUG_WAIT_MINUTES * 60 * 1000)
+        : new Date(data.session.start_time);
+      const waitMinutes = debugMode ? DEBUG_WAIT_MINUTES : data.wait_minutes;
+
+      setWaitingRoom(startTime, waitMinutes, data.is_immediate);
+
+      // Store quiet mode preference
+      setQuietMode(mode === "quiet");
 
       // Store sessionId for redirect
       useSessionStore.setState({ sessionId: data.session.id });
 
+      // Store LiveKit connection info for session page
+      const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+      if (livekitUrl && data.livekit_token) {
+        setLiveKitConnection(data.livekit_token, livekitUrl);
+      }
+
       // Show success toast
-      toast.success("Match found!", {
-        description: data.is_immediate
-          ? "Session starting now!"
-          : `Session starts in ${data.wait_minutes} minutes`,
+      toast.success(debugMode ? "🐛 Debug Match!" : "Match found!", {
+        description: debugMode
+          ? `Debug mode: Session starts in ${DEBUG_WAIT_MINUTES} minutes`
+          : data.is_immediate
+            ? "Session starting now!"
+            : `Session starts in ${data.wait_minutes} minutes`,
       });
 
       // Redirect to waiting room
       router.push(`/session/${data.session.id}/waiting`);
     } catch (error: unknown) {
-      console.error("Quick match failed:", error);
-
-      // Handle 409 Conflict - user already has a session
+      // Handle 409 Conflict - user already has a session (expected condition)
       if (error instanceof ApiError && error.status === 409) {
         try {
           const detail = JSON.parse(error.message);
           if (detail.detail?.existing_session_id) {
-            const sessionId = detail.detail.existing_session_id;
-            const startTime = detail.detail.start_time;
+            const existingSessionId = detail.detail.existing_session_id;
+            const startTimeStr = detail.detail.start_time;
 
-            // Update session store with existing session
-            if (startTime) {
-              setWaitingRoom(new Date(startTime), 0, false);
-              useSessionStore.setState({ sessionId });
+            if (startTimeStr) {
+              const sessionStart = new Date(startTimeStr);
+              const now = new Date();
+
+              // Update session store
+              setWaitingRoom(sessionStart, 0, false);
+              useSessionStore.setState({ sessionId: existingSessionId });
+
+              if (sessionStart <= now) {
+                // Session already started - go directly to session
+                toast.info("Rejoining your session!", {
+                  description: "Your session has already started.",
+                });
+                router.push(`/session/${existingSessionId}`);
+              } else {
+                // Session hasn't started - go to waiting room
+                toast.info("You already have a session!", {
+                  description: "Redirecting to your waiting room...",
+                });
+                router.push(`/session/${existingSessionId}/waiting`);
+              }
+              return;
             }
-
-            toast.info("You already have a session!", {
-              description: "Redirecting to your waiting room...",
-            });
-
-            router.push(`/session/${sessionId}/waiting`);
-            return;
           }
         } catch {
           // JSON parse failed, fall through to generic error
         }
       }
+
+      // Log non-409 errors
+      console.error("Quick match failed:", error);
 
       const errorMessage =
         error instanceof Error
@@ -144,7 +189,7 @@ export default function DashboardPage() {
           <h2 className="mb-4 text-lg font-semibold text-foreground">Quick Actions</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <button
-              onClick={handleQuickMatch}
+              onClick={() => setShowModeModal(true)}
               disabled={isMatching || credits === 0}
               className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -185,6 +230,55 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Voice Mode Selection Modal */}
+      <VoiceModeModal
+        isOpen={showModeModal}
+        onClose={() => setShowModeModal(false)}
+        onSelect={(mode) => {
+          setShowModeModal(false);
+          handleQuickMatch(mode);
+        }}
+        isLoading={isMatching}
+      />
+
+      {/* Debug Panel - only in development */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="fixed bottom-4 right-4 z-50">
+          {debugMode ? (
+            <div className="bg-card border border-warning rounded-lg shadow-lg p-4 w-64">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <Bug className="h-4 w-4 text-warning" />
+                  Debug Mode ON
+                </h3>
+                <button
+                  onClick={() => setDebugMode(false)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Sessions will start in{" "}
+                <span className="font-bold text-warning">{DEBUG_WAIT_MINUTES} minute</span> instead
+                of the next :00/:30 slot.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Click "Join a Table" to test the flow.
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={() => setDebugMode(true)}
+              className="p-2 bg-muted hover:bg-warning text-muted-foreground hover:text-warning-foreground rounded-full shadow-lg transition-colors"
+              title="Enable Debug Mode (3-min sessions)"
+            >
+              <Bug className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      )}
     </AppShell>
   );
 }

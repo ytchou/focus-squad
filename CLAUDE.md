@@ -60,7 +60,7 @@ supabase migration list --linked  # Check state BEFORE pushing
 supabase db push                   # Push migrations to remote
 ```
 
-**See [ERROR_PREVENTION.md](ERROR_PREVENTION.md)** for common migration errors and fixes
+**See [ERROR_PREVENTION.md](ERROR_PREVENTION.md)** for common migration errors and fixes. Make sure to avoid these errors again in the future.
 
 ## Critical Business Logic Quick Reference
 > **For complete specifications:** [SPEC.md](SPEC.md)
@@ -218,6 +218,7 @@ async def test_credit_deduction():
 ## CTO Role Instructions
 - Push back when necessary; don't be a people pleaser
 - Ask clarifying questions instead of guessing (for ambiguous requirements)
+- **Design decisions require user input**: When there are multiple potential design options (UI patterns, architecture approaches, data models, etc.), ALWAYS use `AskUserQuestion` to present options and get user guidance. Never make design decisions autonomously - the user owns the product vision.
 - High-level plans first, then concrete steps
 - Show minimal diffs, not entire files
 - Suggest tests and rollback plans for risky changes

@@ -124,10 +124,10 @@ class UserService:
 
         user_data = result.data[0]
 
-        # Fetch credits for this user
+        # Fetch credits for this user (uses new schema from migration 005)
         credits_result = (
             self.supabase.table("credits")
-            .select("credits_remaining, credits_used_this_week, tier, week_start_date")
+            .select("credits_remaining, tier, credit_cycle_start")
             .eq("user_id", user_data["id"])
             .execute()
         )
@@ -135,9 +135,9 @@ class UserService:
         if credits_result.data:
             credit_row = credits_result.data[0]
             user_data["credits_remaining"] = credit_row.get("credits_remaining", 0)
-            user_data["credits_used_this_week"] = credit_row.get("credits_used_this_week", 0)
+            user_data["credits_used_this_week"] = 0  # Deprecated - calculated from transactions now
             user_data["credit_tier"] = credit_row.get("tier", "free")
-            user_data["credit_refresh_date"] = credit_row.get("week_start_date")
+            user_data["credit_refresh_date"] = credit_row.get("credit_cycle_start")
 
         return UserProfile(**user_data)
 
@@ -158,10 +158,10 @@ class UserService:
 
         user_data = result.data[0]
 
-        # Fetch credits for this user
+        # Fetch credits for this user (uses new schema from migration 005)
         credits_result = (
             self.supabase.table("credits")
-            .select("credits_remaining, credits_used_this_week, tier, week_start_date")
+            .select("credits_remaining, tier, credit_cycle_start")
             .eq("user_id", user_id)
             .execute()
         )
@@ -169,9 +169,9 @@ class UserService:
         if credits_result.data:
             credit_row = credits_result.data[0]
             user_data["credits_remaining"] = credit_row.get("credits_remaining", 0)
-            user_data["credits_used_this_week"] = credit_row.get("credits_used_this_week", 0)
+            user_data["credits_used_this_week"] = 0  # Deprecated - calculated from transactions now
             user_data["credit_tier"] = credit_row.get("tier", "free")
-            user_data["credit_refresh_date"] = credit_row.get("week_start_date")
+            user_data["credit_refresh_date"] = credit_row.get("credit_cycle_start")
 
         return UserProfile(**user_data)
 
@@ -348,3 +348,23 @@ class UserService:
             raise UserServiceError("Failed to update user profile")
 
         return UserProfile(**result.data[0])
+
+    def record_session_completion(self, user_id: str, focus_minutes: int) -> None:
+        """
+        Update user stats after completing a session.
+
+        Increments session_count by 1 and adds focus_minutes to total_focus_minutes.
+
+        Args:
+            user_id: User ID (not auth_id)
+            focus_minutes: Minutes spent focusing in the session
+        """
+        # Use raw SQL for atomic increment
+        # This avoids race conditions if user completes multiple sessions
+        self.supabase.rpc(
+            "increment_user_stats",
+            {
+                "p_user_id": user_id,
+                "p_focus_minutes": focus_minutes,
+            },
+        ).execute()

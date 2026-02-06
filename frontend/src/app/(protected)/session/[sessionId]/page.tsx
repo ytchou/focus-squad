@@ -1,38 +1,507 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Construction } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useSessionStore } from "@/stores/session-store";
+import { api } from "@/lib/api/client";
+import { useSessionTimer } from "@/hooks/use-session-timer";
+import { useActivityTracking } from "@/hooks/use-activity-tracking";
+import {
+  SessionLayout,
+  SessionHeader,
+  TimerDisplay,
+  TableView,
+  ControlBar,
+} from "@/components/session";
+import {
+  LiveKitRoomProvider,
+  useActiveSpeakers,
+  useLocalMicrophone,
+} from "@/components/session/livekit-room-provider";
+import { SessionEndModal } from "@/components/session/session-end-modal";
+import { Loader2, Bug } from "lucide-react";
+import type { SessionPhase } from "@/stores/session-store";
+
+// Debug: Phase minute offsets (how many minutes into session each phase starts)
+const DEBUG_PHASE_OFFSETS: Record<SessionPhase, number> = {
+  idle: -5, // Before session
+  setup: 1, // 1 min into session
+  work1: 10, // 10 min into session
+  break: 29, // 29 min into session
+  work2: 35, // 35 min into session
+  social: 51, // 51 min into session
+  completed: 56, // After session ends
+};
+
+interface SessionApiResponse {
+  id: string;
+  start_time: string;
+  end_time: string;
+  mode: "forced_audio" | "quiet";
+  topic: string | null;
+  language: "en" | "zh-TW";
+  current_phase: string;
+  phase_started_at: string | null;
+  participants: Array<{
+    id: string;
+    user_id: string | null;
+    participant_type: "human" | "ai_companion";
+    seat_number: number;
+    username: string | null;
+    display_name: string | null;
+    avatar_config: Record<string, unknown>;
+    joined_at: string;
+    is_active: boolean;
+    ai_companion_name: string | null;
+  }>;
+  available_seats: number;
+  livekit_room_name: string;
+}
 
 export default function SessionPage() {
   const params = useParams();
+  const router = useRouter();
   const sessionId = params.sessionId as string;
 
+  const {
+    sessionStartTime,
+    livekitToken,
+    livekitServerUrl,
+    isQuietMode,
+    showEndModal,
+    setPhase,
+    setQuietMode,
+    setShowEndModal,
+    leaveSession,
+  } = useSessionStore();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<
+    Array<{
+      id: string;
+      livekitIdentity: string | null; // LiveKit identity (user_id for humans, null for AI)
+      seatNumber: number;
+      username: string | null;
+      displayName: string | null;
+      isAI: boolean;
+      isMuted: boolean;
+      isActive: boolean;
+      isCurrentUser: boolean;
+    }>
+  >([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Fetch session data on mount
+  useEffect(() => {
+    async function fetchSession() {
+      try {
+        const session = await api.get<SessionApiResponse>(`/sessions/${sessionId}`);
+
+        // Set quiet mode based on session mode
+        setQuietMode(session.mode === "quiet");
+
+        // Get current user ID and tier from the API
+        const userProfile = await api.get<{ id: string; credit_tier: string }>("/users/me");
+        const userId = userProfile.id;
+        setCurrentUserId(userId);
+        setIsAdmin(userProfile.credit_tier === "admin");
+
+        // Map participants to our format
+        // Note: LiveKit identity is the user_id, used for speaking detection
+        const mappedParticipants = session.participants.map((p) => ({
+          id: p.id,
+          livekitIdentity: p.user_id, // LiveKit uses user_id as participant identity
+          seatNumber: p.seat_number,
+          username: p.username,
+          displayName: p.display_name || p.ai_companion_name,
+          isAI: p.participant_type === "ai_companion",
+          isMuted: false, // Will be updated by LiveKit
+          isActive: p.is_active,
+          isCurrentUser: p.user_id === userId,
+        }));
+
+        setParticipants(mappedParticipants);
+        setIsLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch session:", err);
+        setError("Failed to load session. Please try again.");
+        setIsLoading(false);
+      }
+    }
+
+    fetchSession();
+  }, [sessionId, setQuietMode]);
+
+  // Poll for participant updates (AI companions are added at T+5s after session start)
+  // Stop polling once we have 4 participants or after 30 seconds
+  useEffect(() => {
+    if (isLoading || participants.length >= 4) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const session = await api.get<SessionApiResponse>(`/sessions/${sessionId}`);
+        const mappedParticipants = session.participants.map((p) => ({
+          id: p.id,
+          livekitIdentity: p.user_id,
+          seatNumber: p.seat_number,
+          username: p.username,
+          displayName: p.display_name || p.ai_companion_name,
+          isAI: p.participant_type === "ai_companion",
+          isMuted: false,
+          isActive: p.is_active,
+          isCurrentUser: p.user_id === currentUserId,
+        }));
+
+        // Only update if participant count changed
+        if (mappedParticipants.length !== participants.length) {
+          setParticipants(mappedParticipants);
+        }
+
+        // Stop polling when table is full
+        if (mappedParticipants.length >= 4) {
+          clearInterval(pollInterval);
+        }
+      } catch (err) {
+        console.error("Failed to poll participants:", err);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    // Stop polling after 30 seconds regardless
+    const timeout = setTimeout(() => {
+      clearInterval(pollInterval);
+    }, 30000);
+
+    return () => {
+      clearInterval(pollInterval);
+      clearTimeout(timeout);
+    };
+  }, [sessionId, isLoading, participants.length, currentUserId]);
+
+  // Phase change handler
+  const handlePhaseChange = useCallback(
+    (newPhase: SessionPhase, previousPhase: SessionPhase) => {
+      setPhase(newPhase);
+
+      // Show end modal when entering social or completed phase
+      if (newPhase === "social" || newPhase === "completed") {
+        setShowEndModal(true);
+      }
+
+      // Track phase transition analytics
+      api
+        .post("/analytics/track", {
+          event_type: "session_phase_changed",
+          session_id: sessionId,
+          metadata: {
+            from_phase: previousPhase,
+            to_phase: newPhase,
+          },
+        })
+        .catch(() => {});
+    },
+    [sessionId, setPhase, setShowEndModal]
+  );
+
+  // Session timer
+  const { phase, timeRemaining, totalTimeRemaining, progress } = useSessionTimer({
+    sessionStartTime,
+    onPhaseChange: handlePhaseChange,
+  });
+
+  // Activity tracking (always enabled)
+  useActivityTracking({
+    enabled: true,
+    onActivityChange: (isActive) => {
+      // Broadcast activity via data channel (handled in LiveKit context)
+      console.log("Activity changed:", isActive);
+    },
+  });
+
+  // Leave session handler
+  const handleLeave = async () => {
+    try {
+      await api.post(`/sessions/${sessionId}/leave`);
+      leaveSession();
+    } catch (err) {
+      console.error("Failed to leave session:", err);
+    }
+  };
+
+  // Handle end modal close
+  const handleEndModalClose = () => {
+    setShowEndModal(false);
+    if (phase === "completed") {
+      router.push(`/session/${sessionId}/end`);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error}</p>
+          <button onClick={() => router.push("/dashboard")} className="text-primary underline">
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If we have a LiveKit token, wrap in LiveKit provider
+  if (livekitToken && livekitServerUrl) {
+    return (
+      <LiveKitRoomProvider
+        token={livekitToken}
+        serverUrl={livekitServerUrl}
+        isQuietMode={isQuietMode}
+      >
+        <SessionPageContent
+          sessionId={sessionId}
+          phase={phase}
+          timeRemaining={timeRemaining}
+          totalTimeRemaining={totalTimeRemaining}
+          progress={progress}
+          participants={participants}
+          currentUserId={currentUserId}
+          isQuietMode={isQuietMode}
+          showEndModal={showEndModal}
+          onLeave={handleLeave}
+          onEndModalClose={handleEndModalClose}
+          isAdmin={isAdmin}
+        />
+      </LiveKitRoomProvider>
+    );
+  }
+
+  // Fallback without LiveKit (for testing or when token not available)
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-warning/20">
-            <Construction className="h-8 w-8 text-warning" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Session Page Coming Soon</CardTitle>
-          <CardDescription>The active session experience is still being built.</CardDescription>
-        </CardHeader>
+    <SessionPageContent
+      sessionId={sessionId}
+      phase={phase}
+      timeRemaining={timeRemaining}
+      totalTimeRemaining={totalTimeRemaining}
+      progress={progress}
+      participants={participants}
+      currentUserId={currentUserId}
+      isQuietMode={isQuietMode}
+      showEndModal={showEndModal}
+      onLeave={handleLeave}
+      onEndModalClose={handleEndModalClose}
+      disableAudio={true}
+      isAdmin={isAdmin}
+    />
+  );
+}
 
-        <CardContent className="space-y-4">
-          <div className="bg-muted rounded-lg p-4 text-center">
-            <p className="text-sm text-muted-foreground">
-              Session ID:{" "}
-              <code className="text-xs bg-background px-2 py-1 rounded">{sessionId}</code>
-            </p>
-          </div>
+interface SessionPageContentProps {
+  sessionId: string;
+  phase: SessionPhase;
+  timeRemaining: number;
+  totalTimeRemaining: number;
+  progress: number;
+  participants: Array<{
+    id: string;
+    livekitIdentity: string | null; // LiveKit identity for speaking detection
+    seatNumber: number;
+    username: string | null;
+    displayName: string | null;
+    isAI: boolean;
+    isMuted: boolean;
+    isActive: boolean;
+    isCurrentUser: boolean;
+  }>;
+  currentUserId: string | null;
+  isQuietMode: boolean;
+  showEndModal: boolean;
+  onLeave: () => Promise<void>;
+  onEndModalClose: () => void;
+  disableAudio?: boolean;
+  isAdmin?: boolean;
+}
 
-          <p className="text-sm text-muted-foreground text-center">
-            This page will include the 55-minute session timer, audio controls, participant avatars,
-            and the peer review interface.
-          </p>
-        </CardContent>
-      </Card>
+function SessionPageContent({
+  sessionId,
+  phase,
+  timeRemaining,
+  totalTimeRemaining,
+  progress,
+  participants,
+  currentUserId,
+  isQuietMode,
+  showEndModal,
+  onLeave,
+  onEndModalClose,
+  disableAudio = false,
+  isAdmin = false,
+}: SessionPageContentProps) {
+  // Try to use LiveKit hooks (will return defaults if not in LiveKit context)
+  let isMuted = true;
+  let toggleMute = () => {};
+  let speakingParticipantIds = new Set<string>();
+
+  try {
+    const micState = useLocalMicrophone();
+    const speakers = useActiveSpeakers();
+    isMuted = micState.isMuted;
+    toggleMute = micState.toggleMute;
+    speakingParticipantIds = speakers;
+  } catch {
+    // Not in LiveKit context, use defaults
+  }
+
+  return (
+    <>
+      <SessionLayout
+        header={<SessionHeader sessionId={sessionId} phase={phase} onLeave={onLeave} />}
+        controls={
+          <ControlBar
+            isMuted={isMuted}
+            isQuietMode={isQuietMode || disableAudio}
+            onToggleMute={toggleMute}
+          />
+        }
+      >
+        {/* Timer */}
+        <div className="mb-8">
+          <TimerDisplay
+            phase={phase}
+            timeRemaining={timeRemaining}
+            totalTimeRemaining={totalTimeRemaining}
+            progress={progress}
+          />
+        </div>
+
+        {/* Participants Table */}
+        <TableView
+          participants={participants}
+          speakingParticipantIds={speakingParticipantIds}
+          currentUserId={currentUserId}
+        />
+      </SessionLayout>
+
+      {/* Session End Modal */}
+      <SessionEndModal
+        open={showEndModal}
+        onClose={onEndModalClose}
+        sessionId={sessionId}
+        phase={phase}
+      />
+
+      {/* Debug Panel - only for admin users */}
+      {isAdmin && <DebugPanel currentPhase={phase} sessionId={sessionId} />}
+    </>
+  );
+}
+
+// =============================================================================
+// Debug Panel (Development Only)
+// =============================================================================
+
+function DebugPanel({
+  currentPhase,
+  sessionId,
+}: {
+  currentPhase: SessionPhase;
+  sessionId: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const jumpToPhase = async (targetPhase: SessionPhase) => {
+    const offsetMinutes = DEBUG_PHASE_OFFSETS[targetPhase];
+    const fakeStartTime = new Date(Date.now() - offsetMinutes * 60 * 1000);
+    useSessionStore.setState({ sessionStartTime: fakeStartTime });
+
+    // When jumping to "completed", trigger stats update via debug endpoint
+    if (targetPhase === "completed") {
+      setIsUpdating(true);
+      try {
+        await api.post(`/sessions/${sessionId}/debug/complete`);
+        console.log("[DEBUG] Session stats updated");
+      } catch (err) {
+        console.error("[DEBUG] Failed to update session stats:", err);
+      } finally {
+        setIsUpdating(false);
+      }
+    }
+  };
+
+  const phases: SessionPhase[] = ["setup", "work1", "break", "work2", "social", "completed"];
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-4 right-4 p-2 bg-warning text-warning-foreground rounded-full shadow-lg hover:bg-warning/90 z-50"
+        title="Open Debug Panel"
+      >
+        <Bug className="h-5 w-5" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 p-4 bg-card border border-border rounded-lg shadow-lg z-50 w-64">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="font-semibold text-sm">🐛 Debug Panel</h3>
+        <button
+          onClick={() => setIsOpen(false)}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">
+          Current: <span className="font-mono text-primary">{currentPhase}</span>
+        </p>
+
+        <div className="text-xs font-medium text-muted-foreground mb-1">Jump to phase:</div>
+        <div className="grid grid-cols-2 gap-1">
+          {phases.map((phase) => (
+            <button
+              key={phase}
+              onClick={() => jumpToPhase(phase)}
+              disabled={phase === currentPhase || isUpdating}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                phase === currentPhase
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted hover:bg-muted/80 text-foreground"
+              }`}
+            >
+              {phase}
+            </button>
+          ))}
+        </div>
+
+        <div className="pt-2 border-t border-border mt-2">
+          <button
+            onClick={() => useSessionStore.setState({ showEndModal: true })}
+            className="w-full px-2 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90"
+          >
+            Show End Modal
+          </button>
+        </div>
+
+        {isUpdating && (
+          <p className="text-xs text-muted-foreground animate-pulse">Updating stats...</p>
+        )}
+      </div>
     </div>
   );
 }

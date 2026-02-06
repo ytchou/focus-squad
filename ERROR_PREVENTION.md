@@ -141,5 +141,103 @@ ruff format .       # Fixes formatting
 
 ---
 
-*Last updated: 2026-02-02*
-*Errors documented: 4*
+### Error: Schema-Code Mismatch After Migration
+**Symptom:** `postgrest.exceptions.APIError: {'message': 'column X does not exist', 'code': '42703'}`
+
+**Root Cause:** A database migration dropped or renamed columns, but application code still references the old column names.
+
+**Example:** Migration `005_credit_system_redesign.sql` dropped `credits_used_this_week` and `week_start_date`, but `user_service.py` still queried:
+```python
+# ❌ Old code (broken after migration)
+.select("credits_remaining, credits_used_this_week, tier, week_start_date")
+
+# ✅ Fixed code (matches new schema)
+.select("credits_remaining, tier, credit_cycle_start")
+```
+
+**Prevention:**
+```bash
+# BEFORE pushing a migration that drops/renames columns:
+# 1. Search for ALL references to the affected columns
+grep -r "column_name" backend/
+grep -r "column_name" frontend/
+
+# 2. Update ALL code references BEFORE or WITH the migration
+# 3. Test locally with the migration applied
+# 4. Run backend tests to catch query errors
+pytest backend/tests/
+```
+
+**Checklist for DROP COLUMN migrations:**
+- [ ] Grep codebase for the column name
+- [ ] Update all services that query the column
+- [ ] Update all Pydantic models that map the column
+- [ ] Update frontend if it displays the field
+- [ ] Run tests after migration
+
+**When this happens:**
+- Pushing migrations that drop columns without updating code
+- Renaming columns without grep-ing for old names
+- Multiple developers working on schema changes
+
+---
+
+### Error: Soft-Delete Records Block UNIQUE Constraints
+**Symptom:** `duplicate key value violates unique constraint "table_column1_column2_key"`
+
+**Root Cause:** UNIQUE constraints apply to ALL rows, but soft-delete patterns (using `left_at`, `deleted_at`, etc.) expect uniqueness only among ACTIVE records.
+
+**Example:** User joins session, leaves (sets `left_at`), tries to rejoin:
+```
+# Error: Key (session_id, user_id) already exists
+# Code check passes: WHERE left_at IS NULL finds no record
+# Insert fails: UNIQUE constraint sees the old record
+```
+
+**Prevention:**
+```sql
+-- ❌ DON'T USE (blocks soft-deleted records)
+UNIQUE(session_id, user_id)
+UNIQUE(session_id, seat_number)
+
+-- ✅ USE INSTEAD (partial unique index)
+CREATE UNIQUE INDEX idx_session_participants_active_user
+    ON session_participants(session_id, user_id)
+    WHERE left_at IS NULL;
+
+CREATE UNIQUE INDEX idx_session_participants_active_seat
+    ON session_participants(session_id, seat_number)
+    WHERE left_at IS NULL;
+```
+
+**Code-Level Defense (Idempotent Pattern):**
+```python
+def add_participant(self, session_id: str, user_id: str):
+    # 1. Already active? Return existing
+    existing_active = self._query(where_left_at_is_null=True)
+    if existing_active:
+        return existing_active
+
+    # 2. Previously left? Reactivate
+    existing_inactive = self._query(where_left_at_is_not_null=True)
+    if existing_inactive:
+        return self._reactivate(existing_inactive)
+
+    # 3. Create new record
+    return self._insert_new()
+```
+
+**Checklist for Soft-Delete Tables:**
+- [ ] Use partial unique indexes (WHERE soft_delete_column IS NULL)
+- [ ] Make insert methods idempotent (handle reactivation)
+- [ ] Test: create → delete → recreate flow
+
+**When this happens:**
+- Any table using soft-delete pattern (left_at, deleted_at, is_active)
+- When UNIQUE constraints don't have WHERE clause
+- Rapid actions that might create duplicate insert attempts
+
+---
+
+*Last updated: 2026-02-06*
+*Errors documented: 6*

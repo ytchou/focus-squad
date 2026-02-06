@@ -41,6 +41,17 @@ interface SessionState {
   isWaiting: boolean; // True when in waiting room
   isImmediate: boolean; // True if <1 min until start
 
+  // LiveKit connection state
+  livekitToken: string | null;
+  livekitServerUrl: string | null;
+  isConnected: boolean;
+
+  // Activity tracking
+  activityTrackingEnabled: boolean;
+
+  // UI state
+  showEndModal: boolean;
+
   // Actions
   setSession: (sessionId: string, tableId: string, participants: Participant[]) => void;
   setPhase: (phase: SessionPhase) => void;
@@ -54,6 +65,11 @@ interface SessionState {
   setQuietMode: (isQuietMode: boolean) => void;
   setWaitingRoom: (startTime: Date, waitMinutes: number, isImmediate: boolean) => void;
   clearWaitingRoom: () => void;
+  setLiveKitConnection: (token: string, serverUrl: string) => void;
+  clearLiveKitConnection: () => void;
+  setConnected: (isConnected: boolean) => void;
+  setActivityTrackingEnabled: (enabled: boolean) => void;
+  setShowEndModal: (show: boolean) => void;
   leaveSession: () => void;
   reset: () => void;
 }
@@ -72,6 +88,11 @@ const initialState = {
   waitMinutes: null,
   isWaiting: false,
   isImmediate: false,
+  livekitToken: null,
+  livekitServerUrl: null,
+  isConnected: false,
+  activityTrackingEnabled: false,
+  showEndModal: false,
 };
 
 export const useSessionStore = create<SessionState>()(
@@ -137,11 +158,31 @@ export const useSessionStore = create<SessionState>()(
 
       clearWaitingRoom: () =>
         set({
-          sessionStartTime: null,
+          // NOTE: Keep sessionStartTime! The session page needs it for timer calculation.
+          // Only clear the waiting-room-specific flags.
           waitMinutes: null,
           isWaiting: false,
           isImmediate: false,
         }),
+
+      setLiveKitConnection: (token, serverUrl) =>
+        set({
+          livekitToken: token,
+          livekitServerUrl: serverUrl,
+        }),
+
+      clearLiveKitConnection: () =>
+        set({
+          livekitToken: null,
+          livekitServerUrl: null,
+          isConnected: false,
+        }),
+
+      setConnected: (isConnected) => set({ isConnected }),
+
+      setActivityTrackingEnabled: (enabled) => set({ activityTrackingEnabled: enabled }),
+
+      setShowEndModal: (show) => set({ showEndModal: show }),
 
       leaveSession: () =>
         set({
@@ -159,6 +200,7 @@ export const useSessionStore = create<SessionState>()(
         isWaiting: state.isWaiting,
         waitMinutes: state.waitMinutes,
         isImmediate: state.isImmediate,
+        isQuietMode: state.isQuietMode,
       }),
     }
   )

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Home, Users, Clock, Trophy, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores";
+import { useDebugBanner } from "@/hooks/use-debug-banner";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -20,10 +21,15 @@ export function Sidebar() {
   const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
   const isSidebarCollapsed = useUIStore((state) => state.isSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((state) => state.setSidebarCollapsed);
+  const { isVisible: isDebugBannerVisible } = useDebugBanner();
 
   // On mobile, sidebar is controlled by isSidebarOpen (overlay)
   // On desktop, sidebar can be collapsed but is always visible
   const isCollapsed = isSidebarCollapsed;
+
+  // Header is 57px, debug banner adds 32px when visible
+  const topOffset = isDebugBannerVisible ? "top-[89px]" : "top-[57px]";
+  const heightOffset = isDebugBannerVisible ? "h-[calc(100vh-89px)]" : "h-[calc(100vh-57px)]";
 
   return (
     <>
@@ -38,7 +44,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-[57px] z-40 h-[calc(100vh-57px)] bg-surface border-r border-border transition-all duration-300",
+          `fixed left-0 ${topOffset} z-40 ${heightOffset} bg-surface border-r border-border transition-all duration-300`,
           // Mobile: slide in/out
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
           // Desktop: always visible, can collapse

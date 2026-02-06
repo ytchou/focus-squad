@@ -6,17 +6,19 @@ import { create } from "zustand";
  * - pro: 8 credits/week
  * - elite: 12 credits/week
  * - infinite: unlimited
+ * - admin: unlimited (not purchasable, set via database only)
  *
  * Note: Credits are NOT persisted to localStorage - they are always
  * fetched fresh from the server to ensure accuracy.
  */
-export type CreditTier = "free" | "pro" | "elite" | "infinite";
+export type CreditTier = "free" | "pro" | "elite" | "infinite" | "admin";
 
 const TIER_LIMITS: Record<CreditTier, number> = {
   free: 2,
   pro: 8,
   elite: 12,
   infinite: Infinity,
+  admin: Infinity,
 };
 
 interface CreditsState {

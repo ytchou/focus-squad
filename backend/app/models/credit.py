@@ -19,6 +19,7 @@ class UserTier(str, Enum):
     PRO = "pro"
     ELITE = "elite"
     INFINITE = "infinite"
+    ADMIN = "admin"  # Not purchasable, set via database only. Grants debug access.
 
 
 class TransactionType(str, Enum):
@@ -39,6 +40,7 @@ TIER_CONFIG = {
     UserTier.PRO: {"weekly": 8, "max": 16, "can_gift": True, "gift_limit": 4},
     UserTier.ELITE: {"weekly": 12, "max": 24, "can_gift": True, "gift_limit": 4},
     UserTier.INFINITE: {"weekly": 999999, "max": 999999, "can_gift": False, "gift_limit": 0},
+    UserTier.ADMIN: {"weekly": 999999, "max": 999999, "can_gift": True, "gift_limit": 999},
 }
 
 

@@ -192,17 +192,28 @@
 - [x] Write integration tests for credit endpoints (13 tests, 139 total passing)
 
 ### Session UI (Frontend)
-- [ ] Build dashboard/home page (upcoming sessions, stats)
-- [ ] Create session lobby page (waiting for match)
-- [ ] Build study session page with 55-min timer
-- [ ] Implement LiveKit audio integration (mute/unmute)
-- [ ] Add active status indicators (waveform, typing)
-- [ ] Create session end screen
+- [x] Build dashboard/home page (upcoming sessions, stats) - basic version exists
+- [x] Create session lobby page (waiting for match) - `/session/[sessionId]/waiting`
+- [x] Build study session page with 55-min timer
+  - [x] Create phase utilities (`lib/session/phase-utils.ts`)
+  - [x] Build session layout components (`components/session/`)
+  - [x] Build timer display with circular progress and phase indicator
+  - [x] Build 4-seat table view with participant seats
+- [x] Implement LiveKit audio integration (mute/unmute)
+  - [x] Create `LiveKitRoomProvider` wrapper
+  - [x] Implement `useLocalMicrophone` and `useActiveSpeakers` hooks
+  - [x] Add connection status component
+- [x] Add active status indicators (waveform, typing)
+  - [x] Pulsing ring animation for speaking participants
+  - [x] Activity tracking hook with opt-in keyboard/mouse detection
+- [x] Create session end screen
+  - [x] Session end modal with summary
+  - [x] Session end page with stats and rating prompt
 
 ### Timer & State Sync
-- [ ] Implement shared Pomodoro timer (via LiveKit data channel)
-- [ ] Sync session phase transitions across participants
-- [ ] Handle disconnect/reconnect grace period (2 min)
+- [x] Implement shared Pomodoro timer (via client-side calculation from start time)
+- [x] Sync session phase transitions across participants (timer hook with phase change callback)
+- [x] Handle disconnect/reconnect grace period (2 min) - connection status component
 
 ---
 
