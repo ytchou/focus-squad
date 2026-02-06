@@ -5,7 +5,8 @@ Endpoints:
 - POST /quick-match: Quick match into next available session
 - GET /upcoming: List upcoming sessions for user
 - GET /{session_id}: Get session details
-- POST /{session_id}/leave: Leave a session early
+- POST /{session_id}/leave: Leave a session early (no refund)
+- POST /{session_id}/cancel: Cancel before start (refund if >=1hr before)
 - POST /{session_id}/rate: Rate a participant (Phase 3 - not implemented)
 """
 
@@ -18,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
 from app.models.session import (
+    CancelSessionResponse,
     LeaveSessionRequest,
     LeaveSessionResponse,
     ParticipantInfo,
@@ -392,6 +394,88 @@ async def leave_session(
     )
 
     return LeaveSessionResponse(status="left", session_id=session_id)
+
+
+@router.post("/{session_id}/cancel", response_model=CancelSessionResponse)
+async def cancel_session(
+    session_id: str,
+    user: AuthUser = Depends(require_auth_from_state),
+    session_service: SessionService = Depends(get_session_service),
+    credit_service: CreditService = Depends(get_credit_service),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Cancel a session booking before it starts.
+
+    Refund policy (per design doc):
+    - Cancel >=1 hour before session start: FULL REFUND
+    - Cancel <1 hour before session start: NO REFUND
+    - Session already started: Use /leave instead (no refund)
+    """
+    # Get user profile
+    profile = user_service.get_user_by_auth_id(user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Get session
+    session_data = session_service.get_session_by_id(session_id)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Verify user is a participant
+    participant = session_service.get_participant(session_data, profile.id)
+    if not participant:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not a participant in this session",
+        )
+
+    # Check if session has already started
+    start_time = _parse_datetime(session_data["start_time"])
+    now = datetime.now(timezone.utc)
+
+    if now >= start_time:
+        raise HTTPException(
+            status_code=400,
+            detail="Session has already started. Use /leave endpoint instead.",
+        )
+
+    # Calculate time until session starts
+    time_until_start = start_time - now
+    refund_eligible = time_until_start >= timedelta(hours=1)
+
+    # Remove participant
+    session_service.remove_participant(
+        session_id=session_id,
+        user_id=profile.id,
+        reason="cancelled",
+    )
+
+    # Process refund if eligible
+    credit_refunded = False
+    if refund_eligible:
+        transaction = credit_service.refund_credit(
+            user_id=profile.id,
+            session_id=session_id,
+            participant_id=participant["id"],
+        )
+        credit_refunded = transaction is not None
+
+    # Build response message
+    if credit_refunded:
+        message = "Session cancelled. Credit refunded to your account."
+    elif refund_eligible:
+        message = "Session cancelled. Credit was already refunded."
+    else:
+        minutes_until = int(time_until_start.total_seconds() / 60)
+        message = f"Session cancelled. No refund (cancelled {minutes_until} minutes before start, minimum 60 required)."
+
+    return CancelSessionResponse(
+        status="cancelled",
+        session_id=session_id,
+        credit_refunded=credit_refunded,
+        message=message,
+    )
 
 
 @router.post("/{session_id}/rate")

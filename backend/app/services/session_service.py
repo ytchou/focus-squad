@@ -599,3 +599,11 @@ class SessionService:
             if p.get("user_id") == user_id:
                 return True
         return False
+
+    def get_participant(self, session: dict[str, Any], user_id: str) -> Optional[dict[str, Any]]:
+        """Get participant record for a user in the session."""
+        participants = session.get("participants", [])
+        for p in participants:
+            if p.get("user_id") == user_id:
+                return p
+        return None
