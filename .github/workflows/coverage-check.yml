@@ -18,11 +18,12 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
 
       # Wait for both Backend CI and Frontend CI to complete
+      # Note: Parentheses must be escaped in regex pattern for check-name matching
       - name: Wait for CI workflows to complete
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-          check-name: 'Code Quality (Ruff Lint, Format, mypy)|Tests (pytest)|Code Quality (Lint, Format, Type Check)|Tests (Vitest)'
+          check-name: 'Code Quality \(Ruff Lint, Format, mypy\)|Tests \(pytest\)|Code Quality \(Lint, Format, Type Check\)|Tests \(Vitest\)'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
           allowed-conclusions: success,skipped
