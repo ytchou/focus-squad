@@ -18,13 +18,25 @@ interface SessionEndModalProps {
   onClose: () => void;
   sessionId: string;
   phase: SessionPhase;
+  focusMinutes?: number;
+  essenceEarned?: boolean;
 }
 
-export function SessionEndModal({ open, onClose, sessionId, phase }: SessionEndModalProps) {
+export function SessionEndModal({
+  open,
+  onClose,
+  sessionId,
+  phase,
+  focusMinutes,
+  essenceEarned,
+}: SessionEndModalProps) {
   const router = useRouter();
 
   const isCompleted = phase === "completed";
   const isSocialPhase = phase === "social";
+
+  const displayFocusMinutes = focusMinutes ?? 45;
+  const displayEssence = essenceEarned ?? isCompleted;
 
   const handleViewSummary = () => {
     onClose();
@@ -66,9 +78,9 @@ export function SessionEndModal({ open, onClose, sessionId, phase }: SessionEndM
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Focus Time</span>
-            <span className="font-medium">47 minutes</span>
+            <span className="font-medium">{displayFocusMinutes} minutes</span>
           </div>
-          {isCompleted && (
+          {displayEssence && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Essence Earned</span>
               <span className="font-medium text-accent">+1 Furniture Essence</span>

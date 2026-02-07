@@ -12,7 +12,7 @@ Handles:
 Design doc: output/plan/2025-02-06-credit-system-redesign.md
 """
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from supabase import Client
@@ -83,7 +83,7 @@ class CreditService:
         tier_config = TIER_CONFIG[db_record.tier]
 
         # Compute next refresh date (cycle_start + 7 days at 00:00 UTC)
-        cycle_start = db_record.credit_cycle_start or date.today()
+        cycle_start = db_record.credit_cycle_start or datetime.now(timezone.utc).date()
         next_refresh = datetime.combine(
             cycle_start + timedelta(days=7),
             datetime.min.time(),
@@ -127,6 +127,7 @@ class CreditService:
         transaction_type: TransactionType,
         description: Optional[str] = None,
         related_user_id: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
     ) -> CreditTransaction:
         """
         Deduct credits from user balance and log transaction.
@@ -137,6 +138,7 @@ class CreditService:
             transaction_type: Type of transaction
             description: Optional description
             related_user_id: Optional related user (for gifts)
+            idempotency_key: Optional UUID to prevent duplicate processing
 
         Returns:
             CreditTransaction record
@@ -168,6 +170,8 @@ class CreditService:
             "description": description,
             "related_user_id": related_user_id,
         }
+        if idempotency_key:
+            transaction_data["idempotency_key"] = idempotency_key
 
         result = self.supabase.table("credit_transactions").insert(transaction_data).execute()
 
@@ -184,6 +188,7 @@ class CreditService:
         description: Optional[str] = None,
         related_user_id: Optional[str] = None,
         cap_at_max: bool = True,
+        idempotency_key: Optional[str] = None,
     ) -> CreditTransaction:
         """
         Add credits to user balance and log transaction.
@@ -195,6 +200,7 @@ class CreditService:
             description: Optional description
             related_user_id: Optional related user (for gifts/referrals)
             cap_at_max: If True, cap at tier's max balance (2x weekly)
+            idempotency_key: Optional UUID to prevent duplicate processing
 
         Returns:
             CreditTransaction record
@@ -219,6 +225,8 @@ class CreditService:
             "description": description,
             "related_user_id": related_user_id,
         }
+        if idempotency_key:
+            transaction_data["idempotency_key"] = idempotency_key
 
         result = self.supabase.table("credit_transactions").insert(transaction_data).execute()
 
@@ -287,10 +295,10 @@ class CreditService:
             CreditTransaction if refreshed, None if not due
         """
         db_record = self._get_db_record(user_id)
-        cycle_start = db_record.credit_cycle_start or date.today()
+        cycle_start = db_record.credit_cycle_start or datetime.now(timezone.utc).date()
 
         # Check if refresh is due
-        if date.today() < cycle_start + timedelta(days=7):
+        if datetime.now(timezone.utc).date() < cycle_start + timedelta(days=7):
             return None  # Not due yet
 
         tier_config = TIER_CONFIG[db_record.tier]
@@ -305,7 +313,7 @@ class CreditService:
         self.supabase.table("credits").update(
             {
                 "credits_remaining": new_balance,
-                "credit_cycle_start": date.today().isoformat(),
+                "credit_cycle_start": datetime.now(timezone.utc).date().isoformat(),
                 "gifts_sent_this_week": 0,  # Reset gift counter too
             }
         ).eq("user_id", user_id).execute()
@@ -330,14 +338,18 @@ class CreditService:
         sender_id: str,
         recipient_id: str,
         amount: int = 1,
+        idempotency_key: Optional[str] = None,
     ) -> GiftResponse:
         """
         Gift credits from one user to another.
+
+        Business rules validated in Python, atomic money movement via SQL RPC.
 
         Args:
             sender_id: User gifting credits
             recipient_id: User receiving credits
             amount: Credits to gift (1-4)
+            idempotency_key: Optional UUID to prevent duplicate processing
 
         Returns:
             GiftResponse with new sender balance
@@ -351,7 +363,7 @@ class CreditService:
         if sender_id == recipient_id:
             raise CreditServiceError("Cannot gift credits to yourself")
 
-        # Check sender's tier and limits
+        # Python validates business rules
         sender_record = self._get_db_record(sender_id)
         tier_config = TIER_CONFIG[sender_record.tier]
 
@@ -377,32 +389,33 @@ class CreditService:
         except CreditNotFoundError:
             raise CreditNotFoundError(f"Recipient {recipient_id} not found")
 
-        # Deduct from sender
-        self.deduct_credit(
-            user_id=sender_id,
-            amount=amount,
-            transaction_type=TransactionType.GIFT_SENT,
-            description=f"Gift to {recipient_id}",
-            related_user_id=recipient_id,
-        )
+        # Atomic money movement via SQL RPC
+        rpc_params = {
+            "p_sender_id": sender_id,
+            "p_recipient_id": recipient_id,
+            "p_amount": amount,
+        }
+        if idempotency_key:
+            rpc_params["p_idempotency_key"] = idempotency_key
+
+        try:
+            result = self.supabase.rpc("atomic_transfer_credits", rpc_params).execute()
+        except Exception as e:
+            error_msg = str(e)
+            if "INSUFFICIENT_CREDITS" in error_msg:
+                raise InsufficientCreditsError(
+                    user_id=sender_id,
+                    required=amount,
+                    available=sender_record.credits_remaining,
+                )
+            raise CreditServiceError(f"Transfer failed: {error_msg}")
 
         # Update sender's gift counter
         self.supabase.table("credits").update(
             {"gifts_sent_this_week": sender_record.gifts_sent_this_week + amount}
         ).eq("user_id", sender_id).execute()
 
-        # Add to recipient
-        self.add_credit(
-            user_id=recipient_id,
-            amount=amount,
-            transaction_type=TransactionType.GIFT_RECEIVED,
-            description=f"Gift from {sender_id}",
-            related_user_id=sender_id,
-            cap_at_max=False,  # Gifts should not be capped
-        )
-
-        # Get updated sender balance
-        new_balance = self._get_db_record(sender_id).credits_remaining
+        new_balance = result.data[0]["sender_new_balance"] if result.data else 0
 
         return GiftResponse(
             success=True,
@@ -517,7 +530,7 @@ class CreditService:
             self.supabase.table("session_participants")
             .select("id", count="exact")
             .eq("user_id", user_id)
-            .not_.is_("left_at", "null")  # Has completed (left normally)
+            .is_("left_at", "null")  # Has completed (still present at session end)
             .execute()
         )
 

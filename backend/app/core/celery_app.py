@@ -18,7 +18,7 @@ celery_app = Celery(
     "focus_squad",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.tasks.livekit_tasks", "app.tasks.credit_tasks"],
+    include=["app.tasks.livekit_tasks", "app.tasks.credit_tasks", "app.tasks.session_tasks"],
 )
 
 # Celery configuration
@@ -44,6 +44,10 @@ celery_app.conf.update(
         "refresh-credits-daily": {
             "task": "app.tasks.credit_tasks.refresh_due_credits",
             "schedule": crontab(hour=0, minute=5),  # Daily at 00:05 UTC
+        },
+        "progress-session-phases": {
+            "task": "app.tasks.session_tasks.progress_session_phases",
+            "schedule": 30.0,  # Every 30 seconds
         },
     },
 )

@@ -6,7 +6,7 @@ Handles:
 """
 
 import logging
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.celery_app import celery_app
 from app.core.database import get_supabase
@@ -37,7 +37,7 @@ def refresh_due_credits(self) -> dict:
 
     # Find users due for refresh
     # credit_cycle_start + 7 days <= today means they're due
-    cutoff_date = (date.today() - timedelta(days=7)).isoformat()
+    cutoff_date = (datetime.now(timezone.utc).date() - timedelta(days=7)).isoformat()
 
     result = (
         supabase.table("credits")

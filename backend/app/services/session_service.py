@@ -59,6 +59,18 @@ class AlreadyInSessionError(SessionServiceError):
         super().__init__(f"User {user_id} is already in session {session_id}")
 
 
+class SessionPhaseError(SessionServiceError):
+    """Operation not allowed in current session phase."""
+
+    def __init__(self, session_id: str, current_phase: str, required_phase: str = "setup"):
+        self.session_id = session_id
+        self.current_phase = current_phase
+        self.required_phase = required_phase
+        super().__init__(
+            f"Session {session_id} is in {current_phase} phase, requires {required_phase}"
+        )
+
+
 # =============================================================================
 # Session Service
 # =============================================================================
@@ -339,96 +351,56 @@ class SessionService:
         user_id: str,
     ) -> dict[str, Any]:
         """
-        Add a human participant to a session (idempotent).
+        Add a human participant to a session atomically (idempotent).
 
-        This method handles edge cases gracefully:
-        - If user is already active in session: returns existing record
-        - If user previously left this session: reactivates them
-        - Otherwise: creates new participant record
+        Uses PostgreSQL RPC for atomic operation with:
+        - Phase lock (only during setup phase)
+        - Row-level locking to prevent race conditions
+        - Idempotent handling for already-active users
 
         Args:
             session_id: Session UUID
             user_id: User UUID
 
         Returns:
-            Participant data dict (new or existing)
+            Participant data dict with participant_id, seat_number, already_active
 
         Raises:
             SessionFullError: If session has 4 active participants
+            SessionPhaseError: If session is not in setup phase
+            SessionNotFoundError: If session does not exist
         """
-        # 1. Check if user is already ACTIVE in this session
-        existing_active = (
-            self.supabase.table("session_participants")
-            .select("*")
-            .eq("session_id", session_id)
-            .eq("user_id", user_id)
-            .is_("left_at", "null")
-            .execute()
-        )
+        try:
+            result = self.supabase.rpc(
+                "atomic_add_participant",
+                {"p_session_id": session_id, "p_user_id": user_id},
+            ).execute()
+        except Exception as e:
+            error_msg = str(e)
+            if "SESSION_FULL" in error_msg:
+                raise SessionFullError(session_id)
+            elif "SESSION_PHASE_ERROR" in error_msg:
+                # Extract phase from error message
+                phase = "unknown"
+                if "in " in error_msg and " phase" in error_msg:
+                    phase = error_msg.split("in ")[1].split(" phase")[0]
+                raise SessionPhaseError(session_id, phase)
+            elif "SESSION_NOT_FOUND" in error_msg:
+                raise SessionNotFoundError(f"Session {session_id} not found")
+            raise SessionServiceError(f"Failed to add participant: {error_msg}")
 
-        if existing_active.data:
-            # User already in session - return existing (idempotent)
-            return existing_active.data[0]
+        if not result.data:
+            raise SessionServiceError("Failed to add participant: no data returned")
 
-        # 2. Get active participants to check capacity and find seat
-        active_participants = (
-            self.supabase.table("session_participants")
-            .select("seat_number")
-            .eq("session_id", session_id)
-            .is_("left_at", "null")
-            .execute()
-        )
-
-        taken_seats = {p["seat_number"] for p in (active_participants.data or [])}
-
-        if len(taken_seats) >= self.MAX_PARTICIPANTS:
-            raise SessionFullError(session_id)
-
-        # Find first available seat (1-4)
-        available_seat = next(i for i in range(1, 5) if i not in taken_seats)
-
-        # 3. Check if user previously LEFT this session (can reactivate)
-        existing_inactive = (
-            self.supabase.table("session_participants")
-            .select("*")
-            .eq("session_id", session_id)
-            .eq("user_id", user_id)
-            .not_.is_("left_at", "null")
-            .execute()
-        )
-
-        if existing_inactive.data:
-            # Reactivate: clear left_at and assign new seat
-            participant_id = existing_inactive.data[0]["id"]
-            result = (
-                self.supabase.table("session_participants")
-                .update(
-                    {
-                        "left_at": None,
-                        "seat_number": available_seat,
-                        "joined_at": datetime.now(timezone.utc).isoformat(),
-                    }
-                )
-                .eq("id", participant_id)
-                .execute()
-            )
-            if result.data:
-                return result.data[0]
-
-        # 4. Create new participant record
-        participant_data = {
+        row = result.data[0]
+        return {
+            "id": row["participant_id"],
+            "seat_number": row["seat_number"],
+            "already_active": row["already_active"],
             "session_id": session_id,
             "user_id": user_id,
             "participant_type": ParticipantType.HUMAN.value,
-            "seat_number": available_seat,
         }
-
-        result = self.supabase.table("session_participants").insert(participant_data).execute()
-
-        if not result.data:
-            raise SessionServiceError("Failed to add participant")
-
-        return result.data[0]
 
     def remove_participant(
         self,

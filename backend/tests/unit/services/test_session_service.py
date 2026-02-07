@@ -454,44 +454,18 @@ class TestCreateSession:
 
 
 class TestAddParticipant:
-    """Tests for add_participant() method."""
+    """Tests for add_participant() method (uses atomic RPC)."""
 
     @pytest.mark.unit
     def test_assigns_first_available_seat(
         self, session_service, mock_supabase, sample_participant_row
     ):
-        """Assigns lowest available seat number."""
-        mock_table = MagicMock()
-        mock_supabase.table.return_value = mock_table
-
-        # Create separate mocks for different queries
-        # First: check if user already in session (should be empty)
-        existing_check = MagicMock()
-        existing_check.data = []
-
-        # Second: get active participants for seat assignment
-        participants_check = MagicMock()
-        participants_check.data = []
-
-        # Track call count to return different results
-        call_count = [0]
-
-        def mock_is_execute():
-            call_count[0] += 1
-            if call_count[0] == 1:
-                return existing_check
-            return participants_check
-
-        mock_query = MagicMock()
-        mock_query.eq.return_value = mock_query
-        mock_query.is_.return_value = mock_query
-        mock_query.execute = mock_is_execute
-        mock_table.select.return_value = mock_query
-
-        # Insert returns new participant
-        mock_insert = MagicMock()
-        mock_insert.data = [sample_participant_row]
-        mock_table.insert.return_value.execute.return_value = mock_insert
+        """RPC returns seat 1 for first participant."""
+        mock_rpc = MagicMock()
+        mock_rpc.execute.return_value.data = [
+            {"participant_id": "p-1", "seat_number": 1, "already_active": False}
+        ]
+        mock_supabase.rpc.return_value = mock_rpc
 
         result = session_service.add_participant(
             session_id="session-123",
@@ -499,43 +473,22 @@ class TestAddParticipant:
         )
 
         assert result["seat_number"] == 1
+        assert result["already_active"] is False
+        mock_supabase.rpc.assert_called_once_with(
+            "atomic_add_participant",
+            {"p_session_id": "session-123", "p_user_id": "user-123"},
+        )
 
     @pytest.mark.unit
     def test_assigns_next_available_seat(
         self, session_service, mock_supabase, sample_participant_row
     ):
-        """Assigns next seat when some are taken."""
-        mock_table = MagicMock()
-        mock_supabase.table.return_value = mock_table
-
-        # First: check if user already in session (should be empty)
-        existing_check = MagicMock()
-        existing_check.data = []
-
-        # Second: get active participants (seat 1 taken)
-        existing_participant = {**sample_participant_row, "seat_number": 1}
-        participants_check = MagicMock()
-        participants_check.data = [existing_participant]
-
-        call_count = [0]
-
-        def mock_is_execute():
-            call_count[0] += 1
-            if call_count[0] == 1:
-                return existing_check
-            return participants_check
-
-        mock_query = MagicMock()
-        mock_query.eq.return_value = mock_query
-        mock_query.is_.return_value = mock_query
-        mock_query.execute = mock_is_execute
-        mock_table.select.return_value = mock_query
-
-        # Insert returns seat 2
-        new_participant = {**sample_participant_row, "seat_number": 2}
-        mock_insert = MagicMock()
-        mock_insert.data = [new_participant]
-        mock_table.insert.return_value.execute.return_value = mock_insert
+        """RPC returns seat 2 when seat 1 is taken."""
+        mock_rpc = MagicMock()
+        mock_rpc.execute.return_value.data = [
+            {"participant_id": "p-2", "seat_number": 2, "already_active": False}
+        ]
+        mock_supabase.rpc.return_value = mock_rpc
 
         result = session_service.add_participant(
             session_id="session-123",
@@ -548,37 +501,10 @@ class TestAddParticipant:
     def test_session_full_raises_error(
         self, session_service, mock_supabase, sample_participant_row
     ):
-        """Raises SessionFullError when all 4 seats taken."""
+        """Raises SessionFullError when RPC returns SESSION_FULL error."""
         from app.services.session_service import SessionFullError
 
-        mock_table = MagicMock()
-        mock_supabase.table.return_value = mock_table
-
-        # First: check if user already in session (should be empty)
-        existing_check = MagicMock()
-        existing_check.data = []
-
-        # Second: all 4 seats taken
-        existing_participants = [
-            {**sample_participant_row, "seat_number": i, "user_id": f"user-{i}"}
-            for i in range(1, 5)
-        ]
-        participants_check = MagicMock()
-        participants_check.data = existing_participants
-
-        call_count = [0]
-
-        def mock_is_execute():
-            call_count[0] += 1
-            if call_count[0] == 1:
-                return existing_check
-            return participants_check
-
-        mock_query = MagicMock()
-        mock_query.eq.return_value = mock_query
-        mock_query.is_.return_value = mock_query
-        mock_query.execute = mock_is_execute
-        mock_table.select.return_value = mock_query
+        mock_supabase.rpc.side_effect = Exception("SESSION_FULL: 4/4 seats taken")
 
         with pytest.raises(SessionFullError):
             session_service.add_participant(
@@ -587,29 +513,16 @@ class TestAddParticipant:
             )
 
     @pytest.mark.unit
-    def test_already_participant_raises_error(
-        self, session_service, mock_supabase, sample_participant_row
-    ):
-        """Raises AlreadyInSessionError if user already joined."""
-        from app.services.session_service import AlreadyInSessionError
+    def test_session_phase_error(self, session_service, mock_supabase, sample_participant_row):
+        """Raises SessionPhaseError when session is not in setup phase."""
+        from app.services.session_service import SessionPhaseError
 
-        mock_table = MagicMock()
-        mock_supabase.table.return_value = mock_table
+        mock_supabase.rpc.side_effect = Exception("SESSION_PHASE_ERROR: Session is in work_1 phase")
 
-        # User already in session - first query returns existing participant
-        existing_check = MagicMock()
-        existing_check.data = [sample_participant_row]
-
-        mock_query = MagicMock()
-        mock_query.eq.return_value = mock_query
-        mock_query.is_.return_value = mock_query
-        mock_query.execute.return_value = existing_check
-        mock_table.select.return_value = mock_query
-
-        with pytest.raises(AlreadyInSessionError):
+        with pytest.raises(SessionPhaseError):
             session_service.add_participant(
                 session_id="session-123",
-                user_id="user-123",  # Same user
+                user_id="user-123",
             )
 
 

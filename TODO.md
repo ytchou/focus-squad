@@ -215,6 +215,61 @@
 - [x] Sync session phase transitions across participants (timer hook with phase change callback)
 - [x] Handle disconnect/reconnect grace period (2 min) - connection status component
 
+### Phase 2 Completion Gaps (Blocking)
+> **Implementation plan:** [Phase 2 Completion Plan](output/plan/2025-02-07-phase2-completion.md)
+
+- [x] **[P1]** Complete WebHook handlers (`_handle_participant_left`, `_handle_room_finished`)
+  - [x] Update disconnect_count and total_active_minutes on leave
+  - [x] Mark session ended on room_finished
+  - [x] Award essence on session completion (1 Furniture Essence per qualifying participant)
+  - [x] Add `is_session_completed()` helper: present through both work blocks + 20 min active time
+  - [x] Make `cleanup_ended_session` idempotent (guard on `livekit_room_deleted_at`)
+- [x] **[P1]** Connect session end page to actual session data
+  - [x] Add `GET /sessions/{id}/summary` endpoint (works during social phase too)
+  - [x] Replace hardcoded "47 min, +1 Essence, 3 tablemates" with real API data
+  - [x] Add loading state and fallback defaults
+  - [x] Update SessionEndModal with optional `focusMinutes` and `essenceEarned` props
+
+### Session System Gaps
+- ~~**[P1]** Add session start validation (minimum 2 real users required)~~ **DROPPED** - Allow 1 human + 3 AI companions
+- [x] **[P2]** Add phase lock to `add_participant()` - only allow joins during setup phase (via atomic RPC)
+- [ ] **[P2]** ~~Implement table merging logic for sessions with <2 real users~~ **DEFERRED to Phase 3**
+
+### Data Integrity Gaps
+- [x] **[P2]** Add PostgreSQL RPC `atomic_add_participant()` (migration 009)
+  - [x] FOR UPDATE row lock + phase check + seat assignment in single transaction
+  - [x] Prevents race condition in concurrent joins
+- [x] **[P2]** Add PostgreSQL RPC `atomic_transfer_credits()` (migration 009)
+  - [x] Lean approach: SQL handles atomic money movement, Python validates business rules
+  - [x] Prevents lost credits on partial failure
+- [x] **[P2]** Add idempotency tokens for credit operations
+  - [x] Add `idempotency_key` UUID column to credit_transactions
+  - [x] Accept `X-Idempotency-Key` header in gift endpoint
+  - [x] Prevent double-credits from duplicate webhook calls
+
+### Backend Fixes
+- [x] **[P2]** Fix weekly refresh to use UTC timezone
+  - [x] Replace `date.today()` with `datetime.now(timezone.utc).date()` (6 locations across credit_service, user_service, credit_tasks)
+  - All backend processing uses UTC; frontend converts to local for display
+- [x] **[P2]** Fix referral bonus validation
+  - [x] Bug: `.not_.is_("left_at", "null")` selects users who LEFT EARLY (inverted logic)
+  - [x] Fix: `.is_("left_at", "null")` + use `is_session_completed()` helper
+- [x] **[P3]** Add session phase progression scheduled task
+  - [x] Celery beat task every 30s: update current_phase in DB for active sessions
+  - [x] Schedule cleanup when session transitions to ended
+- [x] **[P3]** Fix focus time calculation in livekit_tasks.py
+  - [x] Replace hardcoded `focus_minutes = 45` with actual calculation
+  - [x] Calculate from connected_at/disconnected_at or total_active_minutes, cap at 45
+
+### Testing Gaps
+- [x] **[P2]** Add tests for `phase-utils.ts` boundary conditions (66 tests)
+  - [x] Test exact phase transitions at 0, 3, 28, 30, 50, 55 minutes
+  - [x] Test edge cases (negative time, past end time, string vs Date input)
+  - [x] Test formatTime, getNextPhase, isWorkPhase, getPhaseDuration
+- [x] **[P3]** Add component tests for session active page (11 tests)
+  - [x] Loading/error states, phase transitions, leave button, participant polling
+- [x] **[P3]** Add hook tests for useSessionTimer (8 tests) and useActivityTracking (6 tests)
+
 ---
 
 ## Phase 3: Social & Polish (Week 5-6)

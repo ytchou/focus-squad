@@ -8,7 +8,9 @@ Handles:
 - POST /referral/apply - Apply a referral code
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.models.credit import (
@@ -73,12 +75,14 @@ async def gift_credits(
     user: AuthUser = Depends(require_auth_from_state),
     credit_service: CreditService = Depends(get_credit_service),
     user_service: UserService = Depends(get_user_service),
+    x_idempotency_key: Optional[str] = Header(None),
 ) -> GiftResponse:
     """
     Gift credits to another user.
 
     Only Pro and Elite tier users can gift credits.
     Weekly limit: 4 credits per week.
+    Accepts optional X-Idempotency-Key header to prevent duplicate processing.
     """
     profile = user_service.get_user_by_auth_id(user.auth_id)
     if not profile:
@@ -89,6 +93,7 @@ async def gift_credits(
             sender_id=profile.id,
             recipient_id=request.recipient_user_id,
             amount=request.amount,
+            idempotency_key=x_idempotency_key,
         )
     except GiftNotAllowedError as e:
         raise HTTPException(
