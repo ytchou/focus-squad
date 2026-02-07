@@ -94,6 +94,8 @@ def cleanup_ended_session(self, session_id: str) -> dict:
     This task is scheduled to run ROOM_CLEANUP_DELAY_MINUTES after session end.
     Also triggers referral bonus awards for participants who completed their first session.
 
+    Idempotent: if livekit_room_deleted_at is already set, returns early.
+
     Args:
         session_id: Session UUID
 
@@ -111,6 +113,12 @@ def cleanup_ended_session(self, session_id: str) -> dict:
         return {"status": "session_not_found"}
 
     session = result.data[0]
+
+    # Idempotency guard: skip if already cleaned up
+    if session.get("livekit_room_deleted_at"):
+        logger.info(f"Session {session_id} already cleaned up, skipping")
+        return {"status": "already_cleaned_up"}
+
     room_name = session["livekit_room_name"]
 
     # Delete room via LiveKit service
@@ -138,7 +146,7 @@ def cleanup_ended_session(self, session_id: str) -> dict:
     stats_updated = _update_user_session_stats(supabase, session_id, session)
 
     # Award referral bonuses for participants who completed their first session
-    referrals_awarded = _award_referral_bonuses(supabase, session_id)
+    referrals_awarded = _award_referral_bonuses(supabase, session_id, session)
 
     return {
         "status": "cleaned_up" if deleted else "already_deleted",
@@ -148,9 +156,101 @@ def cleanup_ended_session(self, session_id: str) -> dict:
     }
 
 
+def _calculate_focus_minutes(participant: dict, session: dict) -> int:
+    """
+    Calculate actual focus minutes for a participant.
+
+    Priority:
+    1. Use total_active_minutes if set by webhooks (preferred)
+    2. Fall back to calculating from connected_at/disconnected_at timestamps
+    3. Count only time during work phases (work_1: 3-28 min, work_2: 30-50 min)
+    4. Cap at 45 min (max possible work time)
+
+    Args:
+        participant: Participant record dict
+        session: Session record dict
+
+    Returns:
+        Focus minutes (0-45)
+    """
+    MAX_FOCUS_MINUTES = 45
+
+    # Prefer webhook-tracked active minutes
+    total_active = participant.get("total_active_minutes")
+    if total_active is not None and total_active > 0:
+        return min(int(total_active), MAX_FOCUS_MINUTES)
+
+    # Fall back to timestamp calculation
+    connected_at_str = participant.get("connected_at")
+    if not connected_at_str:
+        return 0
+
+    start_time_str = session.get("start_time", "")
+    if isinstance(start_time_str, str):
+        if start_time_str.endswith("Z"):
+            start_time_str = start_time_str[:-1] + "+00:00"
+        from datetime import datetime
+
+        session_start = datetime.fromisoformat(start_time_str)
+    else:
+        session_start = start_time_str
+
+    if isinstance(connected_at_str, str):
+        if connected_at_str.endswith("Z"):
+            connected_at_str = connected_at_str[:-1] + "+00:00"
+        from datetime import datetime
+
+        connected_at = datetime.fromisoformat(connected_at_str)
+    else:
+        connected_at = connected_at_str
+
+    disconnected_at_str = participant.get("disconnected_at")
+    if disconnected_at_str:
+        if isinstance(disconnected_at_str, str):
+            if disconnected_at_str.endswith("Z"):
+                disconnected_at_str = disconnected_at_str[:-1] + "+00:00"
+            from datetime import datetime
+
+            disconnected_at = datetime.fromisoformat(disconnected_at_str)
+        else:
+            disconnected_at = disconnected_at_str
+    else:
+        # Still connected at session end — use session end time
+        end_time_str = session.get("end_time", "")
+        if isinstance(end_time_str, str):
+            if end_time_str.endswith("Z"):
+                end_time_str = end_time_str[:-1] + "+00:00"
+            from datetime import datetime
+
+            disconnected_at = datetime.fromisoformat(end_time_str)
+        else:
+            disconnected_at = end_time_str
+
+    # Calculate overlap with work phases only
+    # Work_1: 3-28 min from session start, Work_2: 30-50 min from session start
+    from datetime import timedelta
+
+    work_phases = [
+        (session_start + timedelta(minutes=3), session_start + timedelta(minutes=28)),
+        (session_start + timedelta(minutes=30), session_start + timedelta(minutes=50)),
+    ]
+
+    focus_seconds = 0
+    for phase_start, phase_end in work_phases:
+        overlap_start = max(connected_at, phase_start)
+        overlap_end = min(disconnected_at, phase_end)
+        if overlap_end > overlap_start:
+            focus_seconds += (overlap_end - overlap_start).total_seconds()
+
+    focus_minutes = int(focus_seconds / 60)
+    return min(focus_minutes, MAX_FOCUS_MINUTES)
+
+
 def _update_user_session_stats(supabase, session_id: str, session: dict) -> int:
     """
     Update user stats (session_count, total_focus_minutes) after session completion.
+
+    Uses is_session_completed() to determine qualifying participants.
 
     Args:
         supabase: Supabase client
@@ -160,26 +260,22 @@ def _update_user_session_stats(supabase, session_id: str, session: dict) -> int:
     Returns:
         Count of users whose stats were updated
     """
-
+    from app.routers.webhooks import _parse_session_start_time, is_session_completed
     from app.services.user_service import UserService
 
-    # Calculate focus minutes (session duration minus setup/social time)
-    # Standard session: 55 min total, but focus time is work1 (25) + work2 (20) = 45 min
-    focus_minutes = 45
-
-    # Get all human participants who completed the session (not left early)
+    # Get all human participants
     participants = (
         supabase.table("session_participants")
-        .select("user_id")
+        .select("user_id, left_at, total_active_minutes, connected_at, disconnected_at")
         .eq("session_id", session_id)
         .eq("participant_type", "human")
-        .is_("left_at", "null")  # Didn't leave early
         .execute()
     )
 
     if not participants.data:
         return 0
 
+    session_start = _parse_session_start_time(session["start_time"])
     user_service = UserService(supabase=supabase)
     updated = 0
 
@@ -188,46 +284,60 @@ def _update_user_session_stats(supabase, session_id: str, session: dict) -> int:
         if not user_id:
             continue
 
+        if not is_session_completed(participant, session_start):
+            logger.info(f"User {user_id} did not complete session {session_id}, skipping stats")
+            continue
+
+        focus_minutes = _calculate_focus_minutes(participant, session)
+
         try:
             user_service.record_session_completion(user_id, focus_minutes)
             updated += 1
-            logger.info(f"Updated session stats for user {user_id}")
+            logger.info(f"Updated session stats for user {user_id}: {focus_minutes} focus min")
         except Exception as e:
             logger.error(f"Failed to update stats for user {user_id}: {e}")
 
     return updated
 
 
-def _award_referral_bonuses(supabase, session_id: str) -> int:
+def _award_referral_bonuses(supabase, session_id: str, session: dict) -> int:
     """
     Award referral bonuses to participants who completed their first session.
+
+    Uses is_session_completed() to determine qualifying participants.
 
     Args:
         supabase: Supabase client
         session_id: Session UUID
+        session: Session dict with start_time
 
     Returns:
         Count of referral bonuses awarded
     """
-    # Get all human participants who completed the session (not left early)
+    from app.routers.webhooks import _parse_session_start_time, is_session_completed
+
+    # Get all human participants
     participants = (
         supabase.table("session_participants")
-        .select("user_id")
+        .select("user_id, left_at, total_active_minutes")
         .eq("session_id", session_id)
         .eq("participant_type", "human")
-        .is_("left_at", "null")  # Didn't leave early
         .execute()
     )
 
     if not participants.data:
         return 0
 
+    session_start = _parse_session_start_time(session["start_time"])
     credit_service = CreditService(supabase=supabase)
     awards = 0
 
     for participant in participants.data:
         user_id = participant.get("user_id")
         if not user_id:
+            continue
+
+        if not is_session_completed(participant, session_start):
             continue
 
         try:

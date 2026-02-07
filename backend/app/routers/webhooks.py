@@ -7,7 +7,7 @@ Endpoints:
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -18,6 +18,62 @@ from app.core.database import get_supabase
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Minimum active minutes to qualify as "completed"
+MIN_ACTIVE_MINUTES_FOR_COMPLETION = 20
+
+
+# =============================================================================
+# Session Completion Helper
+# =============================================================================
+
+
+def is_session_completed(participant: dict, session_start_time: datetime) -> bool:
+    """
+    Check if a participant completed the session.
+
+    Completed = present through both work blocks + meaningful engagement.
+    Since phase lock guarantees joining during setup only:
+    1. left_at IS NULL OR left_at >= start_time + 50 min (present at work_2 end)
+    2. total_active_minutes >= 20 (meaningfully engaged)
+
+    Args:
+        participant: session_participants record dict
+        session_start_time: Session start time (datetime with timezone)
+
+    Returns:
+        True if participant completed the session
+    """
+    # Must have meaningful engagement
+    total_active = participant.get("total_active_minutes", 0) or 0
+    if total_active < MIN_ACTIVE_MINUTES_FOR_COMPLETION:
+        return False
+
+    # Must be present through both work blocks (through minute 50)
+    left_at_str = participant.get("left_at")
+    if left_at_str is None:
+        return True  # Still present = completed
+
+    # Parse left_at
+    if isinstance(left_at_str, str):
+        if left_at_str.endswith("Z"):
+            left_at_str = left_at_str[:-1] + "+00:00"
+        left_at = datetime.fromisoformat(left_at_str)
+    else:
+        left_at = left_at_str
+
+    # Must have stayed at least through minute 50 (end of work_2)
+    work_2_end = session_start_time + timedelta(minutes=50)
+    return left_at >= work_2_end
+
+
+def _parse_session_start_time(start_time_str: str) -> datetime:
+    """Parse session start time string to datetime."""
+    if isinstance(start_time_str, datetime):
+        return start_time_str
+    if start_time_str.endswith("Z"):
+        start_time_str = start_time_str[:-1] + "+00:00"
+    return datetime.fromisoformat(start_time_str)
 
 
 # =============================================================================
@@ -35,9 +91,9 @@ async def livekit_webhook(
 
     Events handled:
     - participant_joined: Update participant connection status
-    - participant_left: Update participant disconnection status
+    - participant_left: Update participant disconnection status + active minutes
     - track_published: Log audio track publication (for verification)
-    - room_finished: Log room cleanup confirmation
+    - room_finished: Mark session ended, award essence, schedule cleanup
 
     Security: Validates webhook signature using LiveKit API key/secret.
     """
@@ -133,7 +189,11 @@ async def _handle_participant_left(event_data: dict) -> None:
     """
     Handle participant_left event.
 
-    Updates the session_participants record with disconnection status.
+    Updates the session_participants record with:
+    - disconnection timestamp
+    - is_connected = false
+    - total_active_minutes (accumulated across connect/disconnect cycles)
+    - disconnect_count incremented
     """
     room_name = event_data.get("room", {}).get("name")
     participant = event_data.get("participant", {})
@@ -145,8 +205,9 @@ async def _handle_participant_left(event_data: dict) -> None:
 
     logger.info(f"Participant {identity} left room {room_name}")
 
-    # Find session by room name
     supabase = get_supabase()
+
+    # Find session by room name
     session_result = (
         supabase.table("sessions").select("id").eq("livekit_room_name", room_name).execute()
     )
@@ -157,16 +218,68 @@ async def _handle_participant_left(event_data: dict) -> None:
 
     session_id = session_result.data[0]["id"]
 
-    # Update participant disconnection status
-    now = datetime.now(timezone.utc).isoformat()
+    # Fetch participant's current state to calculate active minutes delta
+    participant_result = (
+        supabase.table("session_participants")
+        .select("id, connected_at, total_active_minutes, disconnect_count")
+        .eq("session_id", session_id)
+        .eq("user_id", identity)
+        .execute()
+    )
+
+    if not participant_result.data:
+        logger.warning(f"Participant {identity} not found in session {session_id}")
+        return
+
+    p = participant_result.data[0]
+    now = datetime.now(timezone.utc)
+
+    # Calculate active minutes delta from this connection period
+    active_minutes_delta = 0
+    connected_at_str = p.get("connected_at")
+    if connected_at_str:
+        if isinstance(connected_at_str, str):
+            if connected_at_str.endswith("Z"):
+                connected_at_str = connected_at_str[:-1] + "+00:00"
+            connected_at = datetime.fromisoformat(connected_at_str)
+        else:
+            connected_at = connected_at_str
+
+        active_minutes_delta = int((now - connected_at).total_seconds() / 60)
+
+    current_total = p.get("total_active_minutes") or 0
+    current_disconnects = p.get("disconnect_count") or 0
+
+    # Update participant record
     supabase.table("session_participants").update(
         {
-            "disconnected_at": now,
+            "disconnected_at": now.isoformat(),
             "is_connected": False,
+            "total_active_minutes": current_total + active_minutes_delta,
+            "disconnect_count": current_disconnects + 1,
         }
-    ).eq("session_id", session_id).eq("user_id", identity).execute()
+    ).eq("id", p["id"]).execute()
 
-    logger.info(f"Updated disconnection status for {identity} in session {session_id}")
+    logger.info(
+        f"Updated disconnection for {identity} in session {session_id}: "
+        f"+{active_minutes_delta} min active, disconnect #{current_disconnects + 1}"
+    )
+
+    # Check if all humans have disconnected (log only, LiveKit handles room cleanup)
+    remaining = (
+        supabase.table("session_participants")
+        .select("id", count="exact")
+        .eq("session_id", session_id)
+        .eq("participant_type", "human")
+        .eq("is_connected", True)
+        .execute()
+    )
+
+    if remaining.count == 0:
+        logger.info(
+            f"All humans disconnected from session {session_id}. "
+            "LiveKit will send room_finished when room times out."
+        )
 
 
 async def _handle_track_published(event_data: dict) -> None:
@@ -194,13 +307,132 @@ async def _handle_room_finished(event_data: dict) -> None:
     """
     Handle room_finished event.
 
-    Logs when a room is closed by LiveKit (all participants left or timeout).
+    When a room is closed by LiveKit (all participants left or timeout):
+    1. Mark session as ended
+    2. Award essence to qualifying participants
+    3. Schedule cleanup task for stats + referrals
     """
     room = event_data.get("room", {})
     room_name = room.get("name")
-    room_sid = room.get("sid")
 
-    logger.info(f"Room finished: name={room_name}, sid={room_sid}")
+    if not room_name:
+        logger.warning(f"Missing room name in room_finished: {event_data}")
+        return
+
+    logger.info(f"Room finished: name={room_name}")
+
+    supabase = get_supabase()
+
+    # Find session
+    session_result = (
+        supabase.table("sessions")
+        .select("id, start_time, current_phase")
+        .eq("livekit_room_name", room_name)
+        .execute()
+    )
+
+    if not session_result.data:
+        logger.warning(f"Session not found for room {room_name}")
+        return
+
+    session = session_result.data[0]
+    session_id = session["id"]
+
+    # 1. Mark session as ended
+    now = datetime.now(timezone.utc).isoformat()
+    supabase.table("sessions").update(
+        {
+            "current_phase": "ended",
+            "phase_started_at": now,
+        }
+    ).eq("id", session_id).execute()
+
+    logger.info(f"Session {session_id} marked as ended")
+
+    # 2. Award essence to qualifying participants
+    session_start = _parse_session_start_time(session["start_time"])
+
+    human_participants = (
+        supabase.table("session_participants")
+        .select("id, user_id, left_at, total_active_minutes, essence_earned")
+        .eq("session_id", session_id)
+        .eq("participant_type", "human")
+        .execute()
+    )
+
+    essence_awarded = 0
+    for p in human_participants.data or []:
+        user_id = p.get("user_id")
+        if not user_id:
+            continue
+
+        # Skip if already awarded
+        if p.get("essence_earned"):
+            continue
+
+        # Check completion
+        if not is_session_completed(p, session_start):
+            logger.info(f"User {user_id} did not complete session {session_id}")
+            continue
+
+        # Award 1 Furniture Essence
+        try:
+            # Get current essence record
+            essence_result = (
+                supabase.table("furniture_essence")
+                .select("balance, total_earned")
+                .eq("user_id", user_id)
+                .execute()
+            )
+
+            if essence_result.data:
+                current = essence_result.data[0]
+                supabase.table("furniture_essence").update(
+                    {
+                        "balance": current["balance"] + 1,
+                        "total_earned": current["total_earned"] + 1,
+                        "updated_at": now,
+                    }
+                ).eq("user_id", user_id).execute()
+            else:
+                supabase.table("furniture_essence").insert(
+                    {"user_id": user_id, "balance": 1, "total_earned": 1}
+                ).execute()
+
+            # Log essence transaction
+            supabase.table("essence_transactions").insert(
+                {
+                    "user_id": user_id,
+                    "amount": 1,
+                    "transaction_type": "session_complete",
+                    "related_session_id": session_id,
+                }
+            ).execute()
+
+            # Mark essence as earned for this participant
+            supabase.table("session_participants").update({"essence_earned": True}).eq(
+                "id", p["id"]
+            ).execute()
+
+            essence_awarded += 1
+            logger.info(f"Awarded 1 essence to user {user_id} for session {session_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to award essence to user {user_id}: {e}")
+
+    logger.info(f"Awarded essence to {essence_awarded} participants in session {session_id}")
+
+    # 3. Schedule cleanup task (handles stats + referrals)
+    try:
+        from app.tasks.livekit_tasks import cleanup_ended_session
+
+        cleanup_ended_session.apply_async(
+            args=[session_id],
+            countdown=60,  # Delay 1 minute to let final DB writes settle
+        )
+        logger.info(f"Scheduled cleanup task for session {session_id}")
+    except Exception as e:
+        logger.warning(f"Failed to schedule cleanup task: {e}")
 
 
 # =============================================================================

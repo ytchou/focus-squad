@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useSessionStore } from "@/stores/session-store";
 import { api } from "@/lib/api/client";
@@ -19,6 +19,7 @@ export default function WaitingRoomPage() {
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [showGetReady, setShowGetReady] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const hasRedirected = useRef(false);
 
   // Track "waiting_room_resumed" event on mount (page reload)
   // We intentionally only run this once on mount to track page reloads, not re-renders
@@ -45,25 +46,24 @@ export default function WaitingRoomPage() {
   // Calculate time remaining and handle countdown
   useEffect(() => {
     if (!sessionStartTime) {
-      // No session start time, redirect to dashboard
-      router.push("/dashboard");
+      if (!hasRedirected.current) {
+        hasRedirected.current = true;
+        router.push("/dashboard");
+      }
       return;
     }
 
     const startTime = new Date(sessionStartTime);
 
     const updateCountdown = () => {
+      if (hasRedirected.current) return;
+
       const now = new Date();
       const remaining = Math.max(0, Math.floor((startTime.getTime() - now.getTime()) / 1000));
-      setTimeRemaining(remaining);
 
-      // Show "Get Ready!" at T-10s
-      if (remaining <= 10 && remaining > 0) {
-        setShowGetReady(true);
-      }
-
-      // Auto-redirect at T-0
+      // Auto-redirect at T-0 (before setting state to avoid re-render cascade)
       if (remaining === 0) {
+        hasRedirected.current = true;
         clearInterval(interval);
 
         // Track successful join
@@ -77,6 +77,14 @@ export default function WaitingRoomPage() {
 
         clearWaitingRoom();
         router.push(`/session/${sessionId}`);
+        return;
+      }
+
+      setTimeRemaining(remaining);
+
+      // Show "Get Ready!" at T-10s
+      if (remaining <= 10) {
+        setShowGetReady(true);
       }
     };
 

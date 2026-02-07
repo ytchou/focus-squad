@@ -29,6 +29,7 @@ from app.models.session import (
     SessionFilters,
     SessionInfo,
     SessionPhase,
+    SessionSummaryResponse,
     TableMode,
     UpcomingSession,
     UpcomingSessionsResponse,
@@ -42,6 +43,7 @@ from app.services.credit_service import (
 from app.services.session_service import (
     AlreadyInSessionError,
     SessionFullError,
+    SessionPhaseError,
     SessionService,
 )
 from app.services.user_service import UserService
@@ -226,6 +228,11 @@ async def quick_match(
             status_code=409,
             detail="No available sessions found. Please try again.",
         )
+    except SessionPhaseError as e:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Session is no longer accepting participants ({e.current_phase} phase).",
+        )
 
     # Deduct credit
     try:
@@ -353,6 +360,94 @@ async def get_session(
         )
 
     return _build_session_info(session_data)
+
+
+@router.get("/{session_id}/summary", response_model=SessionSummaryResponse)
+async def get_session_summary(
+    session_id: str,
+    user: AuthUser = Depends(require_auth_from_state),
+    session_service: SessionService = Depends(get_session_service),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Get session summary for a participant.
+
+    Returns focus time, essence earned, tablemate count, and phases completed.
+    Works during social phase (both work blocks done) and after session ends.
+    """
+    from app.core.database import get_supabase
+
+    profile = user_service.get_user_by_auth_id(user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    session_data = session_service.get_session_by_id(session_id)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if not session_service.is_participant(session_data, profile.id):
+        raise HTTPException(status_code=403, detail="You are not a participant in this session")
+
+    supabase = get_supabase()
+
+    # Get this user's participant record
+    participant_result = (
+        supabase.table("session_participants")
+        .select("total_active_minutes, essence_earned, connected_at, disconnected_at")
+        .eq("session_id", session_id)
+        .eq("user_id", profile.id)
+        .execute()
+    )
+
+    p = participant_result.data[0] if participant_result.data else {}
+
+    # Calculate focus minutes
+    total_active = p.get("total_active_minutes") or 0
+    if total_active > 0:
+        focus_minutes = min(total_active, 45)
+    else:
+        # Estimate from connection time
+        connected_at_str = p.get("connected_at")
+        if connected_at_str:
+            connected_at = _parse_datetime(connected_at_str)
+            now = datetime.now(timezone.utc)
+            focus_minutes = min(int((now - connected_at).total_seconds() / 60), 45)
+        else:
+            focus_minutes = 0
+
+    # Count human tablemates (excluding self)
+    tablemate_count = sum(
+        1
+        for pt in session_data.get("participants", [])
+        if pt.get("participant_type") == "human" and pt.get("user_id") != profile.id
+    )
+
+    # Calculate phases completed based on current phase
+    phase = SessionPhase(session_data["current_phase"])
+    phase_order = [
+        SessionPhase.SETUP,
+        SessionPhase.WORK_1,
+        SessionPhase.BREAK,
+        SessionPhase.WORK_2,
+        SessionPhase.SOCIAL,
+        SessionPhase.ENDED,
+    ]
+    if phase == SessionPhase.ENDED:
+        phases_completed = 5
+    elif phase in phase_order:
+        phases_completed = phase_order.index(phase)
+    else:
+        phases_completed = 0
+
+    return SessionSummaryResponse(
+        focus_minutes=focus_minutes,
+        essence_earned=bool(p.get("essence_earned")),
+        tablemate_count=tablemate_count,
+        phases_completed=phases_completed,
+        total_phases=5,
+        mode=TableMode(session_data["mode"]),
+        topic=session_data.get("topic"),
+    )
 
 
 @router.post("/{session_id}/leave", response_model=LeaveSessionResponse)

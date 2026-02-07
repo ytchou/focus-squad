@@ -224,3 +224,15 @@ class ParticipantCreate(BaseModel):
     seat_number: int = Field(..., ge=1, le=4)
     ai_companion_name: Optional[str] = None
     ai_companion_avatar: Optional[dict[str, Any]] = None
+
+
+class SessionSummaryResponse(BaseModel):
+    """Response for session summary endpoint."""
+
+    focus_minutes: int = Field(..., ge=0)
+    essence_earned: bool = False
+    tablemate_count: int = Field(..., ge=0)
+    phases_completed: int = Field(..., ge=0, le=5)
+    total_phases: int = 5
+    mode: TableMode
+    topic: Optional[str] = None

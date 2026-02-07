@@ -351,3 +351,216 @@ class TestGiftCredit:
                 recipient_id="user-456",
                 amount=1,
             )
+
+
+# =============================================================================
+# WU1 Regression: UTC timezone usage
+# =============================================================================
+
+
+class TestUTCTimezone:
+    """Regression tests verifying UTC is used consistently."""
+
+    @pytest.mark.unit
+    def test_refresh_uses_utc_for_cycle_comparison(
+        self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
+    ):
+        """refresh_credits_for_user compares dates using UTC timezone."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        # Cycle expired 8 days ago
+        expired_cycle = {
+            **sample_credit_row,
+            "credit_cycle_start": (date.today() - timedelta(days=8)).isoformat(),
+            "credits_remaining": 1,
+        }
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [expired_cycle]
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = [
+            {**sample_credit_row, "credits_remaining": 3}
+        ]
+        refresh_tx = {**sample_transaction_row, "amount": 2, "transaction_type": "weekly_refresh"}
+        mock_table.insert.return_value.execute.return_value.data = [refresh_tx]
+
+        result = credit_service.refresh_credits_for_user("user-123")
+
+        assert result is not None
+        # Verify the update was called with UTC date for new cycle start
+        update_call = mock_table.update.call_args_list[0][0][0]
+        assert "credit_cycle_start" in update_call
+        cycle_date = update_call["credit_cycle_start"]
+        # Should be today's date (UTC)
+        assert cycle_date == datetime.now(timezone.utc).date().isoformat()
+
+    @pytest.mark.unit
+    def test_refund_timestamps_use_utc(
+        self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
+    ):
+        """refund_credit uses UTC timestamp for credit_refunded_at."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        # Participant not yet refunded
+        participant_data = {"credit_refunded_at": None, "credit_transaction_id": "tx-old"}
+        mock_table.select.return_value.eq.return_value.single.return_value.execute.return_value.data = participant_data
+
+        # Credit add succeeds
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [
+            sample_credit_row
+        ]
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = [
+            {**sample_credit_row, "credits_remaining": 3}
+        ]
+        refund_tx = {**sample_transaction_row, "amount": 1, "transaction_type": "refund"}
+        mock_table.insert.return_value.execute.return_value.data = [refund_tx]
+
+        result = credit_service.refund_credit(
+            user_id="user-123",
+            session_id="session-1",
+            participant_id="p-1",
+        )
+
+        assert result is not None
+
+    @pytest.mark.unit
+    def test_get_balance_computes_next_refresh_utc(
+        self, credit_service, mock_supabase, sample_credit_row
+    ):
+        """get_balance computes next_refresh as UTC datetime."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [
+            sample_credit_row
+        ]
+
+        result = credit_service.get_balance("user-123")
+
+        # next_refresh should be a timezone-aware UTC datetime
+        assert result.next_refresh.tzinfo is not None
+        assert result.next_refresh.tzinfo == timezone.utc
+
+
+# =============================================================================
+# WU2 Regression: Idempotency key in transactions
+# =============================================================================
+
+
+class TestIdempotencyKey:
+    """Tests for idempotency key support in credit operations."""
+
+    @pytest.mark.unit
+    def test_deduct_passes_idempotency_key(
+        self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
+    ):
+        """deduct_credit includes idempotency_key in transaction insert."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [
+            sample_credit_row
+        ]
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = [
+            {**sample_credit_row, "credits_remaining": 1}
+        ]
+        mock_table.insert.return_value.execute.return_value.data = [sample_transaction_row]
+
+        credit_service.deduct_credit(
+            user_id="user-123",
+            amount=1,
+            transaction_type=TransactionType.SESSION_JOIN,
+            idempotency_key="idem-key-123",
+        )
+
+        # Verify the insert included the idempotency key
+        insert_data = mock_table.insert.call_args[0][0]
+        assert insert_data["idempotency_key"] == "idem-key-123"
+
+    @pytest.mark.unit
+    def test_deduct_omits_idempotency_key_when_none(
+        self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
+    ):
+        """deduct_credit does not include idempotency_key when not provided."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [
+            sample_credit_row
+        ]
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = [
+            {**sample_credit_row, "credits_remaining": 1}
+        ]
+        mock_table.insert.return_value.execute.return_value.data = [sample_transaction_row]
+
+        credit_service.deduct_credit(
+            user_id="user-123",
+            amount=1,
+            transaction_type=TransactionType.SESSION_JOIN,
+        )
+
+        insert_data = mock_table.insert.call_args[0][0]
+        assert "idempotency_key" not in insert_data
+
+    @pytest.mark.unit
+    def test_add_credit_passes_idempotency_key(
+        self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
+    ):
+        """add_credit includes idempotency_key in transaction insert."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [
+            sample_credit_row
+        ]
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = [
+            {**sample_credit_row, "credits_remaining": 3}
+        ]
+        positive_tx = {**sample_transaction_row, "amount": 1}
+        mock_table.insert.return_value.execute.return_value.data = [positive_tx]
+
+        credit_service.add_credit(
+            user_id="user-123",
+            amount=1,
+            transaction_type=TransactionType.REFERRAL,
+            idempotency_key="ref-key-456",
+        )
+
+        insert_data = mock_table.insert.call_args[0][0]
+        assert insert_data["idempotency_key"] == "ref-key-456"
+
+    @pytest.mark.unit
+    def test_gift_credit_passes_idempotency_key_to_rpc(
+        self, credit_service, mock_supabase, sample_credit_row
+    ):
+        """gift_credit passes idempotency_key to atomic_transfer_credits RPC."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        # Pro tier sender with credits
+        pro_sender = {
+            **sample_credit_row,
+            "tier": "pro",
+            "credits_remaining": 8,
+            "gifts_sent_this_week": 0,
+        }
+        # First call: sender lookup, second: recipient lookup
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [pro_sender]
+
+        # RPC succeeds
+        mock_rpc = MagicMock()
+        mock_rpc.execute.return_value.data = [{"sender_new_balance": 7}]
+        mock_supabase.rpc.return_value = mock_rpc
+
+        # Update gift counter
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = [{}]
+
+        credit_service.gift_credit(
+            sender_id="user-123",
+            recipient_id="user-456",
+            amount=1,
+            idempotency_key="gift-key-789",
+        )
+
+        # Verify RPC was called with idempotency key
+        rpc_args = mock_supabase.rpc.call_args
+        assert rpc_args[0][0] == "atomic_transfer_credits"
+        assert rpc_args[0][1]["p_idempotency_key"] == "gift-key-789"

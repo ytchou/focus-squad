@@ -5,8 +5,19 @@ import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Clock, Sparkles, Users, Home, Star } from "lucide-react";
+import { CheckCircle, Clock, Sparkles, Users, Home, Star, Loader2 } from "lucide-react";
 import { useSessionStore } from "@/stores/session-store";
+import { api } from "@/lib/api/client";
+
+interface SessionSummary {
+  focus_minutes: number;
+  essence_earned: boolean;
+  tablemate_count: number;
+  phases_completed: number;
+  total_phases: number;
+  mode: string;
+  topic: string | null;
+}
 
 export default function SessionEndPage() {
   const params = useParams();
@@ -15,10 +26,36 @@ export default function SessionEndPage() {
   const { leaveSession } = useSessionStore();
 
   const [showRatingPrompt, setShowRatingPrompt] = useState(true);
+  const [summary, setSummary] = useState<SessionSummary | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Clean up session state on mount
+  // Fetch session summary
   useEffect(() => {
-    // Clear the session state when viewing the end page
+    async function fetchSummary() {
+      try {
+        const data = await api.get<SessionSummary>(`/sessions/${sessionId}/summary`);
+        setSummary(data);
+      } catch (err) {
+        console.error("Failed to fetch session summary:", err);
+        // Use fallback defaults
+        setSummary({
+          focus_minutes: 0,
+          essence_earned: false,
+          tablemate_count: 0,
+          phases_completed: 0,
+          total_phases: 5,
+          mode: "forced_audio",
+          topic: null,
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSummary();
+  }, [sessionId]);
+
+  // Clean up session state on unmount
+  useEffect(() => {
     return () => {
       leaveSession();
     };
@@ -33,6 +70,25 @@ export default function SessionEndPage() {
     // Rating UI is Phase 3 - for now just dismiss the prompt
     setShowRatingPrompt(false);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading session summary...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const focusMinutes = summary?.focus_minutes ?? 0;
+  const essenceEarned = summary?.essence_earned ?? false;
+  const tablemateCount = summary?.tablemate_count ?? 0;
+  const phasesCompleted = summary?.phases_completed ?? 0;
+  const totalPhases = summary?.total_phases ?? 5;
+  const mode = summary?.mode ?? "forced_audio";
+  const modeLabel = mode === "forced_audio" ? "Forced Audio" : "Quiet Mode";
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -53,22 +109,22 @@ export default function SessionEndPage() {
               <StatCard
                 icon={<Clock className="h-5 w-5 text-primary" />}
                 label="Focus Time"
-                value="47 min"
+                value={`${focusMinutes} min`}
               />
               <StatCard
                 icon={<Sparkles className="h-5 w-5 text-accent" />}
                 label="Essence Earned"
-                value="+1"
+                value={essenceEarned ? "+1" : "--"}
               />
               <StatCard
                 icon={<Users className="h-5 w-5 text-muted-foreground" />}
                 label="Tablemates"
-                value="3"
+                value={String(tablemateCount)}
               />
               <StatCard
                 icon={<CheckCircle className="h-5 w-5 text-success" />}
                 label="Phases"
-                value="5/5"
+                value={`${phasesCompleted}/${totalPhases}`}
               />
             </div>
 
@@ -86,8 +142,14 @@ export default function SessionEndPage() {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Mode</span>
-                <Badge variant="outline">Forced Audio</Badge>
+                <Badge variant="outline">{modeLabel}</Badge>
               </div>
+              {summary?.topic && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Topic</span>
+                  <span className="font-medium">{summary.topic}</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
