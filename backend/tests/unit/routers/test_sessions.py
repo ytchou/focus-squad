@@ -7,6 +7,7 @@ Tests:
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -244,7 +245,7 @@ def _make_auth_user(auth_id: str = "auth-123", email: str = "test@example.com") 
 
 def _make_mock_profile(
     user_id: str = "user-123",
-    banned_until=None,
+    banned_until: Optional[datetime] = None,
     display_name: str = "Test",
     username: str = "testuser",
 ):

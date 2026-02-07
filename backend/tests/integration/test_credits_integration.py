@@ -1,6 +1,6 @@
 """Integration tests for credit system API endpoints."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -57,7 +57,7 @@ def mock_credit_balance():
         max_balance=4,
         gifts_sent_this_week=0,
         max_gifts_per_week=0,
-        credit_cycle_start=date.today(),
+        credit_cycle_start=datetime.now(timezone.utc).date(),
         next_refresh=datetime.now(timezone.utc) + timedelta(days=7),
         referral_code="ABC12345",
     )

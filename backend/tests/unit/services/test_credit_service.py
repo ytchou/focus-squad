@@ -1,6 +1,6 @@
 """Unit tests for CreditService."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -37,7 +37,7 @@ def sample_credit_row():
         "tier": "free",
         "credits_remaining": 2,
         "gifts_sent_this_week": 0,
-        "credit_cycle_start": date.today().isoformat(),
+        "credit_cycle_start": datetime.now(timezone.utc).date().isoformat(),
         "referral_code": "ABC12345",
         "referred_by": None,
         "referrals_completed": 0,
@@ -268,7 +268,9 @@ class TestRefreshCreditsForUser:
         # User's cycle started 8 days ago (due for refresh)
         expired_cycle = {
             **sample_credit_row,
-            "credit_cycle_start": (date.today() - timedelta(days=8)).isoformat(),
+            "credit_cycle_start": (
+                datetime.now(timezone.utc).date() - timedelta(days=8)
+            ).isoformat(),
             "credits_remaining": 1,
         }
         mock_table.select.return_value.eq.return_value.execute.return_value.data = [expired_cycle]
@@ -300,7 +302,9 @@ class TestRefreshCreditsForUser:
         # User's cycle started 3 days ago (not due yet)
         active_cycle = {
             **sample_credit_row,
-            "credit_cycle_start": (date.today() - timedelta(days=3)).isoformat(),
+            "credit_cycle_start": (
+                datetime.now(timezone.utc).date() - timedelta(days=3)
+            ).isoformat(),
         }
         mock_table.select.return_value.eq.return_value.execute.return_value.data = [active_cycle]
 
@@ -372,7 +376,9 @@ class TestUTCTimezone:
         # Cycle expired 8 days ago
         expired_cycle = {
             **sample_credit_row,
-            "credit_cycle_start": (date.today() - timedelta(days=8)).isoformat(),
+            "credit_cycle_start": (
+                datetime.now(timezone.utc).date() - timedelta(days=8)
+            ).isoformat(),
             "credits_remaining": 1,
         }
         mock_table.select.return_value.eq.return_value.execute.return_value.data = [expired_cycle]
