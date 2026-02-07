@@ -62,7 +62,7 @@ class TestGetBalance:
     """Tests for get_balance() method."""
 
     @pytest.mark.unit
-    def test_returns_balance(self, credit_service, mock_supabase, sample_credit_row):
+    def test_returns_balance(self, credit_service, mock_supabase, sample_credit_row) -> None:
         """Returns CreditBalance when record exists."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -80,7 +80,7 @@ class TestGetBalance:
         assert result.max_balance == 4  # 2x free tier
 
     @pytest.mark.unit
-    def test_not_found_raises_error(self, credit_service, mock_supabase):
+    def test_not_found_raises_error(self, credit_service, mock_supabase) -> None:
         """Raises CreditNotFoundError when no record exists."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -94,7 +94,9 @@ class TestHasSufficientCredits:
     """Tests for has_sufficient_credits() method."""
 
     @pytest.mark.unit
-    def test_returns_true_when_sufficient(self, credit_service, mock_supabase, sample_credit_row):
+    def test_returns_true_when_sufficient(
+        self, credit_service, mock_supabase, sample_credit_row
+    ) -> None:
         """Returns True when user has enough credits."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -109,7 +111,7 @@ class TestHasSufficientCredits:
     @pytest.mark.unit
     def test_returns_false_when_insufficient(
         self, credit_service, mock_supabase, sample_credit_row
-    ):
+    ) -> None:
         """Returns False when user doesn't have enough credits."""
         low_credits = {**sample_credit_row, "credits_remaining": 0}
         mock_table = MagicMock()
@@ -121,7 +123,7 @@ class TestHasSufficientCredits:
         assert result is False
 
     @pytest.mark.unit
-    def test_returns_false_when_not_found(self, credit_service, mock_supabase):
+    def test_returns_false_when_not_found(self, credit_service, mock_supabase) -> None:
         """Returns False when user has no credit record."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -138,7 +140,7 @@ class TestDeductCredit:
     @pytest.mark.unit
     def test_deducts_and_logs(
         self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
-    ):
+    ) -> None:
         """Deducts credit and creates transaction record."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -169,7 +171,7 @@ class TestDeductCredit:
     @pytest.mark.unit
     def test_insufficient_credits_raises_error(
         self, credit_service, mock_supabase, sample_credit_row
-    ):
+    ) -> None:
         """Raises InsufficientCreditsError when not enough credits."""
         low_credits = {**sample_credit_row, "credits_remaining": 0}
         mock_table = MagicMock()
@@ -193,7 +195,7 @@ class TestAddCredit:
     @pytest.mark.unit
     def test_adds_and_logs(
         self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
-    ):
+    ) -> None:
         """Adds credit and creates transaction record."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -224,7 +226,7 @@ class TestAddCredit:
     @pytest.mark.unit
     def test_caps_at_max_balance(
         self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
-    ):
+    ) -> None:
         """Credits are capped at tier's max balance (2x weekly)."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -250,7 +252,7 @@ class TestAddCredit:
         )
 
         # Verify update was called with capped value
-        update_call = mock_table.update.call_args[0][0]
+        update_call = mock_table.update.call_args.args[0]
         assert update_call["credits_remaining"] == 4  # Capped at max
 
 
@@ -260,7 +262,7 @@ class TestRefreshCreditsForUser:
     @pytest.mark.unit
     def test_refreshes_when_cycle_expired(
         self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
-    ):
+    ) -> None:
         """Refreshes credits when 7-day cycle has expired."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -294,7 +296,9 @@ class TestRefreshCreditsForUser:
         assert result.amount == 2  # Free tier gets 2 credits
 
     @pytest.mark.unit
-    def test_no_refresh_when_cycle_active(self, credit_service, mock_supabase, sample_credit_row):
+    def test_no_refresh_when_cycle_active(
+        self, credit_service, mock_supabase, sample_credit_row
+    ) -> None:
         """Does not refresh when 7-day cycle is still active."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -317,7 +321,9 @@ class TestGiftCredit:
     """Tests for gift_credit() method."""
 
     @pytest.mark.unit
-    def test_gift_not_allowed_for_free_tier(self, credit_service, mock_supabase, sample_credit_row):
+    def test_gift_not_allowed_for_free_tier(
+        self, credit_service, mock_supabase, sample_credit_row
+    ) -> None:
         """Raises GiftNotAllowedError for Free tier users."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -335,7 +341,7 @@ class TestGiftCredit:
             )
 
     @pytest.mark.unit
-    def test_gift_limit_exceeded(self, credit_service, mock_supabase, sample_credit_row):
+    def test_gift_limit_exceeded(self, credit_service, mock_supabase, sample_credit_row) -> None:
         """Raises GiftLimitExceededError when weekly limit reached."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -368,7 +374,7 @@ class TestUTCTimezone:
     @pytest.mark.unit
     def test_refresh_uses_utc_for_cycle_comparison(
         self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
-    ):
+    ) -> None:
         """refresh_credits_for_user compares dates using UTC timezone."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -392,7 +398,7 @@ class TestUTCTimezone:
 
         assert result is not None
         # Verify the update was called with UTC date for new cycle start
-        update_call = mock_table.update.call_args_list[0][0][0]
+        update_call = mock_table.update.call_args_list[0].args[0]
         assert "credit_cycle_start" in update_call
         cycle_date = update_call["credit_cycle_start"]
         # Should be today's date (UTC)
@@ -401,7 +407,7 @@ class TestUTCTimezone:
     @pytest.mark.unit
     def test_refund_timestamps_use_utc(
         self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
-    ):
+    ) -> None:
         """refund_credit uses UTC timestamp for credit_refunded_at."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -431,7 +437,7 @@ class TestUTCTimezone:
     @pytest.mark.unit
     def test_get_balance_computes_next_refresh_utc(
         self, credit_service, mock_supabase, sample_credit_row
-    ):
+    ) -> None:
         """get_balance computes next_refresh as UTC datetime."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -457,7 +463,7 @@ class TestIdempotencyKey:
     @pytest.mark.unit
     def test_deduct_passes_idempotency_key(
         self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
-    ):
+    ) -> None:
         """deduct_credit includes idempotency_key in transaction insert."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -478,13 +484,13 @@ class TestIdempotencyKey:
         )
 
         # Verify the insert included the idempotency key
-        insert_data = mock_table.insert.call_args[0][0]
+        insert_data = mock_table.insert.call_args.args[0]
         assert insert_data["idempotency_key"] == "idem-key-123"
 
     @pytest.mark.unit
     def test_deduct_omits_idempotency_key_when_none(
         self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
-    ):
+    ) -> None:
         """deduct_credit does not include idempotency_key when not provided."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -503,13 +509,13 @@ class TestIdempotencyKey:
             transaction_type=TransactionType.SESSION_JOIN,
         )
 
-        insert_data = mock_table.insert.call_args[0][0]
+        insert_data = mock_table.insert.call_args.args[0]
         assert "idempotency_key" not in insert_data
 
     @pytest.mark.unit
     def test_add_credit_passes_idempotency_key(
         self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
-    ):
+    ) -> None:
         """add_credit includes idempotency_key in transaction insert."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -530,13 +536,13 @@ class TestIdempotencyKey:
             idempotency_key="ref-key-456",
         )
 
-        insert_data = mock_table.insert.call_args[0][0]
+        insert_data = mock_table.insert.call_args.args[0]
         assert insert_data["idempotency_key"] == "ref-key-456"
 
     @pytest.mark.unit
     def test_gift_credit_passes_idempotency_key_to_rpc(
         self, credit_service, mock_supabase, sample_credit_row
-    ):
+    ) -> None:
         """gift_credit passes idempotency_key to atomic_transfer_credits RPC."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -568,8 +574,8 @@ class TestIdempotencyKey:
 
         # Verify RPC was called with idempotency key
         rpc_args = mock_supabase.rpc.call_args
-        assert rpc_args[0][0] == "atomic_transfer_credits"
-        assert rpc_args[0][1]["p_idempotency_key"] == "gift-key-789"
+        assert rpc_args.args[0] == "atomic_transfer_credits"
+        assert rpc_args.args[1]["p_idempotency_key"] == "gift-key-789"
 
 
 # =============================================================================
@@ -603,7 +609,7 @@ class TestRefundCredit:
     """Tests for refund_credit() method."""
 
     @pytest.mark.unit
-    def test_refund_already_refunded_returns_none(self, credit_service, mock_supabase):
+    def test_refund_already_refunded_returns_none(self, credit_service, mock_supabase) -> None:
         """Returns None when participant was already refunded."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -625,7 +631,7 @@ class TestRefundCredit:
     @pytest.mark.unit
     def test_refund_success_adds_credit_and_marks(
         self, credit_service, mock_supabase, sample_credit_row, refund_transaction_row
-    ):
+    ) -> None:
         """Full refund flow: adds credit back and marks participant refunded."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -658,13 +664,13 @@ class TestRefundCredit:
         # Verify participant was marked as refunded via update call
         # At least one update call should include credit_refunded_at
         update_calls = mock_table.update.call_args_list
-        refunded_at_updates = [c for c in update_calls if "credit_refunded_at" in c[0][0]]
+        refunded_at_updates = [c for c in update_calls if "credit_refunded_at" in c.args[0]]
         assert len(refunded_at_updates) >= 1
 
     @pytest.mark.unit
     def test_refund_returns_transaction(
         self, credit_service, mock_supabase, sample_credit_row, refund_transaction_row
-    ):
+    ) -> None:
         """Verify refund returns the CreditTransaction from add_credit."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -699,7 +705,7 @@ class TestGiftCreditEdgeCases:
     """Edge case tests for gift_credit() method."""
 
     @pytest.mark.unit
-    def test_gift_self_raises_error(self, credit_service, mock_supabase):
+    def test_gift_self_raises_error(self, credit_service, mock_supabase) -> None:
         """Raises CreditServiceError when gifting to yourself."""
         from app.models.credit import CreditServiceError
 
@@ -711,7 +717,7 @@ class TestGiftCreditEdgeCases:
             )
 
     @pytest.mark.unit
-    def test_gift_recipient_not_found(self, credit_service, mock_supabase, pro_credit_row):
+    def test_gift_recipient_not_found(self, credit_service, mock_supabase, pro_credit_row) -> None:
         """Raises CreditNotFoundError when recipient doesn't exist."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -740,7 +746,9 @@ class TestGiftCreditEdgeCases:
             )
 
     @pytest.mark.unit
-    def test_gift_rpc_insufficient_credits(self, credit_service, mock_supabase, pro_credit_row):
+    def test_gift_rpc_insufficient_credits(
+        self, credit_service, mock_supabase, pro_credit_row
+    ) -> None:
         """Raises InsufficientCreditsError when RPC reports insufficient credits."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -759,7 +767,7 @@ class TestGiftCreditEdgeCases:
             )
 
     @pytest.mark.unit
-    def test_gift_rpc_generic_error(self, credit_service, mock_supabase, pro_credit_row):
+    def test_gift_rpc_generic_error(self, credit_service, mock_supabase, pro_credit_row) -> None:
         """Raises CreditServiceError when RPC reports a generic error."""
         from app.models.credit import CreditServiceError
 
@@ -783,7 +791,9 @@ class TestGetReferralInfo:
     """Tests for get_referral_info() method."""
 
     @pytest.mark.unit
-    def test_get_referral_info_no_referrer(self, credit_service, mock_supabase, sample_credit_row):
+    def test_get_referral_info_no_referrer(
+        self, credit_service, mock_supabase, sample_credit_row
+    ) -> None:
         """Returns ReferralInfo with referred_by=None when user has no referrer."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -805,7 +815,7 @@ class TestGetReferralInfo:
     @pytest.mark.unit
     def test_get_referral_info_with_referrer(
         self, credit_service, mock_supabase, sample_credit_row
-    ):
+    ) -> None:
         """Returns ReferralInfo with referrer's username when user has a referrer."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -828,7 +838,7 @@ class TestApplyReferralCode:
     """Tests for apply_referral_code() method."""
 
     @pytest.mark.unit
-    def test_apply_success(self, credit_service, mock_supabase, sample_credit_row):
+    def test_apply_success(self, credit_service, mock_supabase, sample_credit_row) -> None:
         """Happy path: applies referral code and returns referrer username."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -860,7 +870,7 @@ class TestApplyReferralCode:
         assert result == "my_referrer"
 
     @pytest.mark.unit
-    def test_apply_already_applied(self, credit_service, mock_supabase, sample_credit_row):
+    def test_apply_already_applied(self, credit_service, mock_supabase, sample_credit_row) -> None:
         """Raises ReferralAlreadyAppliedError when user already has a referrer."""
         from app.models.credit import ReferralAlreadyAppliedError
 
@@ -875,7 +885,7 @@ class TestApplyReferralCode:
             credit_service.apply_referral_code("user-123", "SOMECODE")
 
     @pytest.mark.unit
-    def test_apply_self_referral(self, credit_service, mock_supabase, sample_credit_row):
+    def test_apply_self_referral(self, credit_service, mock_supabase, sample_credit_row) -> None:
         """Raises SelfReferralError when user tries to use their own code."""
         from app.models.credit import SelfReferralError
 
@@ -891,7 +901,7 @@ class TestApplyReferralCode:
             credit_service.apply_referral_code("user-123", "ABC12345")
 
     @pytest.mark.unit
-    def test_apply_invalid_code(self, credit_service, mock_supabase, sample_credit_row):
+    def test_apply_invalid_code(self, credit_service, mock_supabase, sample_credit_row) -> None:
         """Raises InvalidReferralCodeError when code doesn't exist."""
         from app.models.credit import InvalidReferralCodeError
 
@@ -915,7 +925,7 @@ class TestAwardReferralBonus:
     @pytest.mark.unit
     def test_award_no_referrer_returns_false(
         self, credit_service, mock_supabase, sample_credit_row
-    ):
+    ) -> None:
         """Returns False when user has no referrer."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -932,7 +942,7 @@ class TestAwardReferralBonus:
     @pytest.mark.unit
     def test_award_first_session_awards_both(
         self, credit_service, mock_supabase, sample_credit_row, sample_transaction_row
-    ):
+    ) -> None:
         """Awards +1 credit to both user and referrer on first completed session."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -967,7 +977,7 @@ class TestAwardReferralBonus:
     @pytest.mark.unit
     def test_award_not_first_session_returns_false(
         self, credit_service, mock_supabase, sample_credit_row
-    ):
+    ) -> None:
         """Returns False when user has already completed more than one session."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table

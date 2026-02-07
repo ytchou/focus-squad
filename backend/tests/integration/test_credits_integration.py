@@ -98,7 +98,7 @@ def mock_credit_service(mock_credit_balance, mock_referral_info):
 
 
 @pytest.fixture
-def test_app(mock_auth_user, mock_user_service, mock_credit_service):
+def test_app(mock_auth_user, mock_user_service, mock_credit_service) -> None:
     """Create test FastAPI app with dependency overrides."""
     app = FastAPI()
     app.include_router(router, prefix="/api/v1/credits")
@@ -125,7 +125,7 @@ class TestGetBalance:
         self,
         client,
         mock_credit_balance,
-    ):
+    ) -> None:
         """Returns credit balance for authenticated user."""
         response = client.get("/api/v1/credits/balance")
 
@@ -138,7 +138,7 @@ class TestGetBalance:
         assert data["referral_code"] == "ABC12345"
 
     @pytest.mark.integration
-    def test_returns_401_without_auth(self):
+    def test_returns_401_without_auth(self) -> None:
         """Returns 401 when no token provided."""
         # Create app without auth override (requires real auth)
         app = FastAPI()
@@ -150,7 +150,7 @@ class TestGetBalance:
         assert response.status_code == 401
 
     @pytest.mark.integration
-    def test_returns_404_when_user_not_found(self, mock_auth_user, mock_credit_service):
+    def test_returns_404_when_user_not_found(self, mock_auth_user, mock_credit_service) -> None:
         """Returns 404 when user profile not found."""
         # Create app with user service returning None
         app = FastAPI()
@@ -170,7 +170,9 @@ class TestGetBalance:
         assert "User not found" in response.json()["detail"]
 
     @pytest.mark.integration
-    def test_returns_404_when_credit_record_not_found(self, mock_auth_user, mock_user_service):
+    def test_returns_404_when_credit_record_not_found(
+        self, mock_auth_user, mock_user_service
+    ) -> None:
         """Returns 404 when credit record not found."""
         app = FastAPI()
         app.include_router(router, prefix="/api/v1/credits")
@@ -193,7 +195,7 @@ class TestGiftCredits:
     """Tests for POST /api/v1/credits/gift endpoint."""
 
     @pytest.mark.integration
-    def test_gift_success(self, mock_auth_user, mock_user_service):
+    def test_gift_success(self, mock_auth_user, mock_user_service) -> None:
         """Successfully gifts credits to another user."""
         app = FastAPI()
         app.include_router(router, prefix="/api/v1/credits")
@@ -221,7 +223,7 @@ class TestGiftCredits:
         assert data["new_balance"] == 7
 
     @pytest.mark.integration
-    def test_gift_forbidden_for_free_tier(self, mock_auth_user, mock_user_service):
+    def test_gift_forbidden_for_free_tier(self, mock_auth_user, mock_user_service) -> None:
         """Returns 403 when free tier user tries to gift."""
         app = FastAPI()
         app.include_router(router, prefix="/api/v1/credits")
@@ -243,7 +245,7 @@ class TestGiftCredits:
         assert "Upgrade to Pro or Elite" in response.json()["detail"]
 
     @pytest.mark.integration
-    def test_gift_limit_exceeded(self, mock_auth_user, mock_user_service):
+    def test_gift_limit_exceeded(self, mock_auth_user, mock_user_service) -> None:
         """Returns 400 when weekly gift limit exceeded."""
         app = FastAPI()
         app.include_router(router, prefix="/api/v1/credits")
@@ -265,7 +267,7 @@ class TestGiftCredits:
         assert "Weekly gift limit reached" in response.json()["detail"]
 
     @pytest.mark.integration
-    def test_gift_insufficient_credits(self, mock_auth_user, mock_user_service):
+    def test_gift_insufficient_credits(self, mock_auth_user, mock_user_service) -> None:
         """Returns 402 when sender has insufficient credits."""
         app = FastAPI()
         app.include_router(router, prefix="/api/v1/credits")
@@ -293,7 +295,7 @@ class TestGetReferralInfo:
     """Tests for GET /api/v1/credits/referral endpoint."""
 
     @pytest.mark.integration
-    def test_returns_referral_info(self, client, mock_referral_info):
+    def test_returns_referral_info(self, client, mock_referral_info) -> None:
         """Returns referral info for authenticated user."""
         response = client.get("/api/v1/credits/referral")
 
@@ -308,7 +310,7 @@ class TestApplyReferralCode:
     """Tests for POST /api/v1/credits/referral/apply endpoint."""
 
     @pytest.mark.integration
-    def test_apply_referral_success(self, mock_auth_user, mock_user_service):
+    def test_apply_referral_success(self, mock_auth_user, mock_user_service) -> None:
         """Successfully applies referral code."""
         app = FastAPI()
         app.include_router(router, prefix="/api/v1/credits")
@@ -332,7 +334,7 @@ class TestApplyReferralCode:
         assert data["referred_by_username"] == "referrer_user"
 
     @pytest.mark.integration
-    def test_apply_referral_already_applied(self, mock_auth_user, mock_user_service):
+    def test_apply_referral_already_applied(self, mock_auth_user, mock_user_service) -> None:
         """Returns 400 when user already has a referrer."""
         app = FastAPI()
         app.include_router(router, prefix="/api/v1/credits")
@@ -354,7 +356,7 @@ class TestApplyReferralCode:
         assert "already used a referral code" in response.json()["detail"]
 
     @pytest.mark.integration
-    def test_apply_own_referral_code(self, mock_auth_user, mock_user_service):
+    def test_apply_own_referral_code(self, mock_auth_user, mock_user_service) -> None:
         """Returns 400 when user tries to use own code."""
         app = FastAPI()
         app.include_router(router, prefix="/api/v1/credits")
@@ -376,7 +378,7 @@ class TestApplyReferralCode:
         assert "own referral code" in response.json()["detail"]
 
     @pytest.mark.integration
-    def test_apply_invalid_referral_code(self, mock_auth_user, mock_user_service):
+    def test_apply_invalid_referral_code(self, mock_auth_user, mock_user_service) -> None:
         """Returns 404 when referral code doesn't exist."""
         app = FastAPI()
         app.include_router(router, prefix="/api/v1/credits")

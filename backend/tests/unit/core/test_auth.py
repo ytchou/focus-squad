@@ -24,7 +24,7 @@ class TestGetJwks:
     """Tests for get_jwks() function."""
 
     @pytest.mark.unit
-    def test_fetches_jwks_from_supabase(self, test_jwks):
+    def test_fetches_jwks_from_supabase(self, test_jwks) -> None:
         """Successfully fetches JWKS from Supabase endpoint."""
         with patch("app.core.auth.httpx.get") as mock_get:
             mock_response = MagicMock()
@@ -39,7 +39,7 @@ class TestGetJwks:
             mock_get.assert_called_once()
 
     @pytest.mark.unit
-    def test_returns_cached_jwks_on_subsequent_calls(self, test_jwks):
+    def test_returns_cached_jwks_on_subsequent_calls(self, test_jwks) -> None:
         """Returns cached JWKS without making additional HTTP requests."""
         with patch("app.core.auth.httpx.get") as mock_get:
             mock_response = MagicMock()
@@ -56,7 +56,7 @@ class TestGetJwks:
             mock_get.assert_called_once()  # Only one HTTP call
 
     @pytest.mark.unit
-    def test_raises_503_on_http_error(self):
+    def test_raises_503_on_http_error(self) -> None:
         """Raises 503 when JWKS fetch fails."""
         with patch("app.core.auth.httpx.get") as mock_get:
             mock_get.side_effect = httpx.HTTPError("Connection failed")
@@ -72,7 +72,7 @@ class TestGetSigningKey:
     """Tests for get_signing_key() function."""
 
     @pytest.mark.unit
-    def test_returns_matching_key_by_kid(self, valid_jwt_token, test_jwks, jwks_key_id):
+    def test_returns_matching_key_by_kid(self, valid_jwt_token, test_jwks, jwks_key_id) -> None:
         """Returns the key matching the token's kid."""
         with patch("app.core.auth.get_jwks") as mock_get_jwks:
             mock_get_jwks.return_value = test_jwks
@@ -83,7 +83,7 @@ class TestGetSigningKey:
             assert result["kty"] == "RSA"
 
     @pytest.mark.unit
-    def test_returns_first_key_when_no_kid_match(self, test_jwks, rsa_private_key_pem):
+    def test_returns_first_key_when_no_kid_match(self, test_jwks, rsa_private_key_pem) -> None:
         """Falls back to first key when no kid matches."""
         from jose import jwt
 
@@ -104,7 +104,7 @@ class TestGetSigningKey:
             assert result == test_jwks["keys"][0]
 
     @pytest.mark.unit
-    def test_raises_401_on_invalid_token_header(self):
+    def test_raises_401_on_invalid_token_header(self) -> None:
         """Raises 401 for malformed token header."""
         with patch("app.core.auth.get_jwks") as mock_get_jwks:
             mock_get_jwks.return_value = {"keys": [{"kid": "test-key"}]}
@@ -116,7 +116,7 @@ class TestGetSigningKey:
             assert "Invalid token header" in exc_info.value.detail
 
     @pytest.mark.unit
-    def test_raises_401_when_no_keys_in_jwks(self, valid_jwt_token):
+    def test_raises_401_when_no_keys_in_jwks(self, valid_jwt_token) -> None:
         """Raises 401 when JWKS has no keys."""
         with patch("app.core.auth.get_jwks") as mock_get_jwks:
             mock_get_jwks.return_value = {"keys": []}
@@ -132,7 +132,7 @@ class TestDecodeSupabaseToken:
     """Tests for decode_supabase_token() function."""
 
     @pytest.mark.unit
-    def test_decodes_valid_token(self, valid_jwt_token, test_jwks, valid_jwt_claims):
+    def test_decodes_valid_token(self, valid_jwt_token, test_jwks, valid_jwt_claims) -> None:
         """Successfully decodes a valid JWT token."""
         with patch("app.core.auth.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
@@ -143,7 +143,7 @@ class TestDecodeSupabaseToken:
             assert result["email"] == valid_jwt_claims["email"]
 
     @pytest.mark.unit
-    def test_raises_401_on_expired_token(self, expired_jwt_token, test_jwks):
+    def test_raises_401_on_expired_token(self, expired_jwt_token, test_jwks) -> None:
         """Raises 401 for expired tokens."""
         with patch("app.core.auth.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
@@ -155,7 +155,7 @@ class TestDecodeSupabaseToken:
             assert "Invalid token" in exc_info.value.detail
 
     @pytest.mark.unit
-    def test_raises_401_on_wrong_audience(self, wrong_audience_jwt_token, test_jwks):
+    def test_raises_401_on_wrong_audience(self, wrong_audience_jwt_token, test_jwks) -> None:
         """Raises 401 for tokens with wrong audience."""
         with patch("app.core.auth.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
@@ -166,7 +166,7 @@ class TestDecodeSupabaseToken:
             assert exc_info.value.status_code == 401
 
     @pytest.mark.unit
-    def test_raises_401_on_invalid_signature(self, wrong_signature_jwt_token, test_jwks):
+    def test_raises_401_on_invalid_signature(self, wrong_signature_jwt_token, test_jwks) -> None:
         """Raises 401 for tokens with invalid signature."""
         with patch("app.core.auth.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
@@ -183,7 +183,7 @@ class TestGetCurrentUser:
     @pytest.mark.unit
     async def test_returns_auth_user_with_valid_token(
         self, mock_bearer_credentials, valid_jwt_claims
-    ):
+    ) -> None:
         """Returns AuthUser for valid credentials."""
         with patch("app.core.auth.decode_supabase_token") as mock_decode:
             mock_decode.return_value = valid_jwt_claims
@@ -195,7 +195,7 @@ class TestGetCurrentUser:
             assert result.email == valid_jwt_claims["email"]
 
     @pytest.mark.unit
-    async def test_raises_401_when_no_credentials(self):
+    async def test_raises_401_when_no_credentials(self) -> None:
         """Raises 401 when no credentials provided."""
         with pytest.raises(HTTPException) as exc_info:
             await get_current_user(None)
@@ -204,7 +204,7 @@ class TestGetCurrentUser:
         assert "Authentication required" in exc_info.value.detail
 
     @pytest.mark.unit
-    async def test_raises_401_when_token_missing_sub(self, mock_bearer_credentials):
+    async def test_raises_401_when_token_missing_sub(self, mock_bearer_credentials) -> None:
         """Raises 401 when token is missing 'sub' claim."""
         with patch("app.core.auth.decode_supabase_token") as mock_decode:
             mock_decode.return_value = {"email": "test@example.com"}  # No 'sub'
@@ -216,7 +216,7 @@ class TestGetCurrentUser:
             assert "missing user ID" in exc_info.value.detail
 
     @pytest.mark.unit
-    async def test_handles_missing_email_gracefully(self, mock_bearer_credentials):
+    async def test_handles_missing_email_gracefully(self, mock_bearer_credentials) -> None:
         """Returns empty email when email claim is missing."""
         with patch("app.core.auth.decode_supabase_token") as mock_decode:
             mock_decode.return_value = {"sub": "user-123"}  # No email
@@ -233,7 +233,7 @@ class TestGetOptionalUser:
     @pytest.mark.unit
     async def test_returns_authenticated_user_with_valid_token(
         self, mock_bearer_credentials, valid_jwt_claims
-    ):
+    ) -> None:
         """Returns authenticated user for valid credentials."""
         with patch("app.core.auth.decode_supabase_token") as mock_decode:
             mock_decode.return_value = valid_jwt_claims
@@ -245,7 +245,7 @@ class TestGetOptionalUser:
             assert result.auth_id == valid_jwt_claims["sub"]
 
     @pytest.mark.unit
-    async def test_returns_unauthenticated_when_no_credentials(self):
+    async def test_returns_unauthenticated_when_no_credentials(self) -> None:
         """Returns unauthenticated user when no credentials."""
         result = await get_optional_user(None)
 
@@ -254,7 +254,7 @@ class TestGetOptionalUser:
         assert result.auth_id is None
 
     @pytest.mark.unit
-    async def test_returns_unauthenticated_on_invalid_token(self, mock_bearer_credentials):
+    async def test_returns_unauthenticated_on_invalid_token(self, mock_bearer_credentials) -> None:
         """Returns unauthenticated user when token is invalid."""
         with patch("app.core.auth.decode_supabase_token") as mock_decode:
             mock_decode.side_effect = HTTPException(status_code=401, detail="Invalid")
@@ -264,7 +264,7 @@ class TestGetOptionalUser:
             assert result.is_authenticated is False
 
     @pytest.mark.unit
-    async def test_returns_unauthenticated_when_missing_sub(self, mock_bearer_credentials):
+    async def test_returns_unauthenticated_when_missing_sub(self, mock_bearer_credentials) -> None:
         """Returns unauthenticated when token missing 'sub'."""
         with patch("app.core.auth.decode_supabase_token") as mock_decode:
             mock_decode.return_value = {"email": "test@example.com"}  # No sub
@@ -278,7 +278,7 @@ class TestGetUserFromState:
     """Tests for get_user_from_state() dependency."""
 
     @pytest.mark.unit
-    async def test_returns_user_from_state(self, mock_request_authenticated):
+    async def test_returns_user_from_state(self, mock_request_authenticated) -> None:
         """Returns user attached to request.state."""
         result = await get_user_from_state(mock_request_authenticated)
 
@@ -286,7 +286,7 @@ class TestGetUserFromState:
         assert result.auth_id == "auth-user-uuid-12345"
 
     @pytest.mark.unit
-    async def test_returns_unauthenticated_when_no_user_in_state(self, mock_request):
+    async def test_returns_unauthenticated_when_no_user_in_state(self, mock_request) -> None:
         """Returns unauthenticated when state.user is None."""
         mock_request.state.user = None
 
@@ -295,7 +295,7 @@ class TestGetUserFromState:
         assert result.is_authenticated is False
 
     @pytest.mark.unit
-    async def test_returns_unauthenticated_when_state_missing(self):
+    async def test_returns_unauthenticated_when_state_missing(self) -> None:
         """Returns unauthenticated when state attribute missing."""
         request = MagicMock()
         # Simulate missing user attribute
@@ -310,7 +310,7 @@ class TestRequireAuthFromState:
     """Tests for require_auth_from_state() dependency."""
 
     @pytest.mark.unit
-    async def test_returns_auth_user_when_authenticated(self, mock_request_authenticated):
+    async def test_returns_auth_user_when_authenticated(self, mock_request_authenticated) -> None:
         """Returns AuthUser when request has authenticated user."""
         result = await require_auth_from_state(mock_request_authenticated)
 
@@ -318,7 +318,7 @@ class TestRequireAuthFromState:
         assert result.auth_id == "auth-user-uuid-12345"
 
     @pytest.mark.unit
-    async def test_raises_401_when_not_authenticated(self, mock_request_unauthenticated):
+    async def test_raises_401_when_not_authenticated(self, mock_request_unauthenticated) -> None:
         """Raises 401 when user is not authenticated."""
         with pytest.raises(HTTPException) as exc_info:
             await require_auth_from_state(mock_request_unauthenticated)
@@ -327,7 +327,7 @@ class TestRequireAuthFromState:
         assert "Authentication required" in exc_info.value.detail
 
     @pytest.mark.unit
-    async def test_raises_401_when_no_user_in_state(self, mock_request):
+    async def test_raises_401_when_no_user_in_state(self, mock_request) -> None:
         """Raises 401 when state.user is None."""
         mock_request.state.user = None
 
@@ -337,7 +337,7 @@ class TestRequireAuthFromState:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.unit
-    async def test_includes_token_error_in_detail(self, mock_request_with_token_error):
+    async def test_includes_token_error_in_detail(self, mock_request_with_token_error) -> None:
         """Includes token error message in 401 detail."""
         with pytest.raises(HTTPException) as exc_info:
             await require_auth_from_state(mock_request_with_token_error)
@@ -349,7 +349,7 @@ class TestAuthUserModel:
     """Tests for AuthUser Pydantic model."""
 
     @pytest.mark.unit
-    def test_creates_auth_user(self):
+    def test_creates_auth_user(self) -> None:
         """Creates AuthUser with required fields."""
         user = AuthUser(auth_id="123", email="test@example.com")
 
@@ -357,13 +357,13 @@ class TestAuthUserModel:
         assert user.email == "test@example.com"
 
     @pytest.mark.unit
-    def test_auth_user_requires_auth_id(self):
+    def test_auth_user_requires_auth_id(self) -> None:
         """AuthUser requires auth_id field."""
         with pytest.raises(ValidationError):
             AuthUser(email="test@example.com")  # type: ignore
 
     @pytest.mark.unit
-    def test_auth_user_requires_email(self):
+    def test_auth_user_requires_email(self) -> None:
         """AuthUser requires email field."""
         with pytest.raises(ValidationError):
             AuthUser(auth_id="123")  # type: ignore
@@ -373,7 +373,7 @@ class TestAuthOptionalUserModel:
     """Tests for AuthOptionalUser Pydantic model."""
 
     @pytest.mark.unit
-    def test_creates_unauthenticated_by_default(self):
+    def test_creates_unauthenticated_by_default(self) -> None:
         """Creates unauthenticated user by default."""
         user = AuthOptionalUser()
 
@@ -382,7 +382,7 @@ class TestAuthOptionalUserModel:
         assert user.email is None
 
     @pytest.mark.unit
-    def test_creates_authenticated_user(self):
+    def test_creates_authenticated_user(self) -> None:
         """Creates authenticated user with all fields."""
         user = AuthOptionalUser(auth_id="123", email="test@example.com", is_authenticated=True)
 

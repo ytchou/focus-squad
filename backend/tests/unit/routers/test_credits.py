@@ -86,7 +86,9 @@ class TestGetCreditBalance:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_returns_balance(self, mock_user, credit_service, user_service, mock_profile):
+    async def test_returns_balance(
+        self, mock_user, credit_service, user_service, mock_profile
+    ) -> None:
         """Happy path: returns CreditBalance from service."""
         expected_balance = MagicMock()
         credit_service.get_balance.return_value = expected_balance
@@ -105,7 +107,7 @@ class TestGetCreditBalance:
     @pytest.mark.asyncio
     async def test_user_not_found_raises_404(
         self, mock_user, credit_service, user_service_no_profile
-    ):
+    ) -> None:
         """User not in database raises 404."""
         with pytest.raises(HTTPException) as exc_info:
             await get_credit_balance(
@@ -119,7 +121,9 @@ class TestGetCreditBalance:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_credit_not_found_raises_404(self, mock_user, credit_service, user_service):
+    async def test_credit_not_found_raises_404(
+        self, mock_user, credit_service, user_service
+    ) -> None:
         """Missing credit record raises 404 with onboarding hint."""
         credit_service.get_balance.side_effect = CreditNotFoundError("not found")
 
@@ -145,7 +149,9 @@ class TestGiftCredits:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_gift_success(self, mock_user, credit_service, user_service, mock_profile):
+    async def test_gift_success(
+        self, mock_user, credit_service, user_service, mock_profile
+    ) -> None:
         """Happy path: gift processed and response returned."""
         expected_response = MagicMock()
         credit_service.gift_credit.return_value = expected_response
@@ -171,7 +177,7 @@ class TestGiftCredits:
     @pytest.mark.asyncio
     async def test_gift_without_idempotency_key(
         self, mock_user, credit_service, user_service, mock_profile
-    ):
+    ) -> None:
         """Idempotency key is optional and passes None when absent."""
         expected_response = MagicMock()
         credit_service.gift_credit.return_value = expected_response
@@ -197,7 +203,7 @@ class TestGiftCredits:
     @pytest.mark.asyncio
     async def test_gift_user_not_found_raises_404(
         self, mock_user, credit_service, user_service_no_profile
-    ):
+    ) -> None:
         """Sender not in database raises 404."""
         request = GiftRequest(recipient_user_id="recipient-789", amount=1)
 
@@ -215,7 +221,9 @@ class TestGiftCredits:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_gift_not_allowed_raises_403(self, mock_user, credit_service, user_service):
+    async def test_gift_not_allowed_raises_403(
+        self, mock_user, credit_service, user_service
+    ) -> None:
         """Free tier user attempting to gift raises 403."""
         credit_service.gift_credit.side_effect = GiftNotAllowedError(tier=UserTier.FREE)
         request = GiftRequest(recipient_user_id="recipient-789", amount=1)
@@ -235,7 +243,9 @@ class TestGiftCredits:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_gift_limit_exceeded_raises_400(self, mock_user, credit_service, user_service):
+    async def test_gift_limit_exceeded_raises_400(
+        self, mock_user, credit_service, user_service
+    ) -> None:
         """Exceeded weekly gift limit raises 400."""
         credit_service.gift_credit.side_effect = GiftLimitExceededError(sent=4, limit=4)
         request = GiftRequest(recipient_user_id="recipient-789", amount=1)
@@ -255,7 +265,9 @@ class TestGiftCredits:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_insufficient_credits_raises_402(self, mock_user, credit_service, user_service):
+    async def test_insufficient_credits_raises_402(
+        self, mock_user, credit_service, user_service
+    ) -> None:
         """Not enough credits to gift raises 402."""
         credit_service.gift_credit.side_effect = InsufficientCreditsError(
             user_id="user-uuid-456", available=0, required=2
@@ -279,7 +291,7 @@ class TestGiftCredits:
     @pytest.mark.asyncio
     async def test_recipient_credit_not_found_raises_404(
         self, mock_user, credit_service, user_service
-    ):
+    ) -> None:
         """Recipient credit record missing raises 404 with recipient detail."""
         credit_service.gift_credit.side_effect = CreditNotFoundError(
             "Recipient credit record not found"
@@ -302,7 +314,7 @@ class TestGiftCredits:
     @pytest.mark.asyncio
     async def test_sender_credit_not_found_raises_404(
         self, mock_user, credit_service, user_service
-    ):
+    ) -> None:
         """Sender credit record missing raises 404 with generic detail."""
         credit_service.gift_credit.side_effect = CreditNotFoundError(
             "Sender credit record not found"
@@ -334,7 +346,7 @@ class TestGetReferralInfo:
     @pytest.mark.asyncio
     async def test_returns_referral_info(
         self, mock_user, credit_service, user_service, mock_profile
-    ):
+    ) -> None:
         """Happy path: returns ReferralInfo from service."""
         expected_info = MagicMock()
         credit_service.get_referral_info.return_value = expected_info
@@ -353,7 +365,7 @@ class TestGetReferralInfo:
     @pytest.mark.asyncio
     async def test_user_not_found_raises_404(
         self, mock_user, credit_service, user_service_no_profile
-    ):
+    ) -> None:
         """User not in database raises 404."""
         with pytest.raises(HTTPException) as exc_info:
             await get_referral_info(
@@ -367,7 +379,9 @@ class TestGetReferralInfo:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_credit_not_found_raises_404(self, mock_user, credit_service, user_service):
+    async def test_credit_not_found_raises_404(
+        self, mock_user, credit_service, user_service
+    ) -> None:
         """Missing credit record raises 404."""
         credit_service.get_referral_info.side_effect = CreditNotFoundError("not found")
 
@@ -392,7 +406,9 @@ class TestApplyReferralCode:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_apply_success(self, mock_user, credit_service, user_service, mock_profile):
+    async def test_apply_success(
+        self, mock_user, credit_service, user_service, mock_profile
+    ) -> None:
         """Happy path: referral applied, returns success response."""
         credit_service.apply_referral_code.return_value = "referrer_user"
         request = ApplyReferralRequest(referral_code="ABC123")
@@ -416,7 +432,7 @@ class TestApplyReferralCode:
     @pytest.mark.asyncio
     async def test_user_not_found_raises_404(
         self, mock_user, credit_service, user_service_no_profile
-    ):
+    ) -> None:
         """User not in database raises 404."""
         request = ApplyReferralRequest(referral_code="ABC123")
 
@@ -435,7 +451,7 @@ class TestApplyReferralCode:
     @pytest.mark.asyncio
     async def test_referral_already_applied_raises_400(
         self, mock_user, credit_service, user_service
-    ):
+    ) -> None:
         """User already used a referral code raises 400."""
         credit_service.apply_referral_code.side_effect = ReferralAlreadyAppliedError(
             "already applied"
@@ -455,7 +471,7 @@ class TestApplyReferralCode:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_self_referral_raises_400(self, mock_user, credit_service, user_service):
+    async def test_self_referral_raises_400(self, mock_user, credit_service, user_service) -> None:
         """Using own referral code raises 400."""
         credit_service.apply_referral_code.side_effect = SelfReferralError("self referral")
         request = ApplyReferralRequest(referral_code="MY_OWN")
@@ -473,7 +489,9 @@ class TestApplyReferralCode:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_invalid_referral_code_raises_404(self, mock_user, credit_service, user_service):
+    async def test_invalid_referral_code_raises_404(
+        self, mock_user, credit_service, user_service
+    ) -> None:
         """Non-existent referral code raises 404."""
         credit_service.apply_referral_code.side_effect = InvalidReferralCodeError("invalid")
         request = ApplyReferralRequest(referral_code="BOGUS")
@@ -491,7 +509,9 @@ class TestApplyReferralCode:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_credit_not_found_raises_404(self, mock_user, credit_service, user_service):
+    async def test_credit_not_found_raises_404(
+        self, mock_user, credit_service, user_service
+    ) -> None:
         """Missing credit record raises 404."""
         credit_service.apply_referral_code.side_effect = CreditNotFoundError("not found")
         request = ApplyReferralRequest(referral_code="VALID")

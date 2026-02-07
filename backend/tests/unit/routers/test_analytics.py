@@ -54,7 +54,7 @@ class TestTrackEvent:
     @pytest.mark.asyncio
     async def test_happy_path_profile_found_tracking_succeeds(
         self, mock_user, mock_analytics_service, mock_user_service, track_request
-    ):
+    ) -> None:
         """Profile found and tracking succeeds returns success=True."""
         result = await track_event(
             request=track_request,
@@ -76,7 +76,7 @@ class TestTrackEvent:
     @pytest.mark.asyncio
     async def test_profile_not_found_returns_success(
         self, mock_user, mock_analytics_service, mock_user_service, track_request
-    ):
+    ) -> None:
         """When user profile is not found, still returns success=True."""
         mock_user_service.get_user_by_auth_id.return_value = None
 
@@ -95,7 +95,7 @@ class TestTrackEvent:
     @pytest.mark.asyncio
     async def test_analytics_service_raises_returns_success(
         self, mock_user, mock_analytics_service, mock_user_service, track_request
-    ):
+    ) -> None:
         """When analytics_service.track_event raises, still returns success=True."""
         mock_analytics_service.track_event.side_effect = Exception("Tracking failed")
 
@@ -113,7 +113,7 @@ class TestTrackEvent:
     @pytest.mark.asyncio
     async def test_user_service_raises_returns_success(
         self, mock_user, mock_analytics_service, mock_user_service, track_request
-    ):
+    ) -> None:
         """When user_service.get_user_by_auth_id raises, still returns success=True."""
         mock_user_service.get_user_by_auth_id.side_effect = Exception("DB connection lost")
 

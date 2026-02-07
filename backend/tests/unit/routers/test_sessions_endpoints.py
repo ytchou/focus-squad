@@ -143,7 +143,7 @@ class TestGetSessionSummary:
     @pytest.mark.unit
     async def test_happy_path_with_active_minutes(
         self, auth_user, mock_user_service, mock_session_service
-    ):
+    ) -> None:
         """Focus minutes = min(total_active_minutes, 45) when total_active > 0."""
         participant_data = [
             {
@@ -172,7 +172,7 @@ class TestGetSessionSummary:
     @pytest.mark.unit
     async def test_focus_minutes_capped_at_45(
         self, auth_user, mock_user_service, mock_session_service
-    ):
+    ) -> None:
         """Focus minutes are capped at 45 even if total_active is higher."""
         participant_data = [
             {
@@ -198,7 +198,7 @@ class TestGetSessionSummary:
     @pytest.mark.unit
     async def test_estimates_from_connection_time_when_no_active_minutes(
         self, auth_user, mock_user_service, mock_session_service
-    ):
+    ) -> None:
         """Estimates focus minutes from connected_at when total_active_minutes = 0."""
         connected_at = (datetime.now(timezone.utc) - timedelta(minutes=20)).isoformat()
         participant_data = [
@@ -226,7 +226,7 @@ class TestGetSessionSummary:
     @pytest.mark.unit
     async def test_no_participant_data_returns_zero_focus(
         self, auth_user, mock_user_service, mock_session_service
-    ):
+    ) -> None:
         """Returns focus_minutes = 0 when no participant record found."""
         mock_supabase = _make_supabase_participant_mock([])
 
@@ -245,7 +245,7 @@ class TestGetSessionSummary:
     @pytest.mark.unit
     async def test_user_not_found_raises_404(
         self, auth_user, mock_user_service_no_user, mock_session_service
-    ):
+    ) -> None:
         """Raises 404 when user profile is not found."""
         with pytest.raises(HTTPException) as exc_info:
             await get_session_summary(
@@ -259,7 +259,7 @@ class TestGetSessionSummary:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_session_not_found_raises_404(self, auth_user, mock_user_service):
+    async def test_session_not_found_raises_404(self, auth_user, mock_user_service) -> None:
         """Raises 404 when session does not exist."""
         session_service = MagicMock()
         session_service.get_session_by_id.return_value = None
@@ -278,7 +278,7 @@ class TestGetSessionSummary:
     @pytest.mark.unit
     async def test_not_participant_raises_403(
         self, auth_user, mock_user_service, base_session_data
-    ):
+    ) -> None:
         """Raises 403 when user is not a participant in the session."""
         session_service = MagicMock()
         session_service.get_session_by_id.return_value = base_session_data
@@ -295,7 +295,7 @@ class TestGetSessionSummary:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_phase_ended_gives_5_phases_completed(self, auth_user, mock_user_service):
+    async def test_phase_ended_gives_5_phases_completed(self, auth_user, mock_user_service) -> None:
         """Phase 'ended' results in phases_completed = 5."""
         session_data = {
             "id": "session-abc",
@@ -336,7 +336,7 @@ class TestGetSessionSummary:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_phase_work_1_gives_1_phase_completed(self, auth_user, mock_user_service):
+    async def test_phase_work_1_gives_1_phase_completed(self, auth_user, mock_user_service) -> None:
         """Phase 'work_1' is at index 1 in phase_order, so phases_completed = 1."""
         session_data = {
             "id": "session-abc",
@@ -376,7 +376,7 @@ class TestGetSessionSummary:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_phase_setup_gives_0_phases_completed(self, auth_user, mock_user_service):
+    async def test_phase_setup_gives_0_phases_completed(self, auth_user, mock_user_service) -> None:
         """Phase 'setup' is at index 0 in phase_order, so phases_completed = 0."""
         session_data = {
             "id": "session-abc",
@@ -418,7 +418,7 @@ class TestGetSessionSummary:
     @pytest.mark.unit
     async def test_tablemate_count_excludes_ai_and_self(
         self, auth_user, mock_user_service, mock_session_service
-    ):
+    ) -> None:
         """Tablemate count excludes AI companions and the requesting user."""
         # base_session_data has: user-123 (self), user-456 (human), ai_companion
         # so tablemate_count should be 1 (only user-456)
@@ -454,7 +454,7 @@ class TestLeaveSession:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_happy_path(self, auth_user, mock_user_service, mock_session_service):
+    async def test_happy_path(self, auth_user, mock_user_service, mock_session_service) -> None:
         """Returns LeaveSessionResponse with status='left' on success."""
         result = await leave_session(
             session_id="session-abc",
@@ -474,7 +474,7 @@ class TestLeaveSession:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_with_reason(self, auth_user, mock_user_service, mock_session_service):
+    async def test_with_reason(self, auth_user, mock_user_service, mock_session_service) -> None:
         """Passes reason to remove_participant when provided."""
         request = LeaveSessionRequest(reason="Need to go")
         result = await leave_session(
@@ -496,7 +496,7 @@ class TestLeaveSession:
     @pytest.mark.unit
     async def test_user_not_found_raises_404(
         self, auth_user, mock_user_service_no_user, mock_session_service
-    ):
+    ) -> None:
         """Raises 404 when user profile is not found."""
         with pytest.raises(HTTPException) as exc_info:
             await leave_session(
@@ -510,7 +510,7 @@ class TestLeaveSession:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_session_not_found_raises_404(self, auth_user, mock_user_service):
+    async def test_session_not_found_raises_404(self, auth_user, mock_user_service) -> None:
         """Raises 404 when session does not exist."""
         session_service = MagicMock()
         session_service.get_session_by_id.return_value = None
@@ -529,7 +529,7 @@ class TestLeaveSession:
     @pytest.mark.unit
     async def test_not_participant_raises_403(
         self, auth_user, mock_user_service, base_session_data
-    ):
+    ) -> None:
         """Raises 403 when user is not a participant."""
         session_service = MagicMock()
         session_service.get_session_by_id.return_value = base_session_data
@@ -607,7 +607,9 @@ class TestCancelSession:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_cancel_with_refund(self, auth_user, mock_user_service, future_session_data):
+    async def test_cancel_with_refund(
+        self, auth_user, mock_user_service, future_session_data
+    ) -> None:
         """Cancel >= 1hr before start grants refund."""
         session_service = MagicMock()
         session_service.get_session_by_id.return_value = future_session_data
@@ -641,7 +643,9 @@ class TestCancelSession:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_cancel_without_refund(self, auth_user, mock_user_service, soon_session_data):
+    async def test_cancel_without_refund(
+        self, auth_user, mock_user_service, soon_session_data
+    ) -> None:
         """Cancel < 1hr before start does not grant refund."""
         session_service = MagicMock()
         session_service.get_session_by_id.return_value = soon_session_data
@@ -666,7 +670,7 @@ class TestCancelSession:
     @pytest.mark.unit
     async def test_session_already_started_raises_400(
         self, auth_user, mock_user_service, started_session_data
-    ):
+    ) -> None:
         """Raises 400 when session has already started."""
         session_service = MagicMock()
         session_service.get_session_by_id.return_value = started_session_data
@@ -687,7 +691,7 @@ class TestCancelSession:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_user_not_found_raises_404(self, auth_user, mock_user_service_no_user):
+    async def test_user_not_found_raises_404(self, auth_user, mock_user_service_no_user) -> None:
         """Raises 404 when user profile is not found."""
         session_service = MagicMock()
         credit_service = MagicMock()
@@ -704,7 +708,7 @@ class TestCancelSession:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_session_not_found_raises_404(self, auth_user, mock_user_service):
+    async def test_session_not_found_raises_404(self, auth_user, mock_user_service) -> None:
         """Raises 404 when session does not exist."""
         session_service = MagicMock()
         session_service.get_session_by_id.return_value = None
@@ -724,7 +728,7 @@ class TestCancelSession:
     @pytest.mark.unit
     async def test_not_participant_raises_403(
         self, auth_user, mock_user_service, future_session_data
-    ):
+    ) -> None:
         """Raises 403 when user is not a participant (get_participant returns None)."""
         session_service = MagicMock()
         session_service.get_session_by_id.return_value = future_session_data
@@ -746,7 +750,7 @@ class TestCancelSession:
     @pytest.mark.unit
     async def test_refund_eligible_but_refund_returns_none(
         self, auth_user, mock_user_service, future_session_data
-    ):
+    ) -> None:
         """When refund_credit returns None, credit_refunded=False and message says 'already refunded'."""
         session_service = MagicMock()
         session_service.get_session_by_id.return_value = future_session_data
@@ -777,7 +781,7 @@ class TestRateParticipant:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_raises_501_not_implemented(self):
+    async def test_raises_501_not_implemented(self) -> None:
         """Always raises 501 Not Implemented."""
         with pytest.raises(HTTPException) as exc_info:
             await rate_participant(

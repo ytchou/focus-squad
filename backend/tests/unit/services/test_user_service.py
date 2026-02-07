@@ -59,35 +59,35 @@ def sample_user_row():
 class TestUsernameGeneration:
     """Tests for username generation logic."""
 
-    def test_simple_email(self, user_service):
+    def test_simple_email(self, user_service) -> None:
         """Simple email prefix becomes username."""
         assert user_service._generate_username_from_email("john@example.com") == "john"
 
-    def test_email_with_dots(self, user_service):
+    def test_email_with_dots(self, user_service) -> None:
         """Dots removed from email prefix."""
         result = user_service._generate_username_from_email("john.doe@gmail.com")
         assert result == "johndoe"
 
-    def test_short_prefix(self, user_service):
+    def test_short_prefix(self, user_service) -> None:
         """Short prefixes padded with 'user'."""
         assert user_service._generate_username_from_email("ab@x.com") == "abuser"
 
-    def test_special_chars_removed(self, user_service):
+    def test_special_chars_removed(self, user_service) -> None:
         """Special chars removed except underscore."""
         result = user_service._generate_username_from_email("john+test@x.com")
         assert result == "johntest"
 
-    def test_underscore_preserved(self, user_service):
+    def test_underscore_preserved(self, user_service) -> None:
         """Underscores preserved in username."""
         result = user_service._generate_username_from_email("john_doe@x.com")
         assert result == "john_doe"
 
-    def test_uppercase_lowercased(self, user_service):
+    def test_uppercase_lowercased(self, user_service) -> None:
         """Uppercase converted to lowercase."""
         result = user_service._generate_username_from_email("JohnDoe@x.com")
         assert result == "johndoe"
 
-    def test_long_prefix_truncated(self, user_service):
+    def test_long_prefix_truncated(self, user_service) -> None:
         """Long prefixes truncated to 25 chars."""
         long_email = "a" * 50 + "@example.com"
         result = user_service._generate_username_from_email(long_email)
@@ -98,7 +98,7 @@ class TestFindUniqueUsername:
     """Tests for unique username finding."""
 
     @pytest.mark.unit
-    def test_available_username(self, user_service, mock_supabase):
+    def test_available_username(self, user_service, mock_supabase) -> None:
         """Base username available - use it directly."""
         # Setup: no user with this username
         mock_table = MagicMock()
@@ -109,7 +109,7 @@ class TestFindUniqueUsername:
         assert result == "johndoe"
 
     @pytest.mark.unit
-    def test_username_taken_adds_suffix(self, user_service, mock_supabase):
+    def test_username_taken_adds_suffix(self, user_service, mock_supabase) -> None:
         """Username taken - add suffix."""
         call_count = 0
 
@@ -130,7 +130,7 @@ class TestFindUniqueUsername:
         assert len(result) == len("johndoe_") + 4  # 4-char suffix
 
     @pytest.mark.unit
-    def test_max_attempts_exceeded(self, user_service, mock_supabase):
+    def test_max_attempts_exceeded(self, user_service, mock_supabase) -> None:
         """Error raised after max attempts."""
         # All usernames taken
         mock_table = MagicMock()
@@ -147,7 +147,7 @@ class TestGetUserByAuthId:
     """Tests for get_user_by_auth_id method."""
 
     @pytest.mark.unit
-    def test_user_found(self, user_service, mock_supabase, sample_user_row):
+    def test_user_found(self, user_service, mock_supabase, sample_user_row) -> None:
         """Returns UserProfile when user exists."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -160,7 +160,7 @@ class TestGetUserByAuthId:
         assert result.username == "johndoe"
 
     @pytest.mark.unit
-    def test_user_not_found(self, user_service, mock_supabase):
+    def test_user_not_found(self, user_service, mock_supabase) -> None:
         """Returns None when user doesn't exist."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -175,7 +175,7 @@ class TestCreateUserIfNotExists:
     """Tests for user creation with upsert behavior."""
 
     @pytest.mark.unit
-    def test_returns_existing_user(self, user_service, mock_supabase, sample_user_row):
+    def test_returns_existing_user(self, user_service, mock_supabase, sample_user_row) -> None:
         """Existing user returned without creating new one."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -189,7 +189,7 @@ class TestCreateUserIfNotExists:
         mock_table.insert.assert_not_called()
 
     @pytest.mark.unit
-    def test_creates_new_user(self, user_service, mock_supabase, sample_user_row):
+    def test_creates_new_user(self, user_service, mock_supabase, sample_user_row) -> None:
         """New user created with associated records."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -221,7 +221,7 @@ class TestUpdateUserProfile:
     """Tests for profile update logic."""
 
     @pytest.mark.unit
-    def test_user_not_found(self, user_service, mock_supabase):
+    def test_user_not_found(self, user_service, mock_supabase) -> None:
         """UserNotFoundError raised when user doesn't exist."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -233,7 +233,7 @@ class TestUpdateUserProfile:
             user_service.update_user_profile("nonexistent", update)
 
     @pytest.mark.unit
-    def test_username_conflict(self, user_service, mock_supabase, sample_user_row):
+    def test_username_conflict(self, user_service, mock_supabase, sample_user_row) -> None:
         """UsernameConflictError raised when username is taken."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -262,7 +262,7 @@ class TestUpdateUserProfile:
             user_service.update_user_profile("auth-123", update)
 
     @pytest.mark.unit
-    def test_successful_update(self, user_service, mock_supabase, sample_user_row):
+    def test_successful_update(self, user_service, mock_supabase, sample_user_row) -> None:
         """Profile updated successfully."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -281,7 +281,7 @@ class TestUpdateUserProfile:
         assert result.display_name == "New Name"
 
     @pytest.mark.unit
-    def test_no_changes(self, user_service, mock_supabase, sample_user_row):
+    def test_no_changes(self, user_service, mock_supabase, sample_user_row) -> None:
         """No update when no fields changed."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -300,7 +300,7 @@ class TestGetPublicProfile:
     """Tests for public profile retrieval."""
 
     @pytest.mark.unit
-    def test_returns_public_fields_only(self, user_service, mock_supabase):
+    def test_returns_public_fields_only(self, user_service, mock_supabase) -> None:
         """Only public fields returned."""
         public_data = {
             "id": "user-123",
@@ -330,7 +330,7 @@ class TestGetPublicProfile:
         assert not hasattr(result, "auth_id") or "auth_id" not in result.model_fields
 
     @pytest.mark.unit
-    def test_not_found(self, user_service, mock_supabase):
+    def test_not_found(self, user_service, mock_supabase) -> None:
         """Returns None when user doesn't exist."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table

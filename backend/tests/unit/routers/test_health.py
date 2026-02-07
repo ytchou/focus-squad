@@ -23,21 +23,21 @@ class TestHealthCheck:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_returns_healthy_status(self):
+    async def test_returns_healthy_status(self) -> None:
         """Returns status healthy with service name."""
         result = await health_check()
         assert result == {"status": "healthy", "service": "focus-squad-api"}
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_status_field_is_healthy(self):
+    async def test_status_field_is_healthy(self) -> None:
         """The status field is exactly 'healthy'."""
         result = await health_check()
         assert result["status"] == "healthy"
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_service_field_is_correct(self):
+    async def test_service_field_is_correct(self) -> None:
         """The service field identifies focus-squad-api."""
         result = await health_check()
         assert result["service"] == "focus-squad-api"
@@ -54,7 +54,7 @@ class TestRedisHealthCheck:
     @pytest.mark.asyncio
     @pytest.mark.unit
     @patch("app.routers.health.get_redis")
-    async def test_returns_healthy_when_redis_responds(self, mock_get_redis):
+    async def test_returns_healthy_when_redis_responds(self, mock_get_redis) -> None:
         """Returns healthy status when redis.ping() succeeds."""
         mock_redis = MagicMock()
         mock_redis.ping = AsyncMock(return_value=True)
@@ -68,7 +68,7 @@ class TestRedisHealthCheck:
     @pytest.mark.asyncio
     @pytest.mark.unit
     @patch("app.routers.health.get_redis")
-    async def test_returns_unhealthy_when_redis_raises(self, mock_get_redis):
+    async def test_returns_unhealthy_when_redis_raises(self, mock_get_redis) -> None:
         """Returns unhealthy status with error when redis.ping() raises."""
         mock_redis = MagicMock()
         mock_redis.ping = AsyncMock(side_effect=ConnectionError("Connection refused"))
@@ -83,7 +83,7 @@ class TestRedisHealthCheck:
     @pytest.mark.asyncio
     @pytest.mark.unit
     @patch("app.routers.health.get_redis")
-    async def test_returns_unhealthy_when_get_redis_raises(self, mock_get_redis):
+    async def test_returns_unhealthy_when_get_redis_raises(self, mock_get_redis) -> None:
         """Returns unhealthy status when get_redis() itself raises."""
         mock_get_redis.side_effect = RuntimeError("Redis not initialized")
 
@@ -96,7 +96,7 @@ class TestRedisHealthCheck:
     @pytest.mark.asyncio
     @pytest.mark.unit
     @patch("app.routers.health.get_redis")
-    async def test_returns_unhealthy_on_timeout(self, mock_get_redis):
+    async def test_returns_unhealthy_on_timeout(self, mock_get_redis) -> None:
         """Returns unhealthy status when redis.ping() times out."""
         mock_redis = MagicMock()
         mock_redis.ping = AsyncMock(side_effect=TimeoutError("Connection timed out"))
@@ -120,7 +120,7 @@ class TestLivekitHealthCheck:
     @pytest.mark.asyncio
     @pytest.mark.unit
     @patch("app.services.livekit_service.LiveKitService")
-    async def test_returns_configured_when_credentials_set(self, mock_livekit_cls):
+    async def test_returns_configured_when_credentials_set(self, mock_livekit_cls) -> None:
         """Returns configured status when LiveKit credentials are available."""
         mock_instance = MagicMock()
         mock_instance.is_configured = True
@@ -135,7 +135,7 @@ class TestLivekitHealthCheck:
     @pytest.mark.asyncio
     @pytest.mark.unit
     @patch("app.services.livekit_service.LiveKitService")
-    async def test_returns_not_configured_when_credentials_missing(self, mock_livekit_cls):
+    async def test_returns_not_configured_when_credentials_missing(self, mock_livekit_cls) -> None:
         """Returns not_configured status when LiveKit credentials are missing."""
         mock_instance = MagicMock()
         mock_instance.is_configured = False
@@ -150,7 +150,7 @@ class TestLivekitHealthCheck:
     @pytest.mark.asyncio
     @pytest.mark.unit
     @patch("app.services.livekit_service.LiveKitService")
-    async def test_message_mentions_env_vars_when_not_configured(self, mock_livekit_cls):
+    async def test_message_mentions_env_vars_when_not_configured(self, mock_livekit_cls) -> None:
         """Error message references all required env vars."""
         mock_instance = MagicMock()
         mock_instance.is_configured = False
@@ -173,14 +173,14 @@ class TestRoot:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_returns_welcome_message(self):
+    async def test_returns_welcome_message(self) -> None:
         """Returns welcome message with docs link."""
         result = await root()
         assert result == {"message": "Welcome to Focus Squad API", "docs": "/docs"}
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_docs_points_to_slash_docs(self):
+    async def test_docs_points_to_slash_docs(self) -> None:
         """The docs field points to /docs."""
         result = await root()
         assert result["docs"] == "/docs"

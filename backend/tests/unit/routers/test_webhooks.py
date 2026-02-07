@@ -36,59 +36,59 @@ class TestIsSessionCompleted:
         return datetime.now(timezone.utc) - timedelta(minutes=55)
 
     @pytest.mark.unit
-    def test_completed_still_present_with_sufficient_time(self, session_start):
+    def test_completed_still_present_with_sufficient_time(self, session_start) -> None:
         """User still present (left_at=None) with 30 active minutes = completed."""
         participant = {"left_at": None, "total_active_minutes": 30}
         assert is_session_completed(participant, session_start) is True
 
     @pytest.mark.unit
-    def test_not_completed_insufficient_active_minutes(self, session_start):
+    def test_not_completed_insufficient_active_minutes(self, session_start) -> None:
         """User present but only 10 active minutes = not completed."""
         participant = {"left_at": None, "total_active_minutes": 10}
         assert is_session_completed(participant, session_start) is False
 
     @pytest.mark.unit
-    def test_not_completed_zero_active_minutes(self, session_start):
+    def test_not_completed_zero_active_minutes(self, session_start) -> None:
         """User with 0 active minutes = not completed."""
         participant = {"left_at": None, "total_active_minutes": 0}
         assert is_session_completed(participant, session_start) is False
 
     @pytest.mark.unit
-    def test_not_completed_null_active_minutes(self, session_start):
+    def test_not_completed_null_active_minutes(self, session_start) -> None:
         """User with null active minutes = not completed."""
         participant = {"left_at": None, "total_active_minutes": None}
         assert is_session_completed(participant, session_start) is False
 
     @pytest.mark.unit
-    def test_completed_left_after_minute_50(self, session_start):
+    def test_completed_left_after_minute_50(self, session_start) -> None:
         """User left at minute 52 with 25 active minutes = completed."""
         left_at = (session_start + timedelta(minutes=52)).isoformat()
         participant = {"left_at": left_at, "total_active_minutes": 25}
         assert is_session_completed(participant, session_start) is True
 
     @pytest.mark.unit
-    def test_not_completed_left_before_minute_50(self, session_start):
+    def test_not_completed_left_before_minute_50(self, session_start) -> None:
         """User left at minute 40 with 30 active minutes = not completed."""
         left_at = (session_start + timedelta(minutes=40)).isoformat()
         participant = {"left_at": left_at, "total_active_minutes": 30}
         assert is_session_completed(participant, session_start) is False
 
     @pytest.mark.unit
-    def test_completed_left_exactly_at_minute_50(self, session_start):
+    def test_completed_left_exactly_at_minute_50(self, session_start) -> None:
         """User left exactly at minute 50 = completed (boundary case)."""
         left_at = (session_start + timedelta(minutes=50)).isoformat()
         participant = {"left_at": left_at, "total_active_minutes": 25}
         assert is_session_completed(participant, session_start) is True
 
     @pytest.mark.unit
-    def test_not_completed_left_at_minute_49(self, session_start):
+    def test_not_completed_left_at_minute_49(self, session_start) -> None:
         """User left at minute 49 = not completed (just before boundary)."""
         left_at = (session_start + timedelta(minutes=49)).isoformat()
         participant = {"left_at": left_at, "total_active_minutes": 25}
         assert is_session_completed(participant, session_start) is False
 
     @pytest.mark.unit
-    def test_handles_z_suffix_in_left_at(self, session_start):
+    def test_handles_z_suffix_in_left_at(self, session_start) -> None:
         """Handles ISO timestamps ending with Z."""
         left_at_dt = session_start + timedelta(minutes=52)
         left_at = left_at_dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -96,13 +96,13 @@ class TestIsSessionCompleted:
         assert is_session_completed(participant, session_start) is True
 
     @pytest.mark.unit
-    def test_minimum_active_minutes_boundary(self, session_start):
+    def test_minimum_active_minutes_boundary(self, session_start) -> None:
         """Exactly 20 active minutes = completed (boundary)."""
         participant = {"left_at": None, "total_active_minutes": 20}
         assert is_session_completed(participant, session_start) is True
 
     @pytest.mark.unit
-    def test_below_minimum_active_minutes(self, session_start):
+    def test_below_minimum_active_minutes(self, session_start) -> None:
         """19 active minutes = not completed (just below boundary)."""
         participant = {"left_at": None, "total_active_minutes": 19}
         assert is_session_completed(participant, session_start) is False
@@ -117,20 +117,20 @@ class TestParseSessionStartTime:
     """Tests for the _parse_session_start_time() helper."""
 
     @pytest.mark.unit
-    def test_parses_iso_format(self):
+    def test_parses_iso_format(self) -> None:
         """Parses standard ISO format with timezone."""
         result = _parse_session_start_time("2025-02-07T10:00:00+00:00")
         assert result.hour == 10
         assert result.tzinfo is not None
 
     @pytest.mark.unit
-    def test_parses_z_suffix(self):
+    def test_parses_z_suffix(self) -> None:
         """Parses ISO format with Z suffix."""
         result = _parse_session_start_time("2025-02-07T10:00:00.000Z")
         assert result.hour == 10
 
     @pytest.mark.unit
-    def test_returns_datetime_unchanged(self):
+    def test_returns_datetime_unchanged(self) -> None:
         """Returns datetime objects unchanged."""
         dt = datetime(2025, 2, 7, 10, 0, tzinfo=timezone.utc)
         result = _parse_session_start_time(dt)
@@ -161,7 +161,7 @@ class TestHandleParticipantLeft:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_calculates_active_minutes_from_connection(self, left_event):
+    async def test_calculates_active_minutes_from_connection(self, left_event) -> None:
         """Calculates active minutes from connected_at to now."""
         mock_supabase = MagicMock()
 
@@ -195,13 +195,13 @@ class TestHandleParticipantLeft:
 
         # Verify update was called on the participants table
         assert participants_mock.update.called
-        update_data = participants_mock.update.call_args[0][0]
+        update_data = participants_mock.update.call_args.args[0]
         assert update_data["is_connected"] is False
         assert update_data["total_active_minutes"] >= 29  # ~30 min connected
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_skips_if_no_room_name(self):
+    async def test_skips_if_no_room_name(self) -> None:
         """Returns silently if room name is missing."""
         event = {"event": "participant_left", "room": {}, "participant": {"identity": "u-1"}}
         # Should not raise
@@ -211,7 +211,7 @@ class TestHandleParticipantLeft:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_skips_if_no_identity(self):
+    async def test_skips_if_no_identity(self) -> None:
         """Returns silently if participant identity is missing."""
         event = {"event": "participant_left", "room": {"name": "room-1"}, "participant": {}}
         with patch("app.routers.webhooks.get_supabase") as mock_get:
@@ -236,7 +236,7 @@ class TestHandleRoomFinished:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_marks_session_ended(self, room_finished_event):
+    async def test_marks_session_ended(self, room_finished_event) -> None:
         """Sets current_phase to 'ended' when room finishes."""
         mock_supabase = MagicMock()
 
@@ -260,12 +260,12 @@ class TestHandleRoomFinished:
 
         # Verify session was marked as ended
         sessions_mock.update.assert_called()
-        update_data = sessions_mock.update.call_args[0][0]
+        update_data = sessions_mock.update.call_args.args[0]
         assert update_data["current_phase"] == "ended"
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_awards_essence_to_qualifying_participants(self, room_finished_event):
+    async def test_awards_essence_to_qualifying_participants(self, room_finished_event) -> None:
         """Awards essence to participants who completed the session."""
         mock_supabase = MagicMock()
 
@@ -324,7 +324,7 @@ class TestHandleRoomFinished:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_skips_if_no_room_name(self):
+    async def test_skips_if_no_room_name(self) -> None:
         """Returns silently if room name is missing."""
         event = {"event": "room_finished", "room": {}}
         with patch("app.routers.webhooks.get_supabase") as mock_get:
@@ -333,7 +333,7 @@ class TestHandleRoomFinished:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_skips_if_session_not_found(self):
+    async def test_skips_if_session_not_found(self) -> None:
         """Returns silently if session not found for room."""
         mock_supabase = MagicMock()
         mock_table = MagicMock()
@@ -350,7 +350,7 @@ class TestHandleRoomFinished:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_inserts_new_essence_record(self):
+    async def test_inserts_new_essence_record(self) -> None:
         """Inserts a new furniture_essence record when none exists for the user."""
         mock_supabase = MagicMock()
 
@@ -397,7 +397,7 @@ class TestHandleRoomFinished:
 
         # Verify insert was called on furniture_essence (not update)
         assert essence_mock.insert.called
-        insert_data = essence_mock.insert.call_args[0][0]
+        insert_data = essence_mock.insert.call_args.args[0]
         assert insert_data["user_id"] == "user-new"
         assert insert_data["balance"] == 1
         assert insert_data["total_earned"] == 1
@@ -415,7 +415,7 @@ class TestHandleParticipantJoined:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_updates_connection_status(self):
+    async def test_updates_connection_status(self) -> None:
         """Updates session_participants with connected_at and is_connected=True."""
         mock_supabase = MagicMock()
 
@@ -443,13 +443,13 @@ class TestHandleParticipantJoined:
 
         # Verify update called
         assert participants_mock.update.called
-        update_data = participants_mock.update.call_args[0][0]
+        update_data = participants_mock.update.call_args.args[0]
         assert update_data["is_connected"] is True
         assert "connected_at" in update_data
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_skips_if_no_room_name(self):
+    async def test_skips_if_no_room_name(self) -> None:
         """Returns silently if room name is missing."""
         event = {
             "event": "participant_joined",
@@ -462,7 +462,7 @@ class TestHandleParticipantJoined:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_skips_if_session_not_found(self):
+    async def test_skips_if_session_not_found(self) -> None:
         """Returns silently if session not found for the room."""
         mock_supabase = MagicMock()
 
@@ -497,7 +497,7 @@ class TestHandleTrackPublished:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_logs_without_error(self):
+    async def test_logs_without_error(self) -> None:
         """Calling with valid event data should not raise any exception."""
         event = {
             "event": "track_published",
@@ -519,7 +519,7 @@ class TestHandleParticipantLeftEdgeCases:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_skips_if_session_not_found(self):
+    async def test_skips_if_session_not_found(self) -> None:
         """Returns silently if session not found for the room."""
         mock_supabase = MagicMock()
 
@@ -544,7 +544,7 @@ class TestHandleParticipantLeftEdgeCases:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_skips_if_participant_not_found(self):
+    async def test_skips_if_participant_not_found(self) -> None:
         """Returns silently if participant record not found in session."""
         mock_supabase = MagicMock()
 
@@ -582,7 +582,7 @@ class TestEventToDict:
     """Tests for the _event_to_dict() helper."""
 
     @pytest.mark.unit
-    def test_converts_event_to_dict(self):
+    def test_converts_event_to_dict(self) -> None:
         """Converts a WebhookEvent mock to a well-structured dict."""
         mock_event = MagicMock()
         mock_event.event = "participant_joined"

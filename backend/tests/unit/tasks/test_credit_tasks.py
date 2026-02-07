@@ -18,7 +18,7 @@ class TestRefreshDueCredits:
     """Tests for the daily batch credit refresh task."""
 
     @pytest.mark.unit
-    def test_no_users_due(self):
+    def test_no_users_due(self) -> None:
         """Returns zero counts when no users are due for refresh."""
         mock_supabase = MagicMock()
         mock_table = MagicMock()
@@ -34,7 +34,7 @@ class TestRefreshDueCredits:
         assert result == {"refreshed_count": 0, "errors": 0}
 
     @pytest.mark.unit
-    def test_refreshes_multiple_users(self):
+    def test_refreshes_multiple_users(self) -> None:
         """Counts only users who actually got refreshed (transaction returned)."""
         mock_supabase = MagicMock()
         mock_table = MagicMock()
@@ -64,7 +64,7 @@ class TestRefreshDueCredits:
         assert mock_service.refresh_credits_for_user.call_count == 2
 
     @pytest.mark.unit
-    def test_handles_refresh_errors(self):
+    def test_handles_refresh_errors(self) -> None:
         """Counts errors when refresh_credits_for_user raises an exception."""
         mock_supabase = MagicMock()
         mock_table = MagicMock()
@@ -94,7 +94,7 @@ class TestRefreshSingleUserCredits:
     """Tests for on-demand single-user credit refresh task."""
 
     @pytest.mark.unit
-    def test_refreshed_successfully(self):
+    def test_refreshed_successfully(self) -> None:
         """Returns success with amount when user credits are refreshed."""
         mock_transaction = MagicMock()
         mock_transaction.amount = 2
@@ -110,7 +110,7 @@ class TestRefreshSingleUserCredits:
         assert result == {"success": True, "refreshed": True, "amount_added": 2}
 
     @pytest.mark.unit
-    def test_not_due_for_refresh(self):
+    def test_not_due_for_refresh(self) -> None:
         """Returns success with refreshed=False when user is not due."""
         with patch("app.tasks.credit_tasks.CreditService") as MockCreditService:
             mock_service = MockCreditService.return_value
@@ -125,7 +125,7 @@ class TestRefreshSingleUserCredits:
         assert "message" in result
 
     @pytest.mark.unit
-    def test_handles_error(self):
+    def test_handles_error(self) -> None:
         """Returns failure with error message when exception occurs."""
         with patch("app.tasks.credit_tasks.CreditService") as MockCreditService:
             mock_service = MockCreditService.return_value

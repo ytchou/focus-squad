@@ -28,35 +28,35 @@ class TestCalculateFocusMinutes:
         return {"start_time": start, "end_time": end}
 
     @pytest.mark.unit
-    def test_uses_total_active_minutes_when_available(self, session):
+    def test_uses_total_active_minutes_when_available(self, session) -> None:
         """Prefers webhook-tracked total_active_minutes over timestamp calc."""
         participant = {"total_active_minutes": 35, "connected_at": None}
         result = _calculate_focus_minutes(participant, session)
         assert result == 35
 
     @pytest.mark.unit
-    def test_caps_active_minutes_at_45(self, session):
+    def test_caps_active_minutes_at_45(self, session) -> None:
         """Caps total_active_minutes at 45 (max work time)."""
         participant = {"total_active_minutes": 60, "connected_at": None}
         result = _calculate_focus_minutes(participant, session)
         assert result == 45
 
     @pytest.mark.unit
-    def test_returns_zero_when_no_data(self, session):
+    def test_returns_zero_when_no_data(self, session) -> None:
         """Returns 0 when no active minutes and no connected_at."""
         participant = {"total_active_minutes": None, "connected_at": None}
         result = _calculate_focus_minutes(participant, session)
         assert result == 0
 
     @pytest.mark.unit
-    def test_returns_zero_for_zero_active_minutes(self, session):
+    def test_returns_zero_for_zero_active_minutes(self, session) -> None:
         """Returns 0 when total_active_minutes is 0."""
         participant = {"total_active_minutes": 0, "connected_at": None}
         result = _calculate_focus_minutes(participant, session)
         assert result == 0
 
     @pytest.mark.unit
-    def test_fallback_calculates_work_phase_overlap(self):
+    def test_fallback_calculates_work_phase_overlap(self) -> None:
         """When no total_active_minutes, calculates overlap with work phases."""
         start = datetime(2025, 2, 7, 10, 0, 0, tzinfo=timezone.utc)
         end = datetime(2025, 2, 7, 10, 55, 0, tzinfo=timezone.utc)
@@ -77,7 +77,7 @@ class TestCalculateFocusMinutes:
         assert result == 45
 
     @pytest.mark.unit
-    def test_fallback_partial_session(self):
+    def test_fallback_partial_session(self) -> None:
         """Calculates correct overlap for partial attendance."""
         start = datetime(2025, 2, 7, 10, 0, 0, tzinfo=timezone.utc)
         end = datetime(2025, 2, 7, 10, 55, 0, tzinfo=timezone.utc)
@@ -103,7 +103,7 @@ class TestCalculateFocusMinutes:
         assert result == 23
 
     @pytest.mark.unit
-    def test_fallback_no_disconnected_uses_end_time(self):
+    def test_fallback_no_disconnected_uses_end_time(self) -> None:
         """Uses session end_time when disconnected_at is None."""
         start = datetime(2025, 2, 7, 10, 0, 0, tzinfo=timezone.utc)
         end = datetime(2025, 2, 7, 10, 55, 0, tzinfo=timezone.utc)
@@ -123,7 +123,7 @@ class TestCalculateFocusMinutes:
         assert result == 45  # Full work overlap
 
     @pytest.mark.unit
-    def test_handles_z_suffix_timestamps(self):
+    def test_handles_z_suffix_timestamps(self) -> None:
         """Handles timestamps with Z suffix correctly."""
         session = {
             "start_time": "2025-02-07T10:00:00.000Z",
@@ -140,7 +140,7 @@ class TestCalculateFocusMinutes:
         assert result == 45
 
     @pytest.mark.unit
-    def test_no_overlap_when_connected_only_during_break(self):
+    def test_no_overlap_when_connected_only_during_break(self) -> None:
         """Returns 0 if user was only connected during break phase."""
         start = datetime(2025, 2, 7, 10, 0, 0, tzinfo=timezone.utc)
         session = {
@@ -171,7 +171,7 @@ class TestCleanupIdempotency:
     """Tests for cleanup_ended_session idempotency guard."""
 
     @pytest.mark.unit
-    def test_skips_already_cleaned_session(self):
+    def test_skips_already_cleaned_session(self) -> None:
         """Returns early if livekit_room_deleted_at is already set."""
         mock_supabase = MagicMock()
 
@@ -206,7 +206,7 @@ class TestCreateLivekitRoom:
     """Tests for create_livekit_room Celery task."""
 
     @pytest.mark.unit
-    def test_creates_room_successfully(self):
+    def test_creates_room_successfully(self) -> None:
         """Creates a LiveKit room and returns room info."""
         mock_supabase = MagicMock()
 
@@ -235,7 +235,7 @@ class TestCreateLivekitRoom:
         assert result == room_info
 
     @pytest.mark.unit
-    def test_session_not_found(self):
+    def test_session_not_found(self) -> None:
         """Returns error dict when session does not exist."""
         mock_supabase = MagicMock()
 
@@ -251,7 +251,7 @@ class TestCreateLivekitRoom:
         assert result == {"error": "Session not found"}
 
     @pytest.mark.unit
-    def test_updates_room_created_timestamp(self):
+    def test_updates_room_created_timestamp(self) -> None:
         """Verifies livekit_room_created_at is updated after room creation."""
         mock_supabase = MagicMock()
 
@@ -290,7 +290,7 @@ class TestCleanupEndedSessionFull:
     """Tests for cleanup_ended_session full cleanup flow."""
 
     @pytest.mark.unit
-    def test_full_cleanup_flow(self):
+    def test_full_cleanup_flow(self) -> None:
         """Full cleanup: deletes room, updates stats, awards referrals."""
         mock_supabase = MagicMock()
 
@@ -330,7 +330,7 @@ class TestCleanupEndedSessionFull:
         mock_referrals.assert_called_once_with(mock_supabase, "session-1", session_data)
 
     @pytest.mark.unit
-    def test_session_not_found(self):
+    def test_session_not_found(self) -> None:
         """Returns session_not_found when session does not exist."""
         mock_supabase = MagicMock()
 
@@ -355,7 +355,7 @@ class TestFillEmptySeatsWithAI:
     """Tests for fill_empty_seats_with_ai Celery task."""
 
     @pytest.mark.unit
-    def test_fills_remaining_seats(self):
+    def test_fills_remaining_seats(self) -> None:
         """Fills remaining seats with AI companions when under 4."""
         mock_supabase = MagicMock()
 
@@ -388,7 +388,7 @@ class TestFillEmptySeatsWithAI:
         mock_session_service.add_ai_companions.assert_called_once_with("session-1", 2)
 
     @pytest.mark.unit
-    def test_no_fill_when_full(self):
+    def test_no_fill_when_full(self) -> None:
         """Does not add AI companions when table is already full."""
         mock_supabase = MagicMock()
 
@@ -419,7 +419,7 @@ class TestUpdateUserSessionStats:
     """Tests for _update_user_session_stats helper function."""
 
     @pytest.mark.unit
-    def test_updates_stats_for_completing_participants(self):
+    def test_updates_stats_for_completing_participants(self) -> None:
         """Updates stats for participants who completed the session."""
         mock_supabase = MagicMock()
 
@@ -477,7 +477,7 @@ class TestUpdateUserSessionStats:
         mock_user_service.record_session_completion.assert_called_once()
 
     @pytest.mark.unit
-    def test_returns_zero_when_no_participants(self):
+    def test_returns_zero_when_no_participants(self) -> None:
         """Returns 0 when there are no participants."""
         mock_supabase = MagicMock()
 
@@ -506,7 +506,7 @@ class TestAwardReferralBonusesTask:
     """Tests for _award_referral_bonuses helper function."""
 
     @pytest.mark.unit
-    def test_awards_bonus_for_completing_user(self):
+    def test_awards_bonus_for_completing_user(self) -> None:
         """Awards referral bonus for a user who completed the session."""
         mock_supabase = MagicMock()
 
@@ -548,7 +548,7 @@ class TestAwardReferralBonusesTask:
         mock_credit_service.award_referral_bonus.assert_called_once_with("user-1")
 
     @pytest.mark.unit
-    def test_returns_zero_no_participants(self):
+    def test_returns_zero_no_participants(self) -> None:
         """Returns 0 when there are no participants."""
         mock_supabase = MagicMock()
 
@@ -574,7 +574,7 @@ class TestLogLivekitEvent:
     """Tests for log_livekit_event Celery task."""
 
     @pytest.mark.unit
-    def test_logs_without_error(self):
+    def test_logs_without_error(self) -> None:
         """Calling log_livekit_event should not raise any exceptions."""
         from app.tasks.livekit_tasks import log_livekit_event
 

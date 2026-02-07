@@ -82,7 +82,7 @@ class TestGetMyProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_returns_existing_user_profile(self):
+    async def test_returns_existing_user_profile(self) -> None:
         """Returns profile for an existing user (created=False)."""
         current_user = AuthUser(auth_id="auth-abc-123", email="test@example.com")
         profile = _make_user_profile()
@@ -99,7 +99,7 @@ class TestGetMyProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_creates_new_user_on_first_login(self):
+    async def test_creates_new_user_on_first_login(self) -> None:
         """Creates user on first OAuth login (created=True)."""
         current_user = AuthUser(auth_id="auth-new-user", email="new@example.com")
         profile = _make_user_profile(
@@ -119,7 +119,7 @@ class TestGetMyProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_passes_auth_id_and_email_from_current_user(self):
+    async def test_passes_auth_id_and_email_from_current_user(self) -> None:
         """Verifies correct auth_id and email are forwarded to the service."""
         current_user = AuthUser(auth_id="specific-auth-id", email="specific@mail.com")
         profile = _make_user_profile(auth_id="specific-auth-id", email="specific@mail.com")
@@ -128,7 +128,7 @@ class TestGetMyProfile:
 
         await get_my_profile(current_user=current_user, user_service=user_service)
 
-        call_kwargs = user_service.create_user_if_not_exists.call_args[1]
+        call_kwargs = user_service.create_user_if_not_exists.call_args.kwargs
         assert call_kwargs["auth_id"] == "specific-auth-id"
         assert call_kwargs["email"] == "specific@mail.com"
 
@@ -143,7 +143,7 @@ class TestUpdateMyProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_successful_update(self):
+    async def test_successful_update(self) -> None:
         """Returns updated profile on successful update."""
         current_user = AuthUser(auth_id="auth-abc-123", email="test@example.com")
         update = UserProfileUpdate(display_name="New Name", bio="Hello world")
@@ -165,7 +165,7 @@ class TestUpdateMyProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_username_update(self):
+    async def test_username_update(self) -> None:
         """Successfully updates username when not conflicting."""
         current_user = AuthUser(auth_id="auth-abc-123", email="test@example.com")
         update = UserProfileUpdate(username="newname")
@@ -181,7 +181,7 @@ class TestUpdateMyProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_user_not_found_raises_404(self):
+    async def test_user_not_found_raises_404(self) -> None:
         """Raises 404 when user is not found."""
         current_user = AuthUser(auth_id="auth-ghost", email="ghost@example.com")
         update = UserProfileUpdate(display_name="Ghost")
@@ -198,7 +198,7 @@ class TestUpdateMyProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_username_conflict_raises_400(self):
+    async def test_username_conflict_raises_400(self) -> None:
         """Raises 400 when username is already taken."""
         current_user = AuthUser(auth_id="auth-abc-123", email="test@example.com")
         update = UserProfileUpdate(username="taken_name")
@@ -217,7 +217,7 @@ class TestUpdateMyProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_username_conflict_detail_contains_error_message(self):
+    async def test_username_conflict_detail_contains_error_message(self) -> None:
         """The 400 detail should include the original error message string."""
         current_user = AuthUser(auth_id="auth-abc-123", email="test@example.com")
         update = UserProfileUpdate(username="duplicate")
@@ -243,7 +243,7 @@ class TestGetUserProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_returns_public_profile(self):
+    async def test_returns_public_profile(self) -> None:
         """Returns public profile for a valid user_id."""
         public_profile = _make_public_profile(username="alice", display_name="Alice")
         user_service = MagicMock()
@@ -258,7 +258,7 @@ class TestGetUserProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_user_not_found_raises_404(self):
+    async def test_user_not_found_raises_404(self) -> None:
         """Raises 404 when user_id does not exist."""
         user_service = MagicMock()
         user_service.get_public_profile.return_value = None
@@ -271,7 +271,7 @@ class TestGetUserProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_passes_correct_user_id_to_service(self):
+    async def test_passes_correct_user_id_to_service(self) -> None:
         """Verifies the user_id argument is forwarded correctly."""
         target_id = "target-user-uuid-456"
         public_profile = _make_public_profile(id=target_id)
@@ -284,7 +284,7 @@ class TestGetUserProfile:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_does_not_require_auth(self):
+    async def test_does_not_require_auth(self) -> None:
         """Endpoint should work without current_user (no auth dependency)."""
         public_profile = _make_public_profile()
         user_service = MagicMock()

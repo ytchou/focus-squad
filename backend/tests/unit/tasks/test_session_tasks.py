@@ -19,7 +19,7 @@ class TestProgressSessionPhases:
     """Tests for the progress_session_phases Celery task."""
 
     @pytest.mark.unit
-    def test_no_active_sessions(self):
+    def test_no_active_sessions(self) -> None:
         """Returns early with zero counts when no non-ended sessions exist."""
         mock_supabase = MagicMock()
 
@@ -39,7 +39,7 @@ class TestProgressSessionPhases:
         mock_table.update.assert_not_called()
 
     @pytest.mark.unit
-    def test_progresses_changed_phase(self):
+    def test_progresses_changed_phase(self) -> None:
         """Updates DB when calculated phase differs from current phase."""
         mock_supabase = MagicMock()
 
@@ -69,12 +69,12 @@ class TestProgressSessionPhases:
         mock_service.calculate_current_phase.assert_called_once_with(session_data)
 
         mock_table.update.assert_called_once()
-        update_args = mock_table.update.call_args[0][0]
+        update_args = mock_table.update.call_args.args[0]
         assert update_args["current_phase"] == "work_1"
         assert "phase_started_at" in update_args
 
     @pytest.mark.unit
-    def test_no_progress_when_same_phase(self):
+    def test_no_progress_when_same_phase(self) -> None:
         """Skips DB update when calculated phase matches current phase."""
         mock_supabase = MagicMock()
 
@@ -103,7 +103,7 @@ class TestProgressSessionPhases:
         mock_table.update.assert_not_called()
 
     @pytest.mark.unit
-    def test_schedules_cleanup_on_ended_transition(self):
+    def test_schedules_cleanup_on_ended_transition(self) -> None:
         """Schedules cleanup_ended_session when phase transitions to ended."""
         mock_supabase = MagicMock()
 

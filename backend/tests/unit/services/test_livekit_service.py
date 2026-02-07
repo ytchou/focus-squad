@@ -32,7 +32,7 @@ def configured_settings():
 class TestIsConfigured:
     """Tests for LiveKitService.is_configured property."""
 
-    def test_is_configured_true(self, configured_settings):
+    def test_is_configured_true(self, configured_settings) -> None:
         """All settings present and real. Returns True."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -41,7 +41,7 @@ class TestIsConfigured:
             service = LiveKitService()
             assert service.is_configured is True
 
-    def test_is_configured_false_placeholder(self, dev_settings):
+    def test_is_configured_false_placeholder(self, dev_settings) -> None:
         """livekit_api_key is the placeholder value. Returns False."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -56,7 +56,7 @@ class TestCreateRoom:
     """Tests for LiveKitService.create_room."""
 
     @pytest.mark.asyncio
-    async def test_create_room_dev_mode(self, dev_settings):
+    async def test_create_room_dev_mode(self, dev_settings) -> None:
         """Not configured. Returns mock dict with name, sid=f'dev-{name}', mode."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -71,7 +71,7 @@ class TestCreateRoom:
             assert result["mode"] == TableMode.FORCED_AUDIO.value
 
     @pytest.mark.asyncio
-    async def test_create_room_configured(self, configured_settings):
+    async def test_create_room_configured(self, configured_settings) -> None:
         """Configured. Mock LiveKitAPI and room.create_room. Returns room info."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -101,7 +101,7 @@ class TestDeleteRoom:
     """Tests for LiveKitService.delete_room."""
 
     @pytest.mark.asyncio
-    async def test_delete_room_dev_mode(self, dev_settings):
+    async def test_delete_room_dev_mode(self, dev_settings) -> None:
         """Not configured. Returns True (no-op)."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -112,7 +112,7 @@ class TestDeleteRoom:
             assert result is True
 
     @pytest.mark.asyncio
-    async def test_delete_room_configured(self, configured_settings):
+    async def test_delete_room_configured(self, configured_settings) -> None:
         """Configured. Mock API. Returns True."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -135,7 +135,7 @@ class TestGetRoom:
     """Tests for LiveKitService.get_room."""
 
     @pytest.mark.asyncio
-    async def test_get_room_dev_mode(self, dev_settings):
+    async def test_get_room_dev_mode(self, dev_settings) -> None:
         """Not configured. Returns None."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -146,7 +146,7 @@ class TestGetRoom:
             assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_room_found(self, configured_settings):
+    async def test_get_room_found(self, configured_settings) -> None:
         """Configured. Mock list_rooms returns room. Returns dict."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -180,7 +180,7 @@ class TestGetRoom:
 class TestGenerateToken:
     """Tests for LiveKitService.generate_token."""
 
-    def test_generate_token_dev_mode(self, dev_settings):
+    def test_generate_token_dev_mode(self, dev_settings) -> None:
         """Not configured. Returns 'dev-placeholder-token'."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -190,7 +190,7 @@ class TestGenerateToken:
             result = service.generate_token("room-1", "user-1", "User 1")
             assert result == "dev-placeholder-token"
 
-    def test_generate_token_forced_audio(self, configured_settings):
+    def test_generate_token_forced_audio(self, configured_settings) -> None:
         """Mode is FORCED_AUDIO. Verify can_publish=True in grants."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -214,7 +214,7 @@ class TestGenerateToken:
                 assert grants.can_publish_data is True
                 assert grants.can_subscribe is True
 
-    def test_generate_token_quiet_mode(self, configured_settings):
+    def test_generate_token_quiet_mode(self, configured_settings) -> None:
         """Mode is QUIET. Verify can_publish=False in grants."""
         with patch(
             "app.services.livekit_service.get_settings",
@@ -238,7 +238,7 @@ class TestClose:
     """Tests for LiveKitService.close."""
 
     @pytest.mark.asyncio
-    async def test_close_clears_api(self, configured_settings):
+    async def test_close_clears_api(self, configured_settings) -> None:
         """Set _api to a mock, call close(). Verify _api is None."""
         with patch(
             "app.services.livekit_service.get_settings",

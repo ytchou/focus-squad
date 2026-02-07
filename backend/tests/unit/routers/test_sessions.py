@@ -47,19 +47,19 @@ class TestParseDateTime:
     """Tests for the _parse_datetime() helper."""
 
     @pytest.mark.unit
-    def test_returns_none_for_none(self):
+    def test_returns_none_for_none(self) -> None:
         """Input None returns None."""
         assert _parse_datetime(None) is None
 
     @pytest.mark.unit
-    def test_returns_datetime_unchanged(self):
+    def test_returns_datetime_unchanged(self) -> None:
         """Input datetime object returns the same object."""
         dt = datetime(2025, 6, 15, 10, 30, 0, tzinfo=timezone.utc)
         result = _parse_datetime(dt)
         assert result is dt
 
     @pytest.mark.unit
-    def test_parses_iso_string(self):
+    def test_parses_iso_string(self) -> None:
         """Standard ISO string with timezone offset parsed correctly."""
         result = _parse_datetime("2025-06-15T10:30:00+00:00")
         assert isinstance(result, datetime)
@@ -70,7 +70,7 @@ class TestParseDateTime:
         assert result.minute == 30
 
     @pytest.mark.unit
-    def test_handles_z_suffix(self):
+    def test_handles_z_suffix(self) -> None:
         """String ending with 'Z' is converted and parsed correctly."""
         result = _parse_datetime("2025-06-15T10:30:00.000Z")
         assert isinstance(result, datetime)
@@ -87,7 +87,7 @@ class TestBuildSessionInfo:
     """Tests for the _build_session_info() helper."""
 
     @pytest.mark.unit
-    def test_builds_info_with_participants(self):
+    def test_builds_info_with_participants(self) -> None:
         """Full session dict with participant records returns correct SessionInfo."""
         now = datetime.now(timezone.utc)
         session_data = {
@@ -144,7 +144,7 @@ class TestBuildSessionInfo:
         assert participant.ai_companion_name is None
 
     @pytest.mark.unit
-    def test_builds_info_empty_participants(self):
+    def test_builds_info_empty_participants(self) -> None:
         """No participants results in available_seats=4 (default calculation)."""
         now = datetime.now(timezone.utc)
         session_data = {
@@ -181,7 +181,7 @@ class TestScheduleLivekitTasks:
     """Tests for the _schedule_livekit_tasks() helper."""
 
     @pytest.mark.unit
-    def test_schedules_all_tasks(self):
+    def test_schedules_all_tasks(self) -> None:
         """Future start time schedules all three Celery tasks."""
         now = datetime.now(timezone.utc)
         start_time = now + timedelta(minutes=30)
@@ -219,7 +219,7 @@ class TestScheduleLivekitTasks:
         assert cleanup_kwargs[1]["task_id"] == "cleanup-session-session-1"
 
     @pytest.mark.unit
-    def test_handles_error_gracefully(self):
+    def test_handles_error_gracefully(self) -> None:
         """Task import failure does not raise an exception (try/except catches it)."""
         now = datetime.now(timezone.utc)
         start_time = now + timedelta(minutes=30)
@@ -341,7 +341,7 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_happy_path(self, mock_schedule):
+    async def test_happy_path(self, mock_schedule) -> None:
         """Successful quick match returns QuickMatchResponse with session details."""
         mocks = self._setup_mocks()
         result = await quick_match(**mocks)
@@ -361,7 +361,7 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_user_not_found_returns_404(self, mock_schedule):
+    async def test_user_not_found_returns_404(self, mock_schedule) -> None:
         """Missing user profile raises 404."""
         mocks = self._setup_mocks()
         mocks["user_service"].get_user_by_auth_id.return_value = None
@@ -374,7 +374,7 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_banned_user_returns_403(self, mock_schedule):
+    async def test_banned_user_returns_403(self, mock_schedule) -> None:
         """Banned user (banned_until in the future) raises 403."""
         future = datetime.now(timezone.utc) + timedelta(hours=48)
         profile = _make_mock_profile(banned_until=future)
@@ -388,7 +388,7 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_insufficient_credits_returns_402(self, mock_schedule):
+    async def test_insufficient_credits_returns_402(self, mock_schedule) -> None:
         """No credits raises 402."""
         mocks = self._setup_mocks(has_credits=False)
 
@@ -400,7 +400,7 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_credit_check_exception_returns_402(self, mock_schedule):
+    async def test_credit_check_exception_returns_402(self, mock_schedule) -> None:
         """Exception during credit check raises 402."""
         mocks = self._setup_mocks()
         mocks["credit_service"].has_sufficient_credits.side_effect = Exception("DB error")
@@ -412,7 +412,7 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_existing_session_at_slot_returns_409(self, mock_schedule):
+    async def test_existing_session_at_slot_returns_409(self, mock_schedule) -> None:
         """User already has a session at the time slot raises 409."""
         existing = {"id": "existing-session", "start_time": "2025-06-15T10:00:00+00:00"}
         mocks = self._setup_mocks(existing_session=existing)
@@ -425,7 +425,7 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_already_in_session_error_returns_409(self, mock_schedule):
+    async def test_already_in_session_error_returns_409(self, mock_schedule) -> None:
         """AlreadyInSessionError from find_or_create raises 409."""
         mocks = self._setup_mocks()
         mocks["session_service"].find_or_create_session.side_effect = AlreadyInSessionError(
@@ -440,7 +440,7 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_session_full_error_returns_409(self, mock_schedule):
+    async def test_session_full_error_returns_409(self, mock_schedule) -> None:
         """SessionFullError from find_or_create raises 409."""
         mocks = self._setup_mocks()
         mocks["session_service"].find_or_create_session.side_effect = SessionFullError(
@@ -455,7 +455,7 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_session_phase_error_returns_409(self, mock_schedule):
+    async def test_session_phase_error_returns_409(self, mock_schedule) -> None:
         """SessionPhaseError from find_or_create raises 409."""
         mocks = self._setup_mocks()
         mocks["session_service"].find_or_create_session.side_effect = SessionPhaseError(
@@ -470,7 +470,7 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_deduct_credit_fails_triggers_rollback_returns_402(self, mock_schedule):
+    async def test_deduct_credit_fails_triggers_rollback_returns_402(self, mock_schedule) -> None:
         """InsufficientCreditsError during deduct_credit triggers remove_participant and 402."""
         mocks = self._setup_mocks()
         mocks["credit_service"].deduct_credit.side_effect = InsufficientCreditsError(
@@ -497,7 +497,7 @@ class TestGetUpcomingSessions:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_happy_path_returns_sessions(self):
+    async def test_happy_path_returns_sessions(self) -> None:
         """Returns UpcomingSessionsResponse with sessions list."""
         user_service = MagicMock()
         session_service = MagicMock()
@@ -534,7 +534,7 @@ class TestGetUpcomingSessions:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_user_not_found_returns_404(self):
+    async def test_user_not_found_returns_404(self) -> None:
         """Missing user profile raises 404."""
         user_service = MagicMock()
         session_service = MagicMock()
@@ -550,7 +550,7 @@ class TestGetUpcomingSessions:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_empty_sessions_list(self):
+    async def test_empty_sessions_list(self) -> None:
         """No upcoming sessions returns empty list."""
         user_service = MagicMock()
         session_service = MagicMock()
@@ -578,7 +578,7 @@ class TestGetSession:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_happy_path_returns_session_info(self):
+    async def test_happy_path_returns_session_info(self) -> None:
         """Returns SessionInfo for a valid session and participant."""
         user_service = MagicMock()
         session_service = MagicMock()
@@ -601,7 +601,7 @@ class TestGetSession:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_user_not_found_returns_404(self):
+    async def test_user_not_found_returns_404(self) -> None:
         """Missing user profile raises 404."""
         user_service = MagicMock()
         session_service = MagicMock()
@@ -619,7 +619,7 @@ class TestGetSession:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_session_not_found_returns_404(self):
+    async def test_session_not_found_returns_404(self) -> None:
         """Missing session raises 404."""
         user_service = MagicMock()
         session_service = MagicMock()
@@ -639,7 +639,7 @@ class TestGetSession:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_user_not_participant_returns_403(self):
+    async def test_user_not_participant_returns_403(self) -> None:
         """Non-participant user raises 403."""
         user_service = MagicMock()
         session_service = MagicMock()
