@@ -339,34 +339,39 @@ class SessionService:
         user_id: str,
     ) -> dict[str, Any]:
         """
-        Add a human participant to a session.
+        Add a human participant to a session (idempotent).
+
+        This method handles edge cases gracefully:
+        - If user is already active in session: returns existing record
+        - If user previously left this session: reactivates them
+        - Otherwise: creates new participant record
 
         Args:
             session_id: Session UUID
             user_id: User UUID
 
         Returns:
-            Created participant data dict
+            Participant data dict (new or existing)
 
         Raises:
-            SessionFullError: If session has 4 participants
-            AlreadyInSessionError: If user is already in session
+            SessionFullError: If session has 4 active participants
         """
-        # Check if user is already in session
-        existing = (
+        # 1. Check if user is already ACTIVE in this session
+        existing_active = (
             self.supabase.table("session_participants")
-            .select("id")
+            .select("*")
             .eq("session_id", session_id)
             .eq("user_id", user_id)
             .is_("left_at", "null")
             .execute()
         )
 
-        if existing.data:
-            raise AlreadyInSessionError(session_id, user_id)
+        if existing_active.data:
+            # User already in session - return existing (idempotent)
+            return existing_active.data[0]
 
-        # Get active participants to determine seat
-        participants = (
+        # 2. Get active participants to check capacity and find seat
+        active_participants = (
             self.supabase.table("session_participants")
             .select("seat_number")
             .eq("session_id", session_id)
@@ -374,7 +379,7 @@ class SessionService:
             .execute()
         )
 
-        taken_seats = {p["seat_number"] for p in (participants.data or [])}
+        taken_seats = {p["seat_number"] for p in (active_participants.data or [])}
 
         if len(taken_seats) >= self.MAX_PARTICIPANTS:
             raise SessionFullError(session_id)
@@ -382,6 +387,35 @@ class SessionService:
         # Find first available seat (1-4)
         available_seat = next(i for i in range(1, 5) if i not in taken_seats)
 
+        # 3. Check if user previously LEFT this session (can reactivate)
+        existing_inactive = (
+            self.supabase.table("session_participants")
+            .select("*")
+            .eq("session_id", session_id)
+            .eq("user_id", user_id)
+            .not_.is_("left_at", "null")
+            .execute()
+        )
+
+        if existing_inactive.data:
+            # Reactivate: clear left_at and assign new seat
+            participant_id = existing_inactive.data[0]["id"]
+            result = (
+                self.supabase.table("session_participants")
+                .update(
+                    {
+                        "left_at": None,
+                        "seat_number": available_seat,
+                        "joined_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+                .eq("id", participant_id)
+                .execute()
+            )
+            if result.data:
+                return result.data[0]
+
+        # 4. Create new participant record
         participant_data = {
             "session_id": session_id,
             "user_id": user_id,

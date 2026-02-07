@@ -22,6 +22,26 @@ async def redis_health_check():
         return {"status": "unhealthy", "service": "redis", "error": str(e)}
 
 
+@router.get("/health/livekit")
+async def livekit_health_check():
+    """LiveKit configuration health check."""
+    from app.services.livekit_service import LiveKitService
+
+    service = LiveKitService()
+    if service.is_configured:
+        return {
+            "status": "configured",
+            "service": "livekit",
+            "message": "LiveKit credentials are set. Ready for live audio!",
+        }
+    else:
+        return {
+            "status": "not_configured",
+            "service": "livekit",
+            "message": "LiveKit credentials missing. Set LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL in backend/.env",
+        }
+
+
 @router.get("/")
 async def root():
     """Root endpoint."""

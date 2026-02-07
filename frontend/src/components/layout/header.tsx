@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useUIStore, useUserStore, useCreditsStore } from "@/stores";
+import { useDebugBanner } from "@/hooks/use-debug-banner";
 
 export function Header() {
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
@@ -20,8 +21,9 @@ export function Header() {
   const credits = useCreditsStore((state) => state.balance);
   const tier = useCreditsStore((state) => state.tier);
   const weeklyLimit = useCreditsStore((state) =>
-    state.tier === "infinite" ? undefined : state.weeklyLimit
+    state.tier === "infinite" || state.tier === "admin" ? undefined : state.weeklyLimit
   );
+  const { topOffset } = useDebugBanner();
 
   const initials = user?.display_name
     ? user.display_name
@@ -33,7 +35,9 @@ export function Header() {
     : (user?.username?.slice(0, 2).toUpperCase() ?? "?");
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-surface px-4 py-3 md:px-6">
+    <header
+      className={`sticky ${topOffset} z-50 border-b border-border bg-surface px-4 py-3 md:px-6`}
+    >
       <div className="flex items-center justify-between">
         {/* Left side */}
         <div className="flex items-center gap-3">

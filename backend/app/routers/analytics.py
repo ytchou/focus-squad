@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.services.analytics_service import AnalyticsService
+from app.services.user_service import UserService
 
 router = APIRouter()
 
@@ -43,7 +44,14 @@ class TrackEventResponse(BaseModel):
 
 def get_analytics_service() -> AnalyticsService:
     """Get AnalyticsService instance."""
-    return AnalyticsService()
+    from app.core.database import get_supabase
+
+    return AnalyticsService(supabase=get_supabase())
+
+
+def get_user_service() -> UserService:
+    """Get UserService instance."""
+    return UserService()
 
 
 # =============================================================================
@@ -56,6 +64,7 @@ async def track_event(
     request: TrackEventRequest,
     user: AuthUser = Depends(require_auth_from_state),
     analytics_service: AnalyticsService = Depends(get_analytics_service),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Track an analytics event (fire-and-forget).
 
@@ -68,11 +77,18 @@ async def track_event(
         This endpoint always returns success=True, even if tracking fails.
         Analytics failures should not break user flow.
     """
-    await analytics_service.track_event(
-        user_id=user.id,
-        session_id=request.session_id,
-        event_type=request.event_type,
-        metadata=request.metadata,
-    )
+    try:
+        # Look up user's internal ID from auth_id
+        profile = user_service.get_user_by_auth_id(user.auth_id)
+        if profile:
+            await analytics_service.track_event(
+                user_id=profile.id,
+                session_id=request.session_id,
+                event_type=request.event_type,
+                metadata=request.metadata,
+            )
+    except Exception:
+        # Analytics failures should not break user flow
+        pass
 
     return TrackEventResponse(success=True)

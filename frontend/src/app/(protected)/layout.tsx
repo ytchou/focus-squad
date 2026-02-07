@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { DebugBanner } from "@/components/layout/debug-banner";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -13,5 +14,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   }
 
   // AuthProvider handles client-side user/credits state initialization
-  return <AuthProvider>{children}</AuthProvider>;
+  return (
+    <AuthProvider>
+      <DebugBanner />
+      {children}
+    </AuthProvider>
+  );
 }
