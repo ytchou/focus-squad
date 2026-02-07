@@ -831,3 +831,198 @@ class TestWaitTimeCalculation:
         # Policy: No refunds for no-shows
         refund_amount = 0
         assert refund_amount == 0
+
+
+# =============================================================================
+# Test: Find or Create Session
+# =============================================================================
+
+
+class TestFindOrCreateSession:
+    """Tests for find_or_create_session() method."""
+
+    @pytest.mark.unit
+    def test_finds_existing_and_adds_user(
+        self, session_service, sample_session_row, sample_participant_row
+    ):
+        """When a matching session exists, uses it without creating a new one."""
+        refreshed_session = {
+            **sample_session_row,
+            "participants": [sample_participant_row],
+        }
+
+        with (
+            patch.object(
+                session_service, "find_matching_session", return_value=sample_session_row
+            ) as mock_find,
+            patch.object(session_service, "create_session") as mock_create,
+            patch.object(
+                session_service,
+                "add_participant",
+                return_value={
+                    "id": "p-1",
+                    "seat_number": 2,
+                    "already_active": False,
+                },
+            ) as mock_add,
+            patch.object(
+                session_service, "get_session_by_id", return_value=refreshed_session
+            ) as mock_get,
+        ):
+            filters = SessionFilters(mode=TableMode.FORCED_AUDIO)
+            start_time = datetime(2026, 2, 5, 14, 30, tzinfo=timezone.utc)
+
+            session, seat = session_service.find_or_create_session(filters, start_time, "user-123")
+
+            mock_find.assert_called_once_with(filters, start_time)
+            mock_create.assert_not_called()
+            mock_add.assert_called_once_with("session-123", "user-123")
+            mock_get.assert_called_once_with("session-123")
+            assert seat == 2
+
+    @pytest.mark.unit
+    def test_creates_new_when_no_match(
+        self, session_service, sample_session_row, sample_participant_row
+    ):
+        """When no matching session exists, creates a new one."""
+        created_session = {**sample_session_row, "id": "new-session-456"}
+        refreshed_session = {
+            **created_session,
+            "participants": [sample_participant_row],
+        }
+
+        with (
+            patch.object(session_service, "find_matching_session", return_value=None) as mock_find,
+            patch.object(
+                session_service, "create_session", return_value=created_session
+            ) as mock_create,
+            patch.object(
+                session_service,
+                "add_participant",
+                return_value={
+                    "id": "p-1",
+                    "seat_number": 1,
+                    "already_active": False,
+                },
+            ) as mock_add,
+            patch.object(session_service, "get_session_by_id", return_value=refreshed_session),
+        ):
+            filters = SessionFilters(mode=TableMode.FORCED_AUDIO, topic="python")
+            start_time = datetime(2026, 2, 5, 14, 30, tzinfo=timezone.utc)
+
+            session, seat = session_service.find_or_create_session(filters, start_time, "user-123")
+
+            mock_find.assert_called_once()
+            mock_create.assert_called_once_with(
+                mode=TableMode.FORCED_AUDIO,
+                topic="python",
+                language="en",
+                start_time=start_time,
+            )
+            mock_add.assert_called_once_with("new-session-456", "user-123")
+            assert seat == 1
+
+    @pytest.mark.unit
+    def test_returns_refreshed_session_and_seat(
+        self, session_service, sample_session_row, sample_participant_row
+    ):
+        """Returned session is from get_session_by_id (refreshed), not the original."""
+        original_session = {**sample_session_row, "participants": []}
+        refreshed_session = {
+            **sample_session_row,
+            "participants": [sample_participant_row],
+            "extra_field": "refreshed",
+        }
+
+        with (
+            patch.object(session_service, "find_matching_session", return_value=original_session),
+            patch.object(
+                session_service,
+                "add_participant",
+                return_value={"id": "p-1", "seat_number": 3, "already_active": False},
+            ),
+            patch.object(session_service, "get_session_by_id", return_value=refreshed_session),
+        ):
+            filters = SessionFilters()
+            start_time = datetime(2026, 2, 5, 14, 30, tzinfo=timezone.utc)
+
+            session, seat = session_service.find_or_create_session(filters, start_time, "user-123")
+
+            assert session is refreshed_session
+            assert session["extra_field"] == "refreshed"
+            assert seat == 3
+
+
+# =============================================================================
+# Test: Is Participant
+# =============================================================================
+
+
+class TestIsParticipant:
+    """Tests for is_participant() method."""
+
+    @pytest.mark.unit
+    def test_is_participant_true(self, session_service):
+        """Returns True when user_id is found in participants list."""
+        session = {
+            "id": "session-123",
+            "participants": [
+                {"user_id": "user-111", "seat_number": 1},
+                {"user_id": "user-123", "seat_number": 2},
+            ],
+        }
+
+        assert session_service.is_participant(session, "user-123") is True
+
+    @pytest.mark.unit
+    def test_is_participant_false(self, session_service):
+        """Returns False when user_id is not in participants list."""
+        session = {
+            "id": "session-123",
+            "participants": [
+                {"user_id": "user-111", "seat_number": 1},
+                {"user_id": "user-222", "seat_number": 2},
+            ],
+        }
+
+        assert session_service.is_participant(session, "user-999") is False
+
+
+# =============================================================================
+# Test: Get Participant
+# =============================================================================
+
+
+class TestGetParticipant:
+    """Tests for get_participant() method."""
+
+    @pytest.mark.unit
+    def test_get_participant_found(self, session_service):
+        """Returns the matching participant dict when user is found."""
+        target_participant = {"user_id": "user-123", "seat_number": 2}
+        session = {
+            "id": "session-123",
+            "participants": [
+                {"user_id": "user-111", "seat_number": 1},
+                target_participant,
+            ],
+        }
+
+        result = session_service.get_participant(session, "user-123")
+
+        assert result is target_participant
+        assert result["seat_number"] == 2
+
+    @pytest.mark.unit
+    def test_get_participant_not_found(self, session_service):
+        """Returns None when user is not in participants list."""
+        session = {
+            "id": "session-123",
+            "participants": [
+                {"user_id": "user-111", "seat_number": 1},
+            ],
+        }
+
+        result = session_service.get_participant(session, "user-999")
+
+        assert result is None

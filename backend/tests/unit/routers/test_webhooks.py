@@ -13,8 +13,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.routers.webhooks import (
+    _event_to_dict,
+    _handle_participant_joined,
     _handle_participant_left,
     _handle_room_finished,
+    _handle_track_published,
     _parse_session_start_time,
     is_session_completed,
 )
@@ -344,3 +347,262 @@ class TestHandleRoomFinished:
 
         # Should not call update (no session found)
         mock_table.update.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_inserts_new_essence_record(self):
+        """Inserts a new furniture_essence record when none exists for the user."""
+        mock_supabase = MagicMock()
+
+        session_start = (datetime.now(timezone.utc) - timedelta(minutes=55)).isoformat()
+
+        sessions_mock = MagicMock()
+        sessions_mock.select.return_value.eq.return_value.execute.return_value.data = [
+            {"id": "session-1", "start_time": session_start, "current_phase": "social"}
+        ]
+        sessions_mock.update.return_value.eq.return_value.execute.return_value.data = [{}]
+
+        participants_mock = MagicMock()
+        participants_mock.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
+            {
+                "id": "p-1",
+                "user_id": "user-new",
+                "left_at": None,
+                "total_active_minutes": 30,
+                "essence_earned": False,
+            }
+        ]
+        participants_mock.update.return_value.eq.return_value.execute.return_value.data = [{}]
+
+        essence_mock = MagicMock()
+        # No existing essence record
+        essence_mock.select.return_value.eq.return_value.execute.return_value.data = []
+        essence_mock.insert.return_value.execute.return_value.data = [{}]
+
+        transactions_mock = MagicMock()
+        transactions_mock.insert.return_value.execute.return_value.data = [{}]
+
+        table_cache = {
+            "sessions": sessions_mock,
+            "session_participants": participants_mock,
+            "furniture_essence": essence_mock,
+            "essence_transactions": transactions_mock,
+        }
+        mock_supabase.table.side_effect = lambda name: table_cache.get(name, MagicMock())
+
+        event = {"event": "room_finished", "room": {"name": "focus-abc123", "sid": "RM_123"}}
+
+        with patch("app.routers.webhooks.get_supabase", return_value=mock_supabase):
+            await _handle_room_finished(event)
+
+        # Verify insert was called on furniture_essence (not update)
+        assert essence_mock.insert.called
+        insert_data = essence_mock.insert.call_args[0][0]
+        assert insert_data["user_id"] == "user-new"
+        assert insert_data["balance"] == 1
+        assert insert_data["total_earned"] == 1
+        # update should NOT have been called on essence
+        essence_mock.update.assert_not_called()
+
+
+# =============================================================================
+# _handle_participant_joined Tests
+# =============================================================================
+
+
+class TestHandleParticipantJoined:
+    """Tests for the _handle_participant_joined() handler."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_updates_connection_status(self):
+        """Updates session_participants with connected_at and is_connected=True."""
+        mock_supabase = MagicMock()
+
+        sessions_mock = MagicMock()
+        sessions_mock.select.return_value.eq.return_value.execute.return_value.data = [
+            {"id": "session-1"}
+        ]
+
+        participants_mock = MagicMock()
+        participants_mock.update.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
+            {}
+        ]
+
+        table_cache = {"sessions": sessions_mock, "session_participants": participants_mock}
+        mock_supabase.table.side_effect = lambda name: table_cache[name]
+
+        event = {
+            "event": "participant_joined",
+            "room": {"name": "focus-abc123"},
+            "participant": {"identity": "user-123"},
+        }
+
+        with patch("app.routers.webhooks.get_supabase", return_value=mock_supabase):
+            await _handle_participant_joined(event)
+
+        # Verify update called
+        assert participants_mock.update.called
+        update_data = participants_mock.update.call_args[0][0]
+        assert update_data["is_connected"] is True
+        assert "connected_at" in update_data
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_skips_if_no_room_name(self):
+        """Returns silently if room name is missing."""
+        event = {
+            "event": "participant_joined",
+            "room": {},
+            "participant": {"identity": "user-123"},
+        }
+        with patch("app.routers.webhooks.get_supabase") as mock_get:
+            await _handle_participant_joined(event)
+            mock_get.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_skips_if_session_not_found(self):
+        """Returns silently if session not found for the room."""
+        mock_supabase = MagicMock()
+
+        sessions_mock = MagicMock()
+        sessions_mock.select.return_value.eq.return_value.execute.return_value.data = []
+
+        table_cache = {"sessions": sessions_mock}
+        mock_supabase.table.side_effect = lambda name: table_cache[name]
+
+        event = {
+            "event": "participant_joined",
+            "room": {"name": "focus-unknown"},
+            "participant": {"identity": "user-123"},
+        }
+
+        with patch("app.routers.webhooks.get_supabase", return_value=mock_supabase):
+            await _handle_participant_joined(event)
+
+        # Should not attempt to update participants since session was not found
+        assert "session_participants" not in [
+            call.args[0] for call in mock_supabase.table.call_args_list
+        ]
+
+
+# =============================================================================
+# _handle_track_published Tests
+# =============================================================================
+
+
+class TestHandleTrackPublished:
+    """Tests for the _handle_track_published() handler."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_logs_without_error(self):
+        """Calling with valid event data should not raise any exception."""
+        event = {
+            "event": "track_published",
+            "room": {"name": "focus-abc123"},
+            "participant": {"identity": "user-123", "sid": "PA_123"},
+            "track": {"type": "audio", "source": "microphone", "sid": "TR_1"},
+        }
+        # Should not raise
+        await _handle_track_published(event)
+
+
+# =============================================================================
+# _handle_participant_left Additional Tests
+# =============================================================================
+
+
+class TestHandleParticipantLeftEdgeCases:
+    """Additional edge case tests for _handle_participant_left()."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_skips_if_session_not_found(self):
+        """Returns silently if session not found for the room."""
+        mock_supabase = MagicMock()
+
+        sessions_mock = MagicMock()
+        sessions_mock.select.return_value.eq.return_value.execute.return_value.data = []
+
+        table_cache = {"sessions": sessions_mock}
+        mock_supabase.table.side_effect = lambda name: table_cache[name]
+
+        event = {
+            "event": "participant_left",
+            "room": {"name": "focus-unknown"},
+            "participant": {"identity": "user-123"},
+        }
+
+        with patch("app.routers.webhooks.get_supabase", return_value=mock_supabase):
+            await _handle_participant_left(event)
+
+        # Should not attempt to access session_participants
+        table_names = [call.args[0] for call in mock_supabase.table.call_args_list]
+        assert "session_participants" not in table_names
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_skips_if_participant_not_found(self):
+        """Returns silently if participant record not found in session."""
+        mock_supabase = MagicMock()
+
+        sessions_mock = MagicMock()
+        sessions_mock.select.return_value.eq.return_value.execute.return_value.data = [
+            {"id": "session-1"}
+        ]
+
+        participants_mock = MagicMock()
+        # Participant lookup returns empty
+        participants_mock.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = []
+
+        table_cache = {"sessions": sessions_mock, "session_participants": participants_mock}
+        mock_supabase.table.side_effect = lambda name: table_cache[name]
+
+        event = {
+            "event": "participant_left",
+            "room": {"name": "focus-abc123"},
+            "participant": {"identity": "user-ghost"},
+        }
+
+        with patch("app.routers.webhooks.get_supabase", return_value=mock_supabase):
+            await _handle_participant_left(event)
+
+        # Should not call update since participant was not found
+        participants_mock.update.assert_not_called()
+
+
+# =============================================================================
+# _event_to_dict Tests
+# =============================================================================
+
+
+class TestEventToDict:
+    """Tests for the _event_to_dict() helper."""
+
+    @pytest.mark.unit
+    def test_converts_event_to_dict(self):
+        """Converts a WebhookEvent mock to a well-structured dict."""
+        mock_event = MagicMock()
+        mock_event.event = "participant_joined"
+        mock_event.room.name = "focus-abc"
+        mock_event.room.sid = "RM_123"
+        mock_event.participant.identity = "user-1"
+        mock_event.participant.sid = "PA_1"
+        mock_event.participant.name = "Test User"
+        mock_event.track.type = "audio"
+        mock_event.track.source = "microphone"
+        mock_event.track.sid = "TR_1"
+
+        result = _event_to_dict(mock_event)
+
+        assert result["event"] == "participant_joined"
+        assert result["room"]["name"] == "focus-abc"
+        assert result["room"]["sid"] == "RM_123"
+        assert result["participant"]["identity"] == "user-1"
+        assert result["participant"]["sid"] == "PA_1"
+        assert result["participant"]["name"] == "Test User"
+        assert result["track"]["type"] == "audio"
+        assert result["track"]["source"] == "microphone"
+        assert result["track"]["sid"] == "TR_1"
