@@ -31,7 +31,9 @@ class TestJWTValidationMiddleware:
         return call_next
 
     @pytest.mark.unit
-    async def test_initializes_unauthenticated_user_by_default(self, middleware, mock_call_next):
+    async def test_initializes_unauthenticated_user_by_default(
+        self, middleware, mock_call_next
+    ) -> None:
         """Sets unauthenticated user in state when no auth header."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()
@@ -45,7 +47,7 @@ class TestJWTValidationMiddleware:
     @pytest.mark.unit
     async def test_authenticates_valid_token(
         self, middleware, mock_call_next, valid_jwt_token, valid_jwt_claims
-    ):
+    ) -> None:
         """Sets authenticated user for valid Bearer token."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()
@@ -61,7 +63,9 @@ class TestJWTValidationMiddleware:
             assert request.state.user.email == valid_jwt_claims["email"]
 
     @pytest.mark.unit
-    async def test_handles_jwt_error_gracefully(self, middleware, mock_call_next, valid_jwt_token):
+    async def test_handles_jwt_error_gracefully(
+        self, middleware, mock_call_next, valid_jwt_token
+    ) -> None:
         """Stores error but continues on JWTError."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()
@@ -79,7 +83,7 @@ class TestJWTValidationMiddleware:
     @pytest.mark.unit
     async def test_handles_non_jwt_error_gracefully(
         self, middleware, mock_call_next, valid_jwt_token
-    ):
+    ) -> None:
         """Stores error but continues on non-JWT errors."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()
@@ -95,7 +99,7 @@ class TestJWTValidationMiddleware:
             assert response.status_code == 200
 
     @pytest.mark.unit
-    async def test_ignores_non_bearer_auth_header(self, middleware, mock_call_next):
+    async def test_ignores_non_bearer_auth_header(self, middleware, mock_call_next) -> None:
         """Ignores Authorization headers that are not Bearer."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()
@@ -107,7 +111,7 @@ class TestJWTValidationMiddleware:
         assert request.state.token_error is None
 
     @pytest.mark.unit
-    async def test_continues_to_next_handler(self, middleware, valid_jwt_token):
+    async def test_continues_to_next_handler(self, middleware, valid_jwt_token) -> None:
         """Always calls next handler regardless of auth result."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()
@@ -140,7 +144,7 @@ class TestValidateTokenMethod:
     @pytest.mark.unit
     def test_returns_payload_for_valid_token(
         self, middleware, valid_jwt_token, test_jwks, valid_jwt_claims
-    ):
+    ) -> None:
         """Returns decoded payload for valid token."""
         with patch("app.core.middleware.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
@@ -151,7 +155,9 @@ class TestValidateTokenMethod:
             assert result["email"] == valid_jwt_claims["email"]
 
     @pytest.mark.unit
-    def test_raises_jwt_error_for_expired_token(self, middleware, expired_jwt_token, test_jwks):
+    def test_raises_jwt_error_for_expired_token(
+        self, middleware, expired_jwt_token, test_jwks
+    ) -> None:
         """Raises JWTError for expired tokens."""
         with patch("app.core.middleware.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
@@ -163,7 +169,7 @@ class TestValidateTokenMethod:
     @pytest.mark.unit
     def test_raises_jwt_error_for_invalid_signature(
         self, middleware, wrong_signature_jwt_token, test_jwks
-    ):
+    ) -> None:
         """Raises JWTError for tokens with invalid signature."""
         with patch("app.core.middleware.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
@@ -174,7 +180,7 @@ class TestValidateTokenMethod:
     @pytest.mark.unit
     def test_checks_expiration_explicitly(
         self, middleware, valid_jwt_claims, rsa_private_key_pem, jwks_key_id, test_jwks
-    ):
+    ) -> None:
         """Explicitly checks exp claim even if jose passes."""
         from jose import jwt
 
@@ -194,7 +200,7 @@ class TestValidateTokenMethod:
                 middleware._validate_token(token)
 
     @pytest.mark.unit
-    def test_returns_none_on_general_exception(self, middleware, valid_jwt_token):
+    def test_returns_none_on_general_exception(self, middleware, valid_jwt_token) -> None:
         """Returns None on non-JWT exceptions."""
         with patch("app.core.middleware.get_signing_key") as mock_get_key:
             mock_get_key.side_effect = Exception("Unexpected error")
@@ -214,7 +220,7 @@ class TestRequestLoggingMiddleware:
         return RequestLoggingMiddleware(app)
 
     @pytest.mark.unit
-    async def test_continues_request_for_authenticated_user(self, middleware):
+    async def test_continues_request_for_authenticated_user(self, middleware) -> None:
         """Continues request processing for authenticated users."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()
@@ -230,7 +236,7 @@ class TestRequestLoggingMiddleware:
         assert response.status_code == 200
 
     @pytest.mark.unit
-    async def test_continues_request_for_unauthenticated_user(self, middleware):
+    async def test_continues_request_for_unauthenticated_user(self, middleware) -> None:
         """Continues request processing for unauthenticated users."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()
@@ -244,7 +250,7 @@ class TestRequestLoggingMiddleware:
         assert response.status_code == 200
 
     @pytest.mark.unit
-    async def test_handles_missing_user_state(self, middleware):
+    async def test_handles_missing_user_state(self, middleware) -> None:
         """Handles requests without user in state gracefully."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()

@@ -16,7 +16,7 @@ from app.core.middleware import JWTValidationMiddleware
 
 
 @pytest.fixture
-def test_app():
+def test_app() -> None:
     """Create test FastAPI app with auth middleware."""
     app = FastAPI()
     app.add_middleware(JWTValidationMiddleware)
@@ -52,7 +52,7 @@ class TestPublicEndpoints:
     """Tests for public endpoints without auth."""
 
     @pytest.mark.integration
-    def test_public_route_accessible_without_auth(self, client):
+    def test_public_route_accessible_without_auth(self, client) -> None:
         """Public routes work without authentication."""
         response = client.get("/public")
 
@@ -64,7 +64,7 @@ class TestOptionalAuthEndpoints:
     """Tests for endpoints with optional authentication."""
 
     @pytest.mark.integration
-    def test_optional_auth_without_token(self, client):
+    def test_optional_auth_without_token(self, client) -> None:
         """Returns unauthenticated user when no token."""
         response = client.get("/optional-auth")
 
@@ -76,7 +76,7 @@ class TestOptionalAuthEndpoints:
     @pytest.mark.integration
     def test_optional_auth_with_valid_token(
         self, client, valid_jwt_token, test_jwks, valid_jwt_claims
-    ):
+    ) -> None:
         """Returns authenticated user with valid token."""
         with patch("app.core.middleware.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
@@ -91,7 +91,7 @@ class TestOptionalAuthEndpoints:
             assert data["auth_id"] == valid_jwt_claims["sub"]
 
     @pytest.mark.integration
-    def test_optional_auth_with_invalid_token(self, client):
+    def test_optional_auth_with_invalid_token(self, client) -> None:
         """Returns unauthenticated user with invalid token."""
         response = client.get(
             "/optional-auth", headers={"Authorization": "Bearer invalid.token.here"}
@@ -106,7 +106,7 @@ class TestProtectedEndpoints:
     """Tests for protected endpoints requiring authentication."""
 
     @pytest.mark.integration
-    def test_protected_route_without_token(self, client):
+    def test_protected_route_without_token(self, client) -> None:
         """Returns 401 when no token provided."""
         response = client.get("/protected")
 
@@ -115,7 +115,7 @@ class TestProtectedEndpoints:
     @pytest.mark.integration
     def test_protected_route_with_valid_token(
         self, client, valid_jwt_token, test_jwks, valid_jwt_claims
-    ):
+    ) -> None:
         """Returns user data with valid token."""
         with patch("app.core.middleware.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
@@ -130,7 +130,7 @@ class TestProtectedEndpoints:
             assert data["email"] == valid_jwt_claims["email"]
 
     @pytest.mark.integration
-    def test_protected_route_with_expired_token(self, client, expired_jwt_token, test_jwks):
+    def test_protected_route_with_expired_token(self, client, expired_jwt_token, test_jwks) -> None:
         """Returns 401 with expired token."""
         with patch("app.core.middleware.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
@@ -142,7 +142,7 @@ class TestProtectedEndpoints:
             assert response.status_code == 401
 
     @pytest.mark.integration
-    def test_protected_route_with_malformed_token(self, client):
+    def test_protected_route_with_malformed_token(self, client) -> None:
         """Returns 401 with malformed token."""
         response = client.get("/protected", headers={"Authorization": "Bearer not.a.jwt"})
 
@@ -151,7 +151,7 @@ class TestProtectedEndpoints:
     @pytest.mark.integration
     def test_protected_route_with_wrong_signature(
         self, client, wrong_signature_jwt_token, test_jwks
-    ):
+    ) -> None:
         """Returns 401 with wrong signature token."""
         with patch("app.core.middleware.get_signing_key") as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]

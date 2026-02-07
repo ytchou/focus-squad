@@ -51,3 +51,8 @@ markers = [
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
 ]
+
+[tool.coverage.run]
+omit = [
+    "app/main.py",  # FastAPI app bootstrap (module-level, not unit-testable)
+]

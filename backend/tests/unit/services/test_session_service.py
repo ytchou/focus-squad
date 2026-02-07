@@ -98,7 +98,7 @@ class TestCalculateNextSlot:
     """Tests for calculate_next_slot() method."""
 
     @pytest.mark.unit
-    def test_at_00_returns_30(self, session_service):
+    def test_at_00_returns_30(self, session_service) -> None:
         """Time at :00 should return :30 of same hour."""
         with patch("app.services.session_service.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 2, 5, 14, 0, 0, tzinfo=timezone.utc)
@@ -112,7 +112,7 @@ class TestCalculateNextSlot:
             assert result.microsecond == 0
 
     @pytest.mark.unit
-    def test_at_15_returns_30(self, session_service):
+    def test_at_15_returns_30(self, session_service) -> None:
         """Time at :15 should return :30 of same hour."""
         with patch("app.services.session_service.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 2, 5, 14, 15, 0, tzinfo=timezone.utc)
@@ -124,7 +124,7 @@ class TestCalculateNextSlot:
             assert result.hour == 14
 
     @pytest.mark.unit
-    def test_at_30_returns_next_hour(self, session_service):
+    def test_at_30_returns_next_hour(self, session_service) -> None:
         """Time at :30 should return :00 of next hour."""
         with patch("app.services.session_service.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 2, 5, 14, 30, 0, tzinfo=timezone.utc)
@@ -136,7 +136,7 @@ class TestCalculateNextSlot:
             assert result.hour == 15
 
     @pytest.mark.unit
-    def test_at_45_returns_next_hour(self, session_service):
+    def test_at_45_returns_next_hour(self, session_service) -> None:
         """Time at :45 should return :00 of next hour."""
         with patch("app.services.session_service.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 2, 5, 14, 45, 0, tzinfo=timezone.utc)
@@ -148,7 +148,7 @@ class TestCalculateNextSlot:
             assert result.hour == 15
 
     @pytest.mark.unit
-    def test_within_3min_of_slot_skips(self, session_service):
+    def test_within_3min_of_slot_skips(self, session_service) -> None:
         """Time at :28 should skip :30 and return next :00."""
         with patch("app.services.session_service.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 2, 5, 14, 28, 0, tzinfo=timezone.utc)
@@ -161,7 +161,7 @@ class TestCalculateNextSlot:
             assert result.hour == 15
 
     @pytest.mark.unit
-    def test_within_3min_of_hour_skips(self, session_service):
+    def test_within_3min_of_hour_skips(self, session_service) -> None:
         """Time at :58 should skip :00 and return next :30."""
         with patch("app.services.session_service.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 2, 5, 14, 58, 0, tzinfo=timezone.utc)
@@ -174,7 +174,7 @@ class TestCalculateNextSlot:
             assert result.hour == 15
 
     @pytest.mark.unit
-    def test_midnight_rollover(self, session_service):
+    def test_midnight_rollover(self, session_service) -> None:
         """Time at 23:45 should return 00:00 of next day."""
         with patch("app.services.session_service.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 2, 5, 23, 45, 0, tzinfo=timezone.utc)
@@ -196,7 +196,7 @@ class TestGetSessionById:
     """Tests for get_session_by_id() method."""
 
     @pytest.mark.unit
-    def test_session_found(self, session_service, mock_supabase, sample_session_row):
+    def test_session_found(self, session_service, mock_supabase, sample_session_row) -> None:
         """Returns session dict when session exists."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -213,7 +213,7 @@ class TestGetSessionById:
         assert result["id"] == "session-123"
 
     @pytest.mark.unit
-    def test_session_not_found(self, session_service, mock_supabase):
+    def test_session_not_found(self, session_service, mock_supabase) -> None:
         """Returns None when session doesn't exist."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -230,7 +230,7 @@ class TestGetUserSessions:
     @pytest.mark.unit
     def test_returns_upcoming_sessions(
         self, session_service, mock_supabase, sample_session_row, sample_participant_row
-    ):
+    ) -> None:
         """Returns list of sessions user is participating in."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -257,7 +257,7 @@ class TestGetUserSessions:
         assert result[0]["id"] == "session-123"
 
     @pytest.mark.unit
-    def test_excludes_ended_sessions(self, session_service, mock_supabase):
+    def test_excludes_ended_sessions(self, session_service, mock_supabase) -> None:
         """Does not return sessions that have ended."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -281,7 +281,7 @@ class TestFindMatchingSession:
     @pytest.mark.unit
     def test_finds_session_with_available_seats(
         self, session_service, mock_supabase, sample_session_row
-    ):
+    ) -> None:
         """Finds existing session with open seats."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -307,7 +307,7 @@ class TestFindMatchingSession:
         assert result["id"] == "session-123"
 
     @pytest.mark.unit
-    def test_filters_by_mode(self, session_service, mock_supabase):
+    def test_filters_by_mode(self, session_service, mock_supabase) -> None:
         """Only matches sessions with requested mode."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -329,7 +329,7 @@ class TestFindMatchingSession:
         assert result is None
 
     @pytest.mark.unit
-    def test_filters_by_topic(self, session_service, mock_supabase, sample_session_row):
+    def test_filters_by_topic(self, session_service, mock_supabase, sample_session_row) -> None:
         """Only matches sessions with requested topic."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -351,7 +351,7 @@ class TestFindMatchingSession:
         assert result is not None
 
     @pytest.mark.unit
-    def test_no_match_returns_none(self, session_service, mock_supabase):
+    def test_no_match_returns_none(self, session_service, mock_supabase) -> None:
         """Returns None when no matching session found."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -384,7 +384,7 @@ class TestCreateSession:
     @pytest.mark.unit
     def test_creates_session_with_defaults(
         self, session_service, mock_supabase, sample_session_row
-    ):
+    ) -> None:
         """Creates session with default values."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -406,7 +406,7 @@ class TestCreateSession:
         mock_table.insert.assert_called_once()
 
     @pytest.mark.unit
-    def test_calculates_end_time(self, session_service, mock_supabase, sample_session_row):
+    def test_calculates_end_time(self, session_service, mock_supabase, sample_session_row) -> None:
         """End time is 55 minutes after start time."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -423,11 +423,13 @@ class TestCreateSession:
 
         # Verify the inserted data had correct end_time
         call_args = mock_table.insert.call_args
-        inserted_data = call_args[0][0]
+        inserted_data = call_args.args[0]
         assert "end_time" in inserted_data
 
     @pytest.mark.unit
-    def test_generates_livekit_room_name(self, session_service, mock_supabase, sample_session_row):
+    def test_generates_livekit_room_name(
+        self, session_service, mock_supabase, sample_session_row
+    ) -> None:
         """LiveKit room name is generated."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -443,7 +445,7 @@ class TestCreateSession:
         )
 
         call_args = mock_table.insert.call_args
-        inserted_data = call_args[0][0]
+        inserted_data = call_args.args[0]
         assert "livekit_room_name" in inserted_data
         assert inserted_data["livekit_room_name"].startswith("focus-")
 
@@ -459,7 +461,7 @@ class TestAddParticipant:
     @pytest.mark.unit
     def test_assigns_first_available_seat(
         self, session_service, mock_supabase, sample_participant_row
-    ):
+    ) -> None:
         """RPC returns seat 1 for first participant."""
         mock_rpc = MagicMock()
         mock_rpc.execute.return_value.data = [
@@ -482,7 +484,7 @@ class TestAddParticipant:
     @pytest.mark.unit
     def test_assigns_next_available_seat(
         self, session_service, mock_supabase, sample_participant_row
-    ):
+    ) -> None:
         """RPC returns seat 2 when seat 1 is taken."""
         mock_rpc = MagicMock()
         mock_rpc.execute.return_value.data = [
@@ -500,7 +502,7 @@ class TestAddParticipant:
     @pytest.mark.unit
     def test_session_full_raises_error(
         self, session_service, mock_supabase, sample_participant_row
-    ):
+    ) -> None:
         """Raises SessionFullError when RPC returns SESSION_FULL error."""
         from app.services.session_service import SessionFullError
 
@@ -513,7 +515,9 @@ class TestAddParticipant:
             )
 
     @pytest.mark.unit
-    def test_session_phase_error(self, session_service, mock_supabase, sample_participant_row):
+    def test_session_phase_error(
+        self, session_service, mock_supabase, sample_participant_row
+    ) -> None:
         """Raises SessionPhaseError when session is not in setup phase."""
         from app.services.session_service import SessionPhaseError
 
@@ -530,7 +534,7 @@ class TestRemoveParticipant:
     """Tests for remove_participant() method."""
 
     @pytest.mark.unit
-    def test_sets_left_at(self, session_service, mock_supabase):
+    def test_sets_left_at(self, session_service, mock_supabase) -> None:
         """Sets left_at timestamp when user leaves."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -556,7 +560,9 @@ class TestAddAICompanions:
     """Tests for add_ai_companions() method."""
 
     @pytest.mark.unit
-    def test_fills_empty_seats(self, session_service, mock_supabase, sample_participant_row):
+    def test_fills_empty_seats(
+        self, session_service, mock_supabase, sample_participant_row
+    ) -> None:
         """Adds AI companions for remaining seats."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -582,7 +588,9 @@ class TestAddAICompanions:
         assert len(result) == 2
 
     @pytest.mark.unit
-    def test_uses_predefined_names(self, session_service, mock_supabase, sample_participant_row):
+    def test_uses_predefined_names(
+        self, session_service, mock_supabase, sample_participant_row
+    ) -> None:
         """AI companions get names from predefined list."""
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
@@ -603,7 +611,7 @@ class TestAddAICompanions:
 
         # Verify AI companion name was set
         call_args = mock_table.insert.call_args
-        inserted_data = call_args[0][0]
+        inserted_data = call_args.args[0]
         assert inserted_data["ai_companion_name"] is not None
 
 
@@ -616,7 +624,7 @@ class TestCalculateCurrentPhase:
     """Tests for calculate_current_phase() method."""
 
     @pytest.mark.unit
-    def test_setup_phase(self, session_service, sample_session_row):
+    def test_setup_phase(self, session_service, sample_session_row) -> None:
         """Returns SETUP for first 3 minutes."""
         now = datetime.now(timezone.utc)
         session = {
@@ -634,7 +642,7 @@ class TestCalculateCurrentPhase:
             assert result == SessionPhase.SETUP
 
     @pytest.mark.unit
-    def test_work_1_phase(self, session_service, sample_session_row):
+    def test_work_1_phase(self, session_service, sample_session_row) -> None:
         """Returns WORK_1 for minutes 3-28."""
         now = datetime.now(timezone.utc)
         session = {
@@ -652,7 +660,7 @@ class TestCalculateCurrentPhase:
             assert result == SessionPhase.WORK_1
 
     @pytest.mark.unit
-    def test_break_phase(self, session_service, sample_session_row):
+    def test_break_phase(self, session_service, sample_session_row) -> None:
         """Returns BREAK for minutes 28-30."""
         now = datetime.now(timezone.utc)
         session = {
@@ -670,7 +678,7 @@ class TestCalculateCurrentPhase:
             assert result == SessionPhase.BREAK
 
     @pytest.mark.unit
-    def test_work_2_phase(self, session_service, sample_session_row):
+    def test_work_2_phase(self, session_service, sample_session_row) -> None:
         """Returns WORK_2 for minutes 30-50."""
         now = datetime.now(timezone.utc)
         session = {
@@ -688,7 +696,7 @@ class TestCalculateCurrentPhase:
             assert result == SessionPhase.WORK_2
 
     @pytest.mark.unit
-    def test_social_phase(self, session_service, sample_session_row):
+    def test_social_phase(self, session_service, sample_session_row) -> None:
         """Returns SOCIAL for minutes 50-55."""
         now = datetime.now(timezone.utc)
         session = {
@@ -706,7 +714,7 @@ class TestCalculateCurrentPhase:
             assert result == SessionPhase.SOCIAL
 
     @pytest.mark.unit
-    def test_ended_phase(self, session_service, sample_session_row):
+    def test_ended_phase(self, session_service, sample_session_row) -> None:
         """Returns ENDED after 55 minutes."""
         now = datetime.now(timezone.utc)
         session = {
@@ -733,7 +741,7 @@ class TestGenerateLivekitToken:
     """Tests for generate_livekit_token() method."""
 
     @pytest.mark.unit
-    def test_generates_token(self, session_service):
+    def test_generates_token(self, session_service) -> None:
         """Generates a valid LiveKit access token."""
         with patch("app.services.session_service.get_settings") as mock_settings:
             mock_settings.return_value.livekit_api_key = "test-api-key"
@@ -756,7 +764,7 @@ class TestWaitTimeCalculation:
     """Tests for wait time calculation in quick-match responses."""
 
     @pytest.mark.unit
-    def test_wait_minutes_immediate(self):
+    def test_wait_minutes_immediate(self) -> None:
         """Session starting in <60s returns wait_minutes=0 and is_immediate=True."""
         now = datetime.now(timezone.utc)
         session_start = now + timedelta(seconds=45)
@@ -769,7 +777,7 @@ class TestWaitTimeCalculation:
         assert is_immediate is True
 
     @pytest.mark.unit
-    def test_wait_minutes_future(self):
+    def test_wait_minutes_future(self) -> None:
         """Session starting in 15 min returns wait_minutes=15 and is_immediate=False."""
         now = datetime.now(timezone.utc)
         session_start = now + timedelta(minutes=15)
@@ -782,7 +790,7 @@ class TestWaitTimeCalculation:
         assert is_immediate is False
 
     @pytest.mark.unit
-    def test_wait_minutes_rounds_down(self):
+    def test_wait_minutes_rounds_down(self) -> None:
         """Session starting in 14m50s returns wait_minutes=14 (rounds down)."""
         now = datetime.now(timezone.utc)
         session_start = now + timedelta(minutes=14, seconds=50)
@@ -795,7 +803,7 @@ class TestWaitTimeCalculation:
         assert is_immediate is False
 
     @pytest.mark.unit
-    def test_wait_minutes_edge_case_58_seconds(self):
+    def test_wait_minutes_edge_case_58_seconds(self) -> None:
         """Session starting in 58s still returns is_immediate=True."""
         now = datetime.now(timezone.utc)
         session_start = now + timedelta(seconds=58)
@@ -808,7 +816,7 @@ class TestWaitTimeCalculation:
         assert is_immediate is True
 
     @pytest.mark.unit
-    def test_no_show_no_refund(self):
+    def test_no_show_no_refund(self) -> None:
         """User matches but never joins - credit remains deducted (no refund).
 
         This test documents the no-refund policy. In the actual flow:
@@ -831,3 +839,198 @@ class TestWaitTimeCalculation:
         # Policy: No refunds for no-shows
         refund_amount = 0
         assert refund_amount == 0
+
+
+# =============================================================================
+# Test: Find or Create Session
+# =============================================================================
+
+
+class TestFindOrCreateSession:
+    """Tests for find_or_create_session() method."""
+
+    @pytest.mark.unit
+    def test_finds_existing_and_adds_user(
+        self, session_service, sample_session_row, sample_participant_row
+    ) -> None:
+        """When a matching session exists, uses it without creating a new one."""
+        refreshed_session = {
+            **sample_session_row,
+            "participants": [sample_participant_row],
+        }
+
+        with (
+            patch.object(
+                session_service, "find_matching_session", return_value=sample_session_row
+            ) as mock_find,
+            patch.object(session_service, "create_session") as mock_create,
+            patch.object(
+                session_service,
+                "add_participant",
+                return_value={
+                    "id": "p-1",
+                    "seat_number": 2,
+                    "already_active": False,
+                },
+            ) as mock_add,
+            patch.object(
+                session_service, "get_session_by_id", return_value=refreshed_session
+            ) as mock_get,
+        ):
+            filters = SessionFilters(mode=TableMode.FORCED_AUDIO)
+            start_time = datetime(2026, 2, 5, 14, 30, tzinfo=timezone.utc)
+
+            session, seat = session_service.find_or_create_session(filters, start_time, "user-123")
+
+            mock_find.assert_called_once_with(filters, start_time)
+            mock_create.assert_not_called()
+            mock_add.assert_called_once_with("session-123", "user-123")
+            mock_get.assert_called_once_with("session-123")
+            assert seat == 2
+
+    @pytest.mark.unit
+    def test_creates_new_when_no_match(
+        self, session_service, sample_session_row, sample_participant_row
+    ) -> None:
+        """When no matching session exists, creates a new one."""
+        created_session = {**sample_session_row, "id": "new-session-456"}
+        refreshed_session = {
+            **created_session,
+            "participants": [sample_participant_row],
+        }
+
+        with (
+            patch.object(session_service, "find_matching_session", return_value=None) as mock_find,
+            patch.object(
+                session_service, "create_session", return_value=created_session
+            ) as mock_create,
+            patch.object(
+                session_service,
+                "add_participant",
+                return_value={
+                    "id": "p-1",
+                    "seat_number": 1,
+                    "already_active": False,
+                },
+            ) as mock_add,
+            patch.object(session_service, "get_session_by_id", return_value=refreshed_session),
+        ):
+            filters = SessionFilters(mode=TableMode.FORCED_AUDIO, topic="python")
+            start_time = datetime(2026, 2, 5, 14, 30, tzinfo=timezone.utc)
+
+            session, seat = session_service.find_or_create_session(filters, start_time, "user-123")
+
+            mock_find.assert_called_once()
+            mock_create.assert_called_once_with(
+                mode=TableMode.FORCED_AUDIO,
+                topic="python",
+                language="en",
+                start_time=start_time,
+            )
+            mock_add.assert_called_once_with("new-session-456", "user-123")
+            assert seat == 1
+
+    @pytest.mark.unit
+    def test_returns_refreshed_session_and_seat(
+        self, session_service, sample_session_row, sample_participant_row
+    ) -> None:
+        """Returned session is from get_session_by_id (refreshed), not the original."""
+        original_session = {**sample_session_row, "participants": []}
+        refreshed_session = {
+            **sample_session_row,
+            "participants": [sample_participant_row],
+            "extra_field": "refreshed",
+        }
+
+        with (
+            patch.object(session_service, "find_matching_session", return_value=original_session),
+            patch.object(
+                session_service,
+                "add_participant",
+                return_value={"id": "p-1", "seat_number": 3, "already_active": False},
+            ),
+            patch.object(session_service, "get_session_by_id", return_value=refreshed_session),
+        ):
+            filters = SessionFilters()
+            start_time = datetime(2026, 2, 5, 14, 30, tzinfo=timezone.utc)
+
+            session, seat = session_service.find_or_create_session(filters, start_time, "user-123")
+
+            assert session is refreshed_session
+            assert session["extra_field"] == "refreshed"
+            assert seat == 3
+
+
+# =============================================================================
+# Test: Is Participant
+# =============================================================================
+
+
+class TestIsParticipant:
+    """Tests for is_participant() method."""
+
+    @pytest.mark.unit
+    def test_is_participant_true(self, session_service) -> None:
+        """Returns True when user_id is found in participants list."""
+        session = {
+            "id": "session-123",
+            "participants": [
+                {"user_id": "user-111", "seat_number": 1},
+                {"user_id": "user-123", "seat_number": 2},
+            ],
+        }
+
+        assert session_service.is_participant(session, "user-123") is True
+
+    @pytest.mark.unit
+    def test_is_participant_false(self, session_service) -> None:
+        """Returns False when user_id is not in participants list."""
+        session = {
+            "id": "session-123",
+            "participants": [
+                {"user_id": "user-111", "seat_number": 1},
+                {"user_id": "user-222", "seat_number": 2},
+            ],
+        }
+
+        assert session_service.is_participant(session, "user-999") is False
+
+
+# =============================================================================
+# Test: Get Participant
+# =============================================================================
+
+
+class TestGetParticipant:
+    """Tests for get_participant() method."""
+
+    @pytest.mark.unit
+    def test_get_participant_found(self, session_service) -> None:
+        """Returns the matching participant dict when user is found."""
+        target_participant = {"user_id": "user-123", "seat_number": 2}
+        session = {
+            "id": "session-123",
+            "participants": [
+                {"user_id": "user-111", "seat_number": 1},
+                target_participant,
+            ],
+        }
+
+        result = session_service.get_participant(session, "user-123")
+
+        assert result is target_participant
+        assert result["seat_number"] == 2
+
+    @pytest.mark.unit
+    def test_get_participant_not_found(self, session_service) -> None:
+        """Returns None when user is not in participants list."""
+        session = {
+            "id": "session-123",
+            "participants": [
+                {"user_id": "user-111", "seat_number": 1},
+            ],
+        }
+
+        result = session_service.get_participant(session, "user-999")
+
+        assert result is None

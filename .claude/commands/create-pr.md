@@ -74,8 +74,15 @@ Create a pull request following these steps:
 ---
 Generated with Claude Code /create-pr command
 
-7. **Execute**: Run `gh pr create --title "[type]: description" --body "..."` or `gh pr edit` if PR exists
-   - Use the exact type from the checked Type box above (feature, fix, refactor, docs, or config)
+7. **Execute**:
+   a. Check if a PR already exists for the current branch: `gh pr view --json number,body`
+   b. If **no PR exists**: Run `gh pr create --title "[type]: description" --body "..."` using the exact type from the checked Type box above
+   c. If **PR already exists**:
+      - Push any new commits to the branch
+      - Analyze what the new commits change
+      - Read the existing PR body, add new bullet(s) to the `## Summary` section describing the latest changes
+      - Update the PR body using `gh pr edit --body` with the appended summary
+      - Do NOT overwrite or remove existing summary bullets or title
 
 ### Phase 3: CI/CD Verification (MANDATORY)
 
