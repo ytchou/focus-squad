@@ -275,15 +275,25 @@
 ## Phase 3: Social & Polish (Week 5-6)
 
 ### Peer Review System (Backend)
-- [ ] Implement `RatingService` for peer reviews
-- [ ] Complete `POST /api/v1/sessions/{session_id}/rate` endpoint
-- [ ] Calculate reliability score (weighted average with time decay)
-- [ ] Implement 3-Red penalty system (48hr ban + credit loss)
-- [ ] Add high-reliability voter weight bonus
+> **Design Doc:** [output/plan/2026-02-08-peer-review-system.md](output/plan/2026-02-08-peer-review-system.md)
+
+- [x] Database migration (`010_peer_review_system.sql`): pending_ratings table, reason JSONB column, indexes
+- [x] Backend models (`models/rating.py`): enums, request/response models, exceptions
+- [x] Constants: reliability algorithm params, ban thresholds, reporting power multipliers
+- [x] `RatingService` (`services/rating_service.py`): submit, skip, calculate reliability, reporting power, penalty check
+- [x] API endpoints: `POST /{session_id}/rate`, `POST /{session_id}/rate/skip`, `GET /pending-ratings`
+- [x] Pending ratings soft blocker in `quick_match()` (403 if unresolved ratings)
+- [x] 26 unit tests for RatingService, all passing (TDD)
+- [x] Router-level auth tests for new endpoints
 
 ### Peer Review UI (Frontend)
-- [ ] Build peer review modal (Green/Red/Skip)
-- [ ] Show reliability badge on user profiles
+- [x] Rating store (`stores/rating-store.ts`): Zustand store for rating state + API calls
+- [x] `RatingCard` component: avatar, thumbs up/down/skip buttons, per-user
+- [x] `RatingReasonsPicker`: expandable checkbox list + "Other" free text
+- [x] Session end page: inline rating cards with submit/skip flow
+- [x] Dashboard: pending ratings alert card with link to session end page
+- [x] Banned page (`/banned`): gentle explanation + countdown timer
+- [x] `ReliabilityBadge`: updated to 4-tier system (Trusted/Good/Fair/New)
 - [ ] Display rating history in user dashboard
 
 ### Chat System
@@ -300,9 +310,9 @@
 - [ ] Show session statistics and streaks
 
 ### Gamification
-- [ ] Implement `EssenceService` for furniture essence
-- [ ] Award essence on 47-min core completion
-- [ ] Implement streak bonuses (10 sessions = bonus)
+- [x] Award essence on session completion (implemented in webhook room_finished handler)
+- [ ] Implement `EssenceService` for furniture essence (purchase, spend, history)
+- [ ] Implement streak bonuses (10 sessions = bonus essence)
 - [ ] Build item catalog display
 - [ ] Add item purchase flow
 
@@ -355,7 +365,13 @@
 ## Discovered Tasks
 > Add new tasks here as they're discovered during development
 
-(No unplaced tasks - all items from Backend Infrastructure review have been sorted into appropriate sections)
+### Database Improvements (Phase 4)
+- [ ] **[P3]** Add missing secondary indexes: `ratings.rater_id`, `reports.reported_user_id`, `user_items.item_id`
+- [ ] **[P2]** Add RLS policies for unprotected tables: `ratings`, `items`, `user_items`, `reports`, `chat_messages`
+
+### Product Decisions Needed
+- [ ] **[P2]** Confirm session completion threshold: current=20min active + present through min 50 vs spec="complete minutes 3-50" (47 min)
+- [ ] **[P3]** Replace root landing page (`/`) with proper marketing/landing page (currently Next.js boilerplate)
 
 ---
 

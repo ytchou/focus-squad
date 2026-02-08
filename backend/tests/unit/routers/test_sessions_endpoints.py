@@ -19,7 +19,7 @@ from app.routers.sessions import (
     cancel_session,
     get_session_summary,
     leave_session,
-    rate_participant,
+    rate_participants,
 )
 
 # =============================================================================
@@ -772,22 +772,33 @@ class TestCancelSession:
 
 
 # =============================================================================
-# rate_participant() Tests
+# rate_participants() Tests
 # =============================================================================
 
 
-class TestRateParticipant:
-    """Tests for the rate_participant() endpoint."""
+class TestRateParticipants:
+    """Tests for the rate_participants() endpoint (replaced 501 stub)."""
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_raises_501_not_implemented(self) -> None:
-        """Always raises 501 Not Implemented."""
+    async def test_requires_auth(self, mock_user_service) -> None:
+        """Endpoint requires authenticated user."""
+        mock_user_service.get_user_by_auth_id.return_value = None
+        mock_rating_service = MagicMock()
+
+        from app.models.rating import RatingValue, SingleRating, SubmitRatingsRequest
+
+        request = SubmitRatingsRequest(
+            ratings=[SingleRating(ratee_id="user-2", rating=RatingValue.GREEN)]
+        )
+        auth = AuthUser(auth_id="unknown", email="x@x.com")
+
         with pytest.raises(HTTPException) as exc_info:
-            await rate_participant(
-                session_id="session-abc",
-                participant_id="p-1",
-                rating="green",
+            await rate_participants(
+                session_id="s-1",
+                request=request,
+                user=auth,
+                rating_service=mock_rating_service,
+                user_service=mock_user_service,
             )
-        assert exc_info.value.status_code == 501
-        assert "Not implemented" in str(exc_info.value.detail)
+        assert exc_info.value.status_code == 404

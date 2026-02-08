@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCreditsStore, useUserStore } from "@/stores";
+import { useCreditsStore, useUserStore, useRatingStore } from "@/stores";
 import { useSessionStore } from "@/stores/session-store";
 import { api, ApiError } from "@/lib/api/client";
 import { AppShell } from "@/components/layout";
 import { StatCard } from "@/components/ui/stat-card";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
-import { Clock, Flame, Coins, Loader2, Bug } from "lucide-react";
+import { Clock, Flame, Coins, Loader2, Bug, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { VoiceModeModal } from "@/components/session/voice-mode-modal";
 
@@ -27,9 +27,15 @@ export default function DashboardPage() {
     setLiveKitConnection,
     setQuietMode,
   } = useSessionStore();
+  const { hasPendingRatings, pendingSessionId, checkPendingRatings } = useRatingStore();
   const [isMatching, setIsMatching] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   const [showModeModal, setShowModeModal] = useState(false);
+
+  // Check for pending ratings on mount
+  useEffect(() => {
+    checkPendingRatings();
+  }, [checkPendingRatings]);
 
   // Auto-redirect to waiting room if user has a pending session
   useEffect(() => {
@@ -166,6 +172,26 @@ export default function DashboardPage() {
             {user && <ReliabilityBadge score={user.reliability_score} />}
           </div>
         </div>
+
+        {/* Pending ratings alert */}
+        {hasPendingRatings && pendingSessionId && (
+          <button
+            onClick={() => router.push(`/session/${pendingSessionId}/end`)}
+            className="w-full rounded-2xl border border-warning/40 bg-warning/5 p-4 text-left transition-colors hover:bg-warning/10"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning/20">
+                <AlertTriangle className="h-5 w-5 text-warning" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-foreground">You have pending ratings</p>
+                <p className="text-sm text-muted-foreground">
+                  Please rate your tablemates from your last session before joining a new one.
+                </p>
+              </div>
+            </div>
+          </button>
+        )}
 
         {/* Stats grid */}
         <div className="grid gap-4 md:grid-cols-3">

@@ -10,6 +10,14 @@ export { useSessionStore, type SessionPhase, type Participant } from "./session-
 // Credits store
 export { useCreditsStore, type CreditTier } from "./credits-store";
 
+// Rating store
+export {
+  useRatingStore,
+  type RatingValue,
+  type RateableUser,
+  type RatingEntry,
+} from "./rating-store";
+
 // Notifications store
 export {
   useNotificationsStore,

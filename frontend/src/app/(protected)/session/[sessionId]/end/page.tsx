@@ -5,8 +5,19 @@ import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Clock, Sparkles, Users, Home, Star, Loader2 } from "lucide-react";
+import {
+  CheckCircle,
+  Clock,
+  Sparkles,
+  Users,
+  Home,
+  Loader2,
+  AlertCircle,
+  Star,
+} from "lucide-react";
 import { useSessionStore } from "@/stores/session-store";
+import { useRatingStore } from "@/stores/rating-store";
+import { RatingCard } from "@/components/session/rating-card";
 import { api } from "@/lib/api/client";
 
 interface SessionSummary {
@@ -24,12 +35,26 @@ export default function SessionEndPage() {
   const router = useRouter();
   const sessionId = params.sessionId as string;
   const { leaveSession } = useSessionStore();
+  const {
+    hasPendingRatings,
+    pendingSessionId,
+    rateableUsers,
+    ratings,
+    isSubmitting,
+    error: ratingError,
+    setRating,
+    setReasons,
+    setOtherText,
+    submitRatings,
+    skipAll,
+    checkPendingRatings,
+  } = useRatingStore();
 
-  const [showRatingPrompt, setShowRatingPrompt] = useState(true);
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ratingsCompleted, setRatingsCompleted] = useState(false);
 
-  // Fetch session summary
+  // Fetch session summary and pending ratings
   useEffect(() => {
     async function fetchSummary() {
       try {
@@ -37,7 +62,6 @@ export default function SessionEndPage() {
         setSummary(data);
       } catch (err) {
         console.error("Failed to fetch session summary:", err);
-        // Use fallback defaults
         setSummary({
           focus_minutes: 0,
           essence_earned: false,
@@ -52,7 +76,8 @@ export default function SessionEndPage() {
       }
     }
     fetchSummary();
-  }, [sessionId]);
+    checkPendingRatings();
+  }, [sessionId, checkPendingRatings]);
 
   // Clean up session state on unmount
   useEffect(() => {
@@ -61,14 +86,29 @@ export default function SessionEndPage() {
     };
   }, [leaveSession]);
 
+  const allRated =
+    rateableUsers.length > 0 && rateableUsers.every((u) => ratings[u.user_id]?.value !== null);
+
+  const hasInvalidRed = rateableUsers.some((u) => {
+    const entry = ratings[u.user_id];
+    return entry?.value === "red" && entry.reasons.length === 0;
+  });
+
+  const canSubmit = allRated && !hasInvalidRed && !isSubmitting;
+
+  const handleSubmitRatings = async () => {
+    await submitRatings(sessionId);
+    setRatingsCompleted(true);
+  };
+
+  const handleSkipAll = async () => {
+    await skipAll(sessionId);
+    setRatingsCompleted(true);
+  };
+
   const handleReturnHome = () => {
     leaveSession();
     router.push("/dashboard");
-  };
-
-  const handleRateTablemates = () => {
-    // Rating UI is Phase 3 - for now just dismiss the prompt
-    setShowRatingPrompt(false);
   };
 
   if (loading) {
@@ -154,33 +194,78 @@ export default function SessionEndPage() {
           </CardContent>
         </Card>
 
-        {/* Rating Prompt (Phase 3 feature - placeholder) */}
-        {showRatingPrompt && (
-          <Card className="border-accent/50">
+        {/* Peer Rating Section */}
+        {ratingsCompleted ? (
+          <Card className="border-success/50">
             <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/20 flex-shrink-0">
-                  <Star className="h-5 w-5 text-accent" />
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success/20 flex-shrink-0">
+                  <CheckCircle className="h-5 w-5 text-success" />
                 </div>
-                <div className="flex-1 space-y-2">
-                  <h3 className="font-medium">Rate your tablemates</h3>
+                <div>
+                  <h3 className="font-medium">Thanks for your feedback!</h3>
                   <p className="text-sm text-muted-foreground">
-                    Help build trust in the community by rating whether your tablemates were focused
-                    and present.
+                    Your ratings help build a trusted community.
                   </p>
-                  <div className="flex gap-2 pt-2">
-                    <Button size="sm" onClick={handleRateTablemates}>
-                      Rate Now
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setShowRatingPrompt(false)}>
-                      Skip
-                    </Button>
-                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
-        )}
+        ) : hasPendingRatings && pendingSessionId === sessionId && rateableUsers.length > 0 ? (
+          <Card className="border-accent/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/20 flex-shrink-0">
+                  <Star className="h-5 w-5 text-accent" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Rate your tablemates</CardTitle>
+                  <CardDescription>Were your tablemates focused and present?</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {rateableUsers.map((user) => (
+                <RatingCard
+                  key={user.user_id}
+                  userId={user.user_id}
+                  username={user.username}
+                  displayName={user.display_name}
+                  avatarConfig={user.avatar_config}
+                  currentRating={ratings[user.user_id]?.value ?? null}
+                  reasons={ratings[user.user_id]?.reasons ?? []}
+                  otherReasonText={ratings[user.user_id]?.otherReasonText ?? ""}
+                  onRatingChange={(value) => setRating(user.user_id, value)}
+                  onReasonsChange={(reasons) => setReasons(user.user_id, reasons)}
+                  onOtherTextChange={(text) => setOtherText(user.user_id, text)}
+                />
+              ))}
+
+              {ratingError && (
+                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  {ratingError}
+                </div>
+              )}
+
+              {hasInvalidRed && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Please select at least one reason for each &ldquo;Had issues&rdquo; rating.
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button className="flex-1" onClick={handleSubmitRatings} disabled={!canSubmit}>
+                  {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Submit Ratings
+                </Button>
+                <Button variant="ghost" onClick={handleSkipAll} disabled={isSubmitting}>
+                  Skip All
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {/* Return Home Button */}
         <Button size="lg" className="w-full" onClick={handleReturnHome}>
