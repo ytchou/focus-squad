@@ -296,11 +296,19 @@
 - [x] `ReliabilityBadge`: updated to 4-tier system (Trusted/Good/Fair/New)
 - [ ] Display rating history in user dashboard
 
-### Chat System
-- [ ] Implement chat message storage and retrieval
-- [ ] Add keyword filtering for inappropriate content
-- [ ] Build in-session text chat UI
-- [ ] Add content flagging for moderation
+### Session Board (Reflections + Chat)
+> **Design Doc:** [output/plan/2026-02-08-session-board-design.md](output/plan/2026-02-08-session-board-design.md)
+- [ ] Design session board UI (single stream with visually distinct reflection prompts)
+- [ ] Implement reflection prompts at phase transitions (setup goal, mid-session check-in, end afterthoughts)
+- [ ] Build shared message board component (LiveKit data channels for real-time sync)
+- [ ] Persist reflections to DB (free-form chat is ephemeral)
+- [ ] Add gentle nudge notifications at phase transitions
+- [ ] Support both typed input and mic-prompted mode (Forced Audio)
+
+### Session Diary (Future)
+- [ ] Build personal session diary page (view past session reflections)
+- [ ] Display reflection history with date, session info, and personal goals/outcomes
+- [ ] Add filtering/search across past reflections
 
 ### Avatar & Profile
 - [ ] Create avatar builder component
