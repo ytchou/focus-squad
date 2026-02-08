@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.middleware import JWTValidationMiddleware
 from app.core.redis import close_redis, init_redis
-from app.routers import analytics, credits, health, sessions, users, webhooks
+from app.routers import analytics, credits, health, reflections, sessions, users, webhooks
 
 settings = get_settings()
 
@@ -47,6 +47,10 @@ app.add_middleware(JWTValidationMiddleware)
 # Include routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(users.router, prefix=f"{settings.api_prefix}/users", tags=["Users"])
+# Reflections router first: static /diary must be matched before /{session_id}
+app.include_router(
+    reflections.router, prefix=f"{settings.api_prefix}/sessions", tags=["Reflections"]
+)
 app.include_router(sessions.router, prefix=f"{settings.api_prefix}/sessions", tags=["Sessions"])
 app.include_router(credits.router, prefix=f"{settings.api_prefix}/credits", tags=["Credits"])
 app.include_router(analytics.router, prefix=f"{settings.api_prefix}/analytics", tags=["Analytics"])

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -8,7 +8,7 @@ import {
   useLocalParticipant,
   useParticipants,
 } from "@livekit/components-react";
-import { RoomEvent, ConnectionState } from "livekit-client";
+import { RoomEvent, ConnectionState, DataPacket_Kind } from "livekit-client";
 import { ConnectionStatus } from "./connection-status";
 
 interface LiveKitRoomProviderProps {
@@ -150,4 +150,54 @@ export function useRemoteParticipants() {
   const participants = useParticipants();
   // Filter out local participant
   return participants.filter((p) => !p.isLocal);
+}
+
+/**
+ * Hook for sending and receiving data channel messages.
+ *
+ * Used by the Session Board to broadcast chat/reflection messages
+ * to all participants in real-time.
+ */
+export function useDataChannel(onMessage: (data: unknown) => void) {
+  const room = useRoomContext();
+  const onMessageRef = useRef(onMessage);
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
+
+  useEffect(() => {
+    if (!room) return;
+
+    const handleDataReceived = (
+      payload: Uint8Array,
+      _participant?: unknown,
+      _kind?: DataPacket_Kind
+    ) => {
+      try {
+        const decoded = new TextDecoder().decode(payload);
+        const parsed = JSON.parse(decoded);
+        onMessageRef.current(parsed);
+      } catch (err) {
+        console.error("Failed to parse data channel message:", err);
+      }
+    };
+
+    room.on(RoomEvent.DataReceived, handleDataReceived);
+
+    return () => {
+      room.off(RoomEvent.DataReceived, handleDataReceived);
+    };
+  }, [room]);
+
+  const sendMessage = useCallback(
+    (data: unknown) => {
+      if (!room?.localParticipant) return;
+
+      const encoded = new TextEncoder().encode(JSON.stringify(data));
+      room.localParticipant.publishData(encoded, { reliable: true });
+    },
+    [room]
+  );
+
+  return { sendMessage };
 }

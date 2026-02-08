@@ -63,6 +63,28 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
 }));
 
+// Mock sonner toast
+vi.mock("sonner", () => ({
+  toast: Object.assign(vi.fn(), { info: vi.fn() }),
+}));
+
+// Mock board store
+vi.mock("@/stores/board-store", () => ({
+  useBoardStore: Object.assign(
+    () => ({
+      messages: [],
+      addMessage: vi.fn(),
+      saveReflection: vi.fn(),
+      loadSessionReflections: vi.fn(),
+      reset: vi.fn(),
+      isDrawerOpen: false,
+      toggleDrawer: vi.fn(),
+      unreadCount: 0,
+    }),
+    { getState: () => ({ reset: vi.fn() }) }
+  ),
+}));
+
 // Mock session components
 vi.mock("@/components/session", () => ({
   SessionLayout: ({
@@ -137,6 +159,9 @@ vi.mock("@/components/session", () => ({
       <span data-testid="quiet-mode">{isQuietMode ? "quiet" : "normal"}</span>
     </div>
   ),
+  CompactTableView: () => <div data-testid="compact-table-view" />,
+  SessionBoard: () => <div data-testid="session-board" />,
+  BoardDrawer: () => <div data-testid="board-drawer" />,
 }));
 
 // Mock LiveKit provider
@@ -146,6 +171,7 @@ vi.mock("@/components/session/livekit-room-provider", () => ({
   ),
   useActiveSpeakers: () => new Set<string>(),
   useLocalMicrophone: () => ({ isMuted: true, toggleMute: vi.fn() }),
+  useDataChannel: () => ({ sendMessage: vi.fn() }),
 }));
 
 // Mock SessionEndModal
