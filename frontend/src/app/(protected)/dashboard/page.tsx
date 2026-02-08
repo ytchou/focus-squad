@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCreditsStore, useUserStore, useRatingStore } from "@/stores";
 import { useSessionStore } from "@/stores/session-store";
@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api/client";
 import { AppShell } from "@/components/layout";
 import { StatCard } from "@/components/ui/stat-card";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
+import { RatingHistoryCard } from "@/components/dashboard/rating-history-card";
 import { Clock, Flame, Coins, Loader2, Bug, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { VoiceModeModal } from "@/components/session/voice-mode-modal";
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const [isMatching, setIsMatching] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   const [showModeModal, setShowModeModal] = useState(false);
+  const ratingHistoryRef = useRef<HTMLDivElement>(null);
 
   // Check for pending ratings on mount
   useEffect(() => {
@@ -235,7 +237,10 @@ export default function DashboardPage() {
                 </p>
               </div>
             </button>
-            <button className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted">
+            <button
+              onClick={() => ratingHistoryRef.current?.scrollIntoView({ behavior: "smooth" })}
+              className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted"
+            >
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/20 text-success">
                 <Flame className="h-5 w-5" />
               </div>
@@ -254,6 +259,11 @@ export default function DashboardPage() {
               </div>
             </button>
           </div>
+        </div>
+
+        {/* Rating History */}
+        <div ref={ratingHistoryRef}>
+          <RatingHistoryCard />
         </div>
       </div>
 

@@ -39,6 +39,9 @@ from app.models.rating import (
     PendingRatingInfo,
     RateableUser,
     RatingAlreadyExistsError,
+    RatingHistoryItem,
+    RatingHistoryResponse,
+    RatingHistorySummary,
     RatingSubmitResponse,
     RatingValue,
     RedReasonRequiredError,
@@ -370,6 +373,70 @@ class RatingService:
         if score >= Decimal("80"):
             return ReliabilityTier.GOOD
         return ReliabilityTier.FAIR
+
+    def get_rating_history(
+        self,
+        user_id: str,
+        page: int = 1,
+        per_page: int = 20,
+    ) -> RatingHistoryResponse:
+        """Get paginated history of ratings received by this user.
+
+        Returns privacy-safe items (no rater identity) plus aggregate summary.
+        """
+        offset = (page - 1) * per_page
+
+        # Query 1: Aggregate counts (all non-skip ratings for this user)
+        all_ratings = (
+            self.supabase.table("ratings")
+            .select("rating")
+            .eq("ratee_id", user_id)
+            .neq("rating", "skip")
+            .execute()
+        )
+
+        green_count = sum(1 for r in all_ratings.data if r["rating"] == "green")
+        red_count = sum(1 for r in all_ratings.data if r["rating"] == "red")
+        total_received = green_count + red_count
+        green_percentage = (
+            round((green_count / total_received) * 100, 1) if total_received > 0 else 0.0
+        )
+
+        # Query 2: Paginated items (most recent first)
+        items_result = (
+            self.supabase.table("ratings")
+            .select("id, session_id, rating, created_at")
+            .eq("ratee_id", user_id)
+            .neq("rating", "skip")
+            .order("created_at", desc=True)
+            .range(offset, offset + per_page - 1)
+            .execute()
+        )
+
+        items = [
+            RatingHistoryItem(
+                id=r["id"],
+                session_id=r["session_id"],
+                rating=r["rating"],
+                created_at=r["created_at"],
+            )
+            for r in items_result.data
+        ]
+
+        summary = RatingHistorySummary(
+            total_received=total_received,
+            green_count=green_count,
+            red_count=red_count,
+            green_percentage=green_percentage,
+        )
+
+        return RatingHistoryResponse(
+            summary=summary,
+            items=items,
+            total=total_received,
+            page=page,
+            per_page=per_page,
+        )
 
     # =========================================================================
     # Private Helpers

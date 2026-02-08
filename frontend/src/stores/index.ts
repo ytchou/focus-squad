@@ -16,6 +16,9 @@ export {
   type RatingValue,
   type RateableUser,
   type RatingEntry,
+  type RatingHistorySummary,
+  type RatingHistoryItem,
+  type RatingHistoryData,
 } from "./rating-store";
 
 // Notifications store
