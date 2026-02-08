@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSessionStore } from "@/stores/session-store";
 import { api } from "@/lib/api/client";
@@ -12,13 +12,19 @@ import {
   TimerDisplay,
   TableView,
   ControlBar,
+  CompactTableView,
+  SessionBoard,
+  BoardDrawer,
 } from "@/components/session";
 import {
   LiveKitRoomProvider,
   useActiveSpeakers,
   useLocalMicrophone,
+  useDataChannel,
 } from "@/components/session/livekit-room-provider";
 import { SessionEndModal } from "@/components/session/session-end-modal";
+import { useBoardStore, type BoardMessage, type ReflectionPhase } from "@/stores/board-store";
+import { toast } from "sonner";
 import { Loader2, Bug } from "lucide-react";
 import type { SessionPhase } from "@/stores/session-store";
 
@@ -311,6 +317,32 @@ export default function SessionPage() {
 function LiveKitSessionContent(props: Omit<SessionPageContentProps, "disableAudio">) {
   const { isMuted, toggleMute } = useLocalMicrophone();
   const speakingParticipantIds = useActiveSpeakers();
+  const { addMessage, incrementUnread, isDrawerOpen } = useBoardStore();
+
+  // Receive data channel messages from other participants
+  const handleDataMessage = useCallback(
+    (data: unknown) => {
+      const msg = data as BoardMessage;
+      if (msg?.type && msg?.userId && msg.userId !== props.currentUserId) {
+        addMessage(msg);
+        // Increment unread counter if drawer is closed during work phases
+        if (!isDrawerOpen) {
+          incrementUnread();
+        }
+      }
+    },
+    [props.currentUserId, addMessage, incrementUnread, isDrawerOpen]
+  );
+
+  const { sendMessage } = useDataChannel(handleDataMessage);
+
+  // Broadcast board messages to other participants
+  const handleBroadcastMessage = useCallback(
+    (message: BoardMessage) => {
+      sendMessage(message);
+    },
+    [sendMessage]
+  );
 
   return (
     <SessionPageContent
@@ -318,6 +350,7 @@ function LiveKitSessionContent(props: Omit<SessionPageContentProps, "disableAudi
       isMuted={isMuted}
       toggleMute={toggleMute}
       speakingParticipantIds={speakingParticipantIds}
+      onBroadcastMessage={handleBroadcastMessage}
     />
   );
 }
@@ -350,7 +383,18 @@ interface SessionPageContentProps {
   isMuted?: boolean;
   toggleMute?: () => void;
   speakingParticipantIds?: Set<string>;
+  // Board data channel (only available inside LiveKit context)
+  onBroadcastMessage?: (message: BoardMessage) => void;
 }
+
+// Phases where the board takes over the main content area
+const BOARD_PHASES: SessionPhase[] = ["setup", "break", "social"];
+// Phases that correspond to reflection prompts
+const REFLECTION_PHASE_MAP: Partial<Record<SessionPhase, ReflectionPhase>> = {
+  setup: "setup",
+  break: "break",
+  social: "social",
+};
 
 function SessionPageContent({
   sessionId,
@@ -369,7 +413,41 @@ function SessionPageContent({
   isMuted = true,
   toggleMute = () => {},
   speakingParticipantIds = new Set<string>(),
+  onBroadcastMessage,
 }: SessionPageContentProps) {
+  const isBoardPhase = BOARD_PHASES.includes(phase);
+  const reflectionPhase = REFLECTION_PHASE_MAP[phase] ?? null;
+  const currentUser = participants.find((p) => p.isCurrentUser);
+  const currentUserDisplayName = currentUser?.displayName || currentUser?.username || "You";
+
+  // Phase nudge: show toast when entering a reflection phase
+  const prevPhaseRef = useRef<SessionPhase>(phase);
+  useEffect(() => {
+    if (phase !== prevPhaseRef.current && reflectionPhase) {
+      const prompts: Record<ReflectionPhase, string> = {
+        setup: "Share your session goal with the table!",
+        break: "Time for a quick check-in!",
+        social: "Session wrapping up - share your afterthoughts!",
+      };
+      toast.info(prompts[reflectionPhase]);
+    }
+    prevPhaseRef.current = phase;
+  }, [phase, reflectionPhase]);
+
+  // Reset board store when leaving
+  useEffect(() => {
+    return () => {
+      useBoardStore.getState().reset();
+    };
+  }, []);
+
+  const handleBroadcast = useCallback(
+    (message: BoardMessage) => {
+      onBroadcastMessage?.(message);
+    },
+    [onBroadcastMessage]
+  );
+
   return (
     <>
       <SessionLayout
@@ -382,23 +460,62 @@ function SessionPageContent({
           />
         }
       >
-        {/* Timer */}
-        <div className="mb-8">
-          <TimerDisplay
-            phase={phase}
-            timeRemaining={timeRemaining}
-            totalTimeRemaining={totalTimeRemaining}
-            progress={progress}
-          />
-        </div>
-
-        {/* Participants Table */}
-        <TableView
-          participants={participants}
-          speakingParticipantIds={speakingParticipantIds}
-          currentUserId={currentUserId}
-        />
+        {isBoardPhase ? (
+          <>
+            {/* Board phase: compact table + timer badge + board as main content */}
+            <CompactTableView
+              participants={participants}
+              speakingParticipantIds={speakingParticipantIds}
+            />
+            <div className="text-center mb-3">
+              <TimerDisplay
+                phase={phase}
+                timeRemaining={timeRemaining}
+                totalTimeRemaining={totalTimeRemaining}
+                progress={progress}
+                compact
+              />
+            </div>
+            <div className="w-full max-w-lg flex-1 min-h-0">
+              <SessionBoard
+                sessionId={sessionId}
+                currentUserId={currentUserId || ""}
+                currentUserDisplayName={currentUserDisplayName}
+                reflectionPhase={reflectionPhase}
+                onBroadcastMessage={handleBroadcast}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Work phase: timer + full table (board in drawer) */}
+            <div className="mb-8">
+              <TimerDisplay
+                phase={phase}
+                timeRemaining={timeRemaining}
+                totalTimeRemaining={totalTimeRemaining}
+                progress={progress}
+              />
+            </div>
+            <TableView
+              participants={participants}
+              speakingParticipantIds={speakingParticipantIds}
+              currentUserId={currentUserId}
+            />
+          </>
+        )}
       </SessionLayout>
+
+      {/* Board drawer during work phases */}
+      {!isBoardPhase && phase !== "idle" && phase !== "completed" && (
+        <BoardDrawer
+          sessionId={sessionId}
+          currentUserId={currentUserId || ""}
+          currentUserDisplayName={currentUserDisplayName}
+          reflectionPhase={null}
+          onBroadcastMessage={handleBroadcast}
+        />
+      )}
 
       {/* Session End Modal */}
       <SessionEndModal

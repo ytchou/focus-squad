@@ -25,3 +25,11 @@ export {
   type Notification,
   type NotificationType,
 } from "./notifications-store";
+
+// Board store (session reflections + chat)
+export {
+  useBoardStore,
+  type BoardMessage,
+  type MessageType,
+  type ReflectionPhase,
+} from "./board-store";

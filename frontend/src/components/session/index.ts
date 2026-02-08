@@ -7,3 +7,5 @@ export { ParticipantSeat, type ParticipantSeatProps } from "./participant-seat";
 export { ControlBar } from "./control-bar";
 export { ConnectionStatus } from "./connection-status";
 export { SessionEndModal } from "./session-end-modal";
+export { CompactTableView } from "./compact-table-view";
+export { SessionBoard, BoardDrawer } from "./board";

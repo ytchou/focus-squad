@@ -9,6 +9,7 @@ interface TimerDisplayProps {
   timeRemaining: number; // seconds
   totalTimeRemaining: number; // seconds
   progress: number; // 0-1 progress through current phase
+  compact?: boolean; // Inline badge version for board layout
 }
 
 export function TimerDisplay({
@@ -16,7 +17,16 @@ export function TimerDisplay({
   timeRemaining,
   totalTimeRemaining,
   progress,
+  compact = false,
 }: TimerDisplayProps) {
+  if (compact) {
+    return (
+      <div className="inline-flex items-center gap-2 px-3 py-1 bg-muted rounded-full">
+        <span className="text-sm font-medium text-foreground">{formatTime(timeRemaining)}</span>
+        <span className="text-xs text-muted-foreground">{PHASE_LABELS[phase]}</span>
+      </div>
+    );
+  }
   const isWork = isWorkPhase(phase);
   const isBreak = phase === "break";
   const isSocial = phase === "social";
