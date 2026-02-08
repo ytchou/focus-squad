@@ -70,12 +70,15 @@ class TestSaveReflection:
         reflections_mock = MagicMock()
         users_mock = MagicMock()
 
-        _setup_table_router(mock_supabase, {
-            "sessions": sessions_mock,
-            "session_participants": participants_mock,
-            "session_reflections": reflections_mock,
-            "users": users_mock,
-        })
+        _setup_table_router(
+            mock_supabase,
+            {
+                "sessions": sessions_mock,
+                "session_participants": participants_mock,
+                "session_reflections": reflections_mock,
+                "users": users_mock,
+            },
+        )
 
         # Session exists
         sessions_mock.select.return_value.eq.return_value.execute.return_value.data = [
@@ -132,10 +135,13 @@ class TestSaveReflection:
         sessions_mock = MagicMock()
         participants_mock = MagicMock()
 
-        _setup_table_router(mock_supabase, {
-            "sessions": sessions_mock,
-            "session_participants": participants_mock,
-        })
+        _setup_table_router(
+            mock_supabase,
+            {
+                "sessions": sessions_mock,
+                "session_participants": participants_mock,
+            },
+        )
 
         sessions_mock.select.return_value.eq.return_value.execute.return_value.data = [
             {"id": "session-1"}
@@ -158,12 +164,15 @@ class TestSaveReflection:
         reflections_mock = MagicMock()
         users_mock = MagicMock()
 
-        _setup_table_router(mock_supabase, {
-            "sessions": sessions_mock,
-            "session_participants": participants_mock,
-            "session_reflections": reflections_mock,
-            "users": users_mock,
-        })
+        _setup_table_router(
+            mock_supabase,
+            {
+                "sessions": sessions_mock,
+                "session_participants": participants_mock,
+                "session_reflections": reflections_mock,
+                "users": users_mock,
+            },
+        )
 
         sessions_mock.select.return_value.eq.return_value.execute.return_value.data = [
             {"id": "session-1"}
@@ -197,12 +206,15 @@ class TestSaveReflection:
         reflections_mock = MagicMock()
         users_mock = MagicMock()
 
-        _setup_table_router(mock_supabase, {
-            "sessions": sessions_mock,
-            "session_participants": participants_mock,
-            "session_reflections": reflections_mock,
-            "users": users_mock,
-        })
+        _setup_table_router(
+            mock_supabase,
+            {
+                "sessions": sessions_mock,
+                "session_participants": participants_mock,
+                "session_reflections": reflections_mock,
+                "users": users_mock,
+            },
+        )
 
         sessions_mock.select.return_value.eq.return_value.execute.return_value.data = [
             {"id": "session-1"}
@@ -210,9 +222,7 @@ class TestSaveReflection:
         participants_mock.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
             {"id": "p-1"}
         ]
-        reflections_mock.upsert.return_value.execute.return_value.data = [
-            _make_reflection_row()
-        ]
+        reflections_mock.upsert.return_value.execute.return_value.data = [_make_reflection_row()]
         users_mock.select.return_value.eq.return_value.execute.return_value.data = [
             {"display_name": None, "username": "fallback_name"}
         ]
@@ -241,10 +251,13 @@ class TestGetSessionReflections:
         sessions_mock = MagicMock()
         reflections_mock = MagicMock()
 
-        _setup_table_router(mock_supabase, {
-            "sessions": sessions_mock,
-            "session_reflections": reflections_mock,
-        })
+        _setup_table_router(
+            mock_supabase,
+            {
+                "sessions": sessions_mock,
+                "session_reflections": reflections_mock,
+            },
+        )
 
         sessions_mock.select.return_value.eq.return_value.execute.return_value.data = [
             {"id": "session-1"}
@@ -253,14 +266,24 @@ class TestGetSessionReflections:
         now = datetime.now(timezone.utc).isoformat()
         reflections_mock.select.return_value.eq.return_value.order.return_value.execute.return_value.data = [
             {
-                "id": "r-1", "session_id": "session-1", "user_id": "user-1",
-                "phase": "setup", "content": "Goal 1", "created_at": now,
-                "updated_at": now, "users": {"display_name": "Alice", "username": "alice"},
+                "id": "r-1",
+                "session_id": "session-1",
+                "user_id": "user-1",
+                "phase": "setup",
+                "content": "Goal 1",
+                "created_at": now,
+                "updated_at": now,
+                "users": {"display_name": "Alice", "username": "alice"},
             },
             {
-                "id": "r-2", "session_id": "session-1", "user_id": "user-2",
-                "phase": "setup", "content": "Goal 2", "created_at": now,
-                "updated_at": now, "users": {"display_name": None, "username": "bob"},
+                "id": "r-2",
+                "session_id": "session-1",
+                "user_id": "user-2",
+                "phase": "setup",
+                "content": "Goal 2",
+                "created_at": now,
+                "updated_at": now,
+                "users": {"display_name": None, "username": "bob"},
             },
         ]
 
@@ -277,10 +300,13 @@ class TestGetSessionReflections:
         sessions_mock = MagicMock()
         reflections_mock = MagicMock()
 
-        _setup_table_router(mock_supabase, {
-            "sessions": sessions_mock,
-            "session_reflections": reflections_mock,
-        })
+        _setup_table_router(
+            mock_supabase,
+            {
+                "sessions": sessions_mock,
+                "session_reflections": reflections_mock,
+            },
+        )
 
         sessions_mock.select.return_value.eq.return_value.execute.return_value.data = [
             {"id": "session-1"}
@@ -329,18 +355,24 @@ class TestGetDiary:
         # Note: the second select call (with join) uses order chain
         reflections_mock.select.return_value.eq.return_value.order.return_value.execute.return_value.data = [
             {
-                "session_id": "session-1", "phase": "setup",
-                "content": "Goal A", "created_at": now,
+                "session_id": "session-1",
+                "phase": "setup",
+                "content": "Goal A",
+                "created_at": now,
                 "sessions": {"start_time": now, "topic": "Deep Work"},
             },
             {
-                "session_id": "session-1", "phase": "break",
-                "content": "Going well", "created_at": now,
+                "session_id": "session-1",
+                "phase": "break",
+                "content": "Going well",
+                "created_at": now,
                 "sessions": {"start_time": now, "topic": "Deep Work"},
             },
             {
-                "session_id": "session-2", "phase": "setup",
-                "content": "Goal B", "created_at": earlier,
+                "session_id": "session-2",
+                "phase": "setup",
+                "content": "Goal B",
+                "created_at": earlier,
                 "sessions": {"start_time": earlier, "topic": None},
             },
         ]
@@ -370,8 +402,10 @@ class TestGetDiary:
 
         reflections_mock.select.return_value.eq.return_value.order.return_value.execute.return_value.data = [
             {
-                "session_id": f"session-{i}", "phase": "setup",
-                "content": f"Goal {i}", "created_at": now,
+                "session_id": f"session-{i}",
+                "phase": "setup",
+                "content": f"Goal {i}",
+                "created_at": now,
                 "sessions": {"start_time": now, "topic": None},
             }
             for i in range(3)
@@ -413,18 +447,24 @@ class TestGetDiary:
         # Return in wrong order (social before setup)
         reflections_mock.select.return_value.eq.return_value.order.return_value.execute.return_value.data = [
             {
-                "session_id": "session-1", "phase": "social",
-                "content": "Afterthoughts", "created_at": now,
+                "session_id": "session-1",
+                "phase": "social",
+                "content": "Afterthoughts",
+                "created_at": now,
                 "sessions": {"start_time": now, "topic": None},
             },
             {
-                "session_id": "session-1", "phase": "setup",
-                "content": "My goal", "created_at": now,
+                "session_id": "session-1",
+                "phase": "setup",
+                "content": "My goal",
+                "created_at": now,
                 "sessions": {"start_time": now, "topic": None},
             },
             {
-                "session_id": "session-1", "phase": "break",
-                "content": "Check-in", "created_at": now,
+                "session_id": "session-1",
+                "phase": "break",
+                "content": "Check-in",
+                "created_at": now,
                 "sessions": {"start_time": now, "topic": None},
             },
         ]

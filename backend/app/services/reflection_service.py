@@ -224,12 +224,7 @@ class ReflectionService:
 
     def _verify_session_exists(self, session_id: str) -> None:
         """Check that the session exists."""
-        result = (
-            self.supabase.table("sessions")
-            .select("id")
-            .eq("id", session_id)
-            .execute()
-        )
+        result = self.supabase.table("sessions").select("id").eq("id", session_id).execute()
         if not result.data:
             raise SessionNotFoundError(f"Session {session_id} not found")
 

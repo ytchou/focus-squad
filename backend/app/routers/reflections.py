@@ -34,6 +34,7 @@ router = APIRouter()
 # Dependency Injection
 # =============================================================================
 
+
 def get_reflection_service() -> ReflectionService:
     """Get ReflectionService instance."""
     return ReflectionService()
@@ -47,6 +48,7 @@ def get_user_service() -> UserService:
 # =============================================================================
 # Endpoints (static routes before parameterized)
 # =============================================================================
+
 
 @router.get("/diary", response_model=DiaryResponse)
 async def get_diary(

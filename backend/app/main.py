@@ -48,7 +48,9 @@ app.add_middleware(JWTValidationMiddleware)
 app.include_router(health.router, tags=["Health"])
 app.include_router(users.router, prefix=f"{settings.api_prefix}/users", tags=["Users"])
 app.include_router(sessions.router, prefix=f"{settings.api_prefix}/sessions", tags=["Sessions"])
-app.include_router(reflections.router, prefix=f"{settings.api_prefix}/sessions", tags=["Reflections"])
+app.include_router(
+    reflections.router, prefix=f"{settings.api_prefix}/sessions", tags=["Reflections"]
+)
 app.include_router(credits.router, prefix=f"{settings.api_prefix}/credits", tags=["Credits"])
 app.include_router(analytics.router, prefix=f"{settings.api_prefix}/analytics", tags=["Analytics"])
 app.include_router(webhooks.router, prefix=f"{settings.api_prefix}/webhooks", tags=["Webhooks"])

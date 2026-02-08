@@ -23,7 +23,6 @@ from app.models.reflection import (
 )
 from app.routers.reflections import get_diary, get_session_reflections, save_reflection
 
-
 # =============================================================================
 # Shared Fixtures
 # =============================================================================
@@ -178,15 +177,17 @@ class TestGetSessionReflections:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_get_reflections_success(
-        self, auth_user, mock_reflection_service
-    ) -> None:
+    async def test_get_reflections_success(self, auth_user, mock_reflection_service) -> None:
         """Returns all reflections for a session."""
         mock_reflection_service.get_session_reflections.return_value = [
             ReflectionResponse(
-                id="r-1", session_id="session-1", user_id="user-1",
-                display_name="Alice", phase=ReflectionPhase.SETUP,
-                content="Goal 1", created_at="2026-02-08T10:00:00+00:00",
+                id="r-1",
+                session_id="session-1",
+                user_id="user-1",
+                display_name="Alice",
+                phase=ReflectionPhase.SETUP,
+                content="Goal 1",
+                created_at="2026-02-08T10:00:00+00:00",
                 updated_at="2026-02-08T10:00:00+00:00",
             ),
         ]
