@@ -1,52 +1,59 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Shield, ShieldCheck, ShieldAlert } from "lucide-react";
+import { ShieldCheck, Shield, ShieldAlert, User } from "lucide-react";
 
 interface ReliabilityBadgeProps {
   score: number;
+  ratingCount?: number;
   showLabel?: boolean;
   size?: "sm" | "md" | "lg";
   className?: string;
 }
 
-type ReliabilityTier = "high" | "medium" | "low";
+type ReliabilityTier = "trusted" | "good" | "fair" | "new";
 
-function getReliabilityTier(score: number): ReliabilityTier {
-  if (score >= 80) return "high";
-  if (score >= 50) return "medium";
-  return "low";
+function getReliabilityTier(score: number, ratingCount?: number): ReliabilityTier {
+  if (ratingCount !== undefined && ratingCount < 5) return "new";
+  if (score >= 95) return "trusted";
+  if (score >= 80) return "good";
+  return "fair";
 }
 
 function getReliabilityLabel(tier: ReliabilityTier): string {
   switch (tier) {
-    case "high":
-      return "Reliable";
-    case "medium":
+    case "trusted":
+      return "Trusted";
+    case "good":
       return "Good";
-    case "low":
-      return "Building";
+    case "fair":
+      return "Fair";
+    case "new":
+      return "New";
   }
 }
 
 export function ReliabilityBadge({
   score,
+  ratingCount,
   showLabel = true,
   size = "md",
   className,
 }: ReliabilityBadgeProps) {
-  const tier = getReliabilityTier(score);
+  const tier = getReliabilityTier(score, ratingCount);
 
   const tierStyles = {
-    high: "bg-success/20 text-success",
-    medium: "bg-accent/20 text-accent",
-    low: "bg-muted text-muted-foreground",
+    trusted: "bg-success/20 text-success",
+    good: "bg-accent/20 text-accent",
+    fair: "bg-warning/20 text-warning",
+    new: "bg-muted text-muted-foreground",
   };
 
   const TierIcon = {
-    high: ShieldCheck,
-    medium: Shield,
-    low: ShieldAlert,
+    trusted: ShieldCheck,
+    good: Shield,
+    fair: ShieldAlert,
+    new: User,
   }[tier];
 
   const sizeClasses = {
@@ -72,7 +79,7 @@ export function ReliabilityBadge({
     >
       <TierIcon className={iconSizes[size]} />
       {showLabel && <span>{getReliabilityLabel(tier)}</span>}
-      <span className="tabular-nums">{score}%</span>
+      {tier !== "new" && <span className="tabular-nums">{score}%</span>}
     </div>
   );
 }

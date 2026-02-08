@@ -7,7 +7,9 @@ Endpoints:
 - GET /{session_id}: Get session details
 - POST /{session_id}/leave: Leave a session early (no refund)
 - POST /{session_id}/cancel: Cancel before start (refund if >=1hr before)
-- POST /{session_id}/rate: Rate a participant (Phase 3 - not implemented)
+- GET /pending-ratings: Check if user has pending ratings
+- POST /{session_id}/rate: Submit batch ratings for session tablemates
+- POST /{session_id}/rate/skip: Skip all ratings for a session
 """
 
 import logging
@@ -18,6 +20,15 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
+from app.models.rating import (
+    InvalidRatingTargetError,
+    PendingRatingsResponse,
+    RatingAlreadyExistsError,
+    RatingSubmitResponse,
+    RedReasonRequiredError,
+    SessionNotRatableError,
+    SubmitRatingsRequest,
+)
 from app.models.session import (
     CancelSessionResponse,
     LeaveSessionRequest,
@@ -40,6 +51,7 @@ from app.services.credit_service import (
     InsufficientCreditsError,
     TransactionType,
 )
+from app.services.rating_service import RatingService
 from app.services.session_service import (
     AlreadyInSessionError,
     SessionFullError,
@@ -71,6 +83,11 @@ def get_credit_service() -> CreditService:
 def get_user_service() -> UserService:
     """Get UserService instance."""
     return UserService()
+
+
+def get_rating_service() -> RatingService:
+    """Get RatingService instance."""
+    return RatingService()
 
 
 def get_analytics_service() -> AnalyticsService:
@@ -147,12 +164,13 @@ async def quick_match(
     credit_service: CreditService = Depends(get_credit_service),
     user_service: UserService = Depends(get_user_service),
     analytics_service: AnalyticsService = Depends(get_analytics_service),
+    rating_service: RatingService = Depends(get_rating_service),
 ):
     """
     Quick match into the next available session slot.
 
     Flow:
-    1. Validate user exists and is not banned
+    1. Validate user exists, not banned, no pending ratings
     2. Check credit balance >= 1
     3. Calculate next time slot (:00 or :30)
     4. Find or create matching session
@@ -171,6 +189,16 @@ async def quick_match(
         raise HTTPException(
             status_code=403,
             detail=f"Account suspended until {profile.banned_until.isoformat()}",
+        )
+
+    # Check pending ratings (soft blocker)
+    if rating_service.has_pending_ratings(profile.id):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "PENDING_RATINGS",
+                "message": "Please rate your tablemates from your last session before joining a new one.",
+            },
         )
 
     # Check credit balance
@@ -328,6 +356,24 @@ async def get_upcoming_sessions(
         )
 
     return UpcomingSessionsResponse(sessions=sessions)
+
+
+@router.get("/pending-ratings", response_model=PendingRatingsResponse)
+async def get_pending_ratings(
+    user: AuthUser = Depends(require_auth_from_state),
+    rating_service: RatingService = Depends(get_rating_service),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Check if user has pending ratings to complete before joining next session."""
+    profile = user_service.get_user_by_auth_id(user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    pending = rating_service.get_pending_ratings(profile.id)
+    return PendingRatingsResponse(
+        has_pending=pending is not None,
+        pending=pending,
+    )
 
 
 @router.get("/{session_id}", response_model=SessionInfo)
@@ -573,14 +619,58 @@ async def cancel_session(
     )
 
 
-@router.post("/{session_id}/rate")
-async def rate_participant(session_id: str, participant_id: str, rating: str):
-    """
-    Rate a session participant (green/red/skip).
+@router.post("/{session_id}/rate", response_model=RatingSubmitResponse)
+async def rate_participants(
+    session_id: str,
+    request: SubmitRatingsRequest,
+    user: AuthUser = Depends(require_auth_from_state),
+    rating_service: RatingService = Depends(get_rating_service),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Submit ratings for all tablemates in a completed session."""
+    profile = user_service.get_user_by_auth_id(user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    NOT IMPLEMENTED - This belongs to Phase 3: Peer Review System.
-    """
-    raise HTTPException(status_code=501, detail="Not implemented - Phase 3")
+    try:
+        return rating_service.submit_ratings(
+            session_id=session_id,
+            rater_id=profile.id,
+            ratings=request.ratings,
+        )
+    except RedReasonRequiredError:
+        raise HTTPException(
+            status_code=422,
+            detail="Red ratings require at least one reason.",
+        )
+    except SessionNotRatableError:
+        raise HTTPException(
+            status_code=409,
+            detail="This session is not in a ratable state.",
+        )
+    except InvalidRatingTargetError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RatingAlreadyExistsError:
+        raise HTTPException(
+            status_code=409,
+            detail="You have already rated participants in this session.",
+        )
+
+
+@router.post("/{session_id}/rate/skip")
+async def skip_ratings(
+    session_id: str,
+    user: AuthUser = Depends(require_auth_from_state),
+    rating_service: RatingService = Depends(get_rating_service),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Skip all ratings for a session (marks pending as completed)."""
+    profile = user_service.get_user_by_auth_id(user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    rating_service.skip_all_ratings(session_id, profile.id)
+    return {"success": True, "message": "Ratings skipped"}
 
 
 # =============================================================================

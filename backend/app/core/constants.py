@@ -25,3 +25,22 @@ DISCONNECT_GRACE_PERIOD_SECONDS = 120  # 2-minute reconnect window
 # Time slot management
 SLOT_INTERVAL_MINUTES = 30  # Sessions start at :00 and :30
 SLOT_SKIP_THRESHOLD_MINUTES = 3  # Skip slot if less than 3 min away
+
+# Peer Review (from SPEC.md + approved design decisions)
+RELIABILITY_HALF_LIFE_DAYS = 30  # Time decay: rating weight halves every 30 days
+RELIABILITY_HORIZON_DAYS = 180  # Exclude ratings older than 180 days
+RELIABILITY_NEW_USER_THRESHOLD = 5  # Non-skip ratings needed before full score applies
+COMMUNITY_AGE_GATE_DAYS = 7  # Account age for Red ratings to carry weight
+COMMUNITY_AGE_GATE_SESSIONS = 5  # Completed sessions for Red ratings to carry weight
+BAN_DURATION_HOURS = 48
+PENALTY_CREDIT_DEDUCTION = 1
+RATING_EXPIRY_HOURS = 48  # Pending ratings auto-expire as skip-all
+
+# Dynamic ban thresholds (weighted Red count in rolling 7 days)
+PAID_USER_BAN_THRESHOLD = 3.0
+FREE_USER_BAN_THRESHOLD = 1.5
+
+# Reporting power multipliers
+PAID_RED_WEIGHT = 1.0
+FREE_ESTABLISHED_RED_WEIGHT = 0.5  # Free user with 5+ sessions
+FREE_NEW_RED_WEIGHT = 0.0  # Free user <5 sessions or <7 days old

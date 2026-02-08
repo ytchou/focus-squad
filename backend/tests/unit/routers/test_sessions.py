@@ -310,6 +310,8 @@ class TestQuickMatch:
         session_service = MagicMock()
         analytics_service = MagicMock()
         analytics_service.track_event = AsyncMock(return_value=None)
+        rating_service = MagicMock()
+        rating_service.has_pending_ratings.return_value = False
 
         profile = overrides.get("profile", _make_mock_profile())
         user_service.get_user_by_auth_id.return_value = profile
@@ -336,6 +338,7 @@ class TestQuickMatch:
             "credit_service": credit_service,
             "user_service": user_service,
             "analytics_service": analytics_service,
+            "rating_service": rating_service,
         }
 
     @pytest.mark.unit
