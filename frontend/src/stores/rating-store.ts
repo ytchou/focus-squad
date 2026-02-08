@@ -204,7 +204,11 @@ export const useRatingStore = create<RatingState>()((set, get) => ({
       const data = await api.get<RatingHistoryData>(
         `/api/v1/sessions/rating-history?page=${page}&per_page=20`
       );
-      set({ ratingHistory: data, isLoadingHistory: false });
+      const existingItems = page > 1 ? get().ratingHistory?.items ?? [] : [];
+      set({
+        ratingHistory: { ...data, items: [...existingItems, ...data.items] },
+        isLoadingHistory: false,
+      });
     } catch {
       set({ isLoadingHistory: false });
     }
