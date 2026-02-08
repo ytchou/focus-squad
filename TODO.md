@@ -294,15 +294,15 @@
 - [x] Dashboard: pending ratings alert card with link to session end page
 - [x] Banned page (`/banned`): gentle explanation + countdown timer
 - [x] `ReliabilityBadge`: updated to 4-tier system (Trusted/Good/Fair/New)
-- [ ] Display rating history in user dashboard
+- [x] Display rating history in user dashboard
 
 ### Session Board (Reflections + Chat)
 > **Design Doc:** [output/plan/2026-02-08-session-board-design.md](output/plan/2026-02-08-session-board-design.md)
-- [ ] Design session board UI (single stream with visually distinct reflection prompts)
-- [ ] Implement reflection prompts at phase transitions (setup goal, mid-session check-in, end afterthoughts)
-- [ ] Build shared message board component (LiveKit data channels for real-time sync)
-- [ ] Persist reflections to DB (free-form chat is ephemeral)
-- [ ] Add gentle nudge notifications at phase transitions
+- [x] Design session board UI (single stream with visually distinct reflection prompts)
+- [x] Implement reflection prompts at phase transitions (setup goal, mid-session check-in, end afterthoughts)
+- [x] Build shared message board component (LiveKit data channels for real-time sync)
+- [x] Persist reflections to DB (free-form chat is ephemeral)
+- [x] Add gentle nudge notifications at phase transitions
 - [ ] Support both typed input and mic-prompted mode (Forced Audio)
 
 ### Session Diary (Future)
@@ -367,21 +367,3 @@
 - [ ] Implement structured logging (replace `print()` with `structlog`)
 - [ ] Add JWKS cache TTL (1-hour expiration with background refresh)
 - [ ] Convert JWKS fetch to async (`httpx.AsyncClient`)
-
----
-
-## Discovered Tasks
-> Add new tasks here as they're discovered during development
-
-### Database Improvements (Phase 4)
-- [ ] **[P3]** Add missing secondary indexes: `ratings.rater_id`, `reports.reported_user_id`, `user_items.item_id`
-- [ ] **[P2]** Add RLS policies for unprotected tables: `ratings`, `items`, `user_items`, `reports`, `chat_messages`
-
-### Product Decisions Needed
-- [ ] **[P2]** Confirm session completion threshold: current=20min active + present through min 50 vs spec="complete minutes 3-50" (47 min)
-- [ ] **[P3]** Replace root landing page (`/`) with proper marketing/landing page (currently Next.js boilerplate)
-
----
-
-## Completed Archive
-> Move completed sections here to keep the active list clean

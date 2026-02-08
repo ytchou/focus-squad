@@ -111,6 +111,34 @@ class ReliabilityInfo(BaseModel):
     is_new_user: bool
 
 
+class RatingHistoryItem(BaseModel):
+    """A single received rating for history display (privacy-safe: no rater_id)."""
+
+    id: str
+    session_id: str
+    rating: RatingValue
+    created_at: datetime
+
+
+class RatingHistorySummary(BaseModel):
+    """Aggregate summary of received ratings."""
+
+    total_received: int
+    green_count: int
+    red_count: int
+    green_percentage: float
+
+
+class RatingHistoryResponse(BaseModel):
+    """Paginated rating history response with summary."""
+
+    summary: RatingHistorySummary
+    items: list[RatingHistoryItem]
+    total: int
+    page: int
+    per_page: int
+
+
 # ===========================================
 # Internal / DB Models
 # ===========================================

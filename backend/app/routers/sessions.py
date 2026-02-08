@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
@@ -24,6 +24,7 @@ from app.models.rating import (
     InvalidRatingTargetError,
     PendingRatingsResponse,
     RatingAlreadyExistsError,
+    RatingHistoryResponse,
     RatingSubmitResponse,
     RedReasonRequiredError,
     SessionNotRatableError,
@@ -373,6 +374,26 @@ async def get_pending_ratings(
     return PendingRatingsResponse(
         has_pending=pending is not None,
         pending=pending,
+    )
+
+
+@router.get("/rating-history", response_model=RatingHistoryResponse)
+async def get_rating_history(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    user: AuthUser = Depends(require_auth_from_state),
+    rating_service: RatingService = Depends(get_rating_service),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Get the authenticated user's received rating history (paginated)."""
+    profile = user_service.get_user_by_auth_id(user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return rating_service.get_rating_history(
+        user_id=profile.id,
+        page=page,
+        per_page=per_page,
     )
 
 

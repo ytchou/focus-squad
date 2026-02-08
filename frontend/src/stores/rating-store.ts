@@ -16,6 +16,28 @@ export interface RatingEntry {
   otherReasonText: string;
 }
 
+export interface RatingHistorySummary {
+  total_received: number;
+  green_count: number;
+  red_count: number;
+  green_percentage: number;
+}
+
+export interface RatingHistoryItem {
+  id: string;
+  session_id: string;
+  rating: "green" | "red";
+  created_at: string;
+}
+
+export interface RatingHistoryData {
+  summary: RatingHistorySummary;
+  items: RatingHistoryItem[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
 interface RatingState {
   hasPendingRatings: boolean;
   pendingSessionId: string | null;
@@ -23,6 +45,8 @@ interface RatingState {
   ratings: Record<string, RatingEntry>;
   isSubmitting: boolean;
   error: string | null;
+  ratingHistory: RatingHistoryData | null;
+  isLoadingHistory: boolean;
 
   setRating: (userId: string, value: RatingValue) => void;
   setReasons: (userId: string, reasons: string[]) => void;
@@ -31,6 +55,7 @@ interface RatingState {
   skipAll: (sessionId: string) => Promise<void>;
   checkPendingRatings: () => Promise<void>;
   setPendingRatings: (sessionId: string, users: RateableUser[]) => void;
+  fetchRatingHistory: (page?: number) => Promise<void>;
   reset: () => void;
 }
 
@@ -41,6 +66,8 @@ const initialState = {
   ratings: {} as Record<string, RatingEntry>,
   isSubmitting: false,
   error: null,
+  ratingHistory: null as RatingHistoryData | null,
+  isLoadingHistory: false,
 };
 
 export const useRatingStore = create<RatingState>()((set, get) => ({
@@ -168,6 +195,22 @@ export const useRatingStore = create<RatingState>()((set, get) => ({
       }
     } catch {
       // Silently fail - pending ratings check is non-critical
+    }
+  },
+
+  fetchRatingHistory: async (page = 1) => {
+    set({ isLoadingHistory: true });
+    try {
+      const data = await api.get<RatingHistoryData>(
+        `/api/v1/sessions/rating-history?page=${page}&per_page=20`
+      );
+      const existingItems = page > 1 ? (get().ratingHistory?.items ?? []) : [];
+      set({
+        ratingHistory: { ...data, items: [...existingItems, ...data.items] },
+        isLoadingHistory: false,
+      });
+    } catch {
+      set({ isLoadingHistory: false });
     }
   },
 
