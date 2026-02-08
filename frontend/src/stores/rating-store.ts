@@ -154,12 +154,15 @@ export const useRatingStore = create<RatingState>()((set, get) => ({
     try {
       const data = await api.get<{
         has_pending: boolean;
-        session_id: string | null;
-        rateable_users: RateableUser[];
+        pending: {
+          session_id: string;
+          rateable_users: RateableUser[];
+          expires_at: string;
+        } | null;
       }>("/api/v1/sessions/pending-ratings");
 
-      if (data.has_pending && data.session_id && data.rateable_users.length > 0) {
-        get().setPendingRatings(data.session_id, data.rateable_users);
+      if (data.has_pending && data.pending && data.pending.rateable_users.length > 0) {
+        get().setPendingRatings(data.pending.session_id, data.pending.rateable_users);
       } else {
         set({ hasPendingRatings: false, pendingSessionId: null });
       }

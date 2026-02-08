@@ -7,6 +7,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.models.rating import (
+    InvalidRatingTargetError,
+    RatingAlreadyExistsError,
     RatingValue,
     RedReasonRequiredError,
     ReliabilityTier,
@@ -479,6 +481,8 @@ class TestSubmitRatings:
             "tier": "free",
         }
 
+        # Duplicate check (no existing ratings for this rater+session)
+        ratings_mock.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
         # Insert rating
         ratings_mock.insert.return_value.execute.return_value.data = [{"id": "r-1"}]
         # Reliability recalc query (empty = default 100)
@@ -497,6 +501,164 @@ class TestSubmitRatings:
         result = rating_service.submit_ratings("session-1", "user-1", ratings)
         assert result.success is True
         assert result.ratings_submitted == 1
+
+    @pytest.mark.unit
+    def test_self_rating_rejected(self, rating_service, mock_supabase) -> None:
+        """Users cannot rate themselves."""
+        ratings = [
+            SingleRating(ratee_id="user-1", rating=RatingValue.GREEN),
+        ]
+
+        sessions_mock = MagicMock()
+        participants_mock = MagicMock()
+        ratings_mock = MagicMock()
+
+        def table_router(name):
+            return {
+                "sessions": sessions_mock,
+                "session_participants": participants_mock,
+                "ratings": ratings_mock,
+            }.get(name, MagicMock())
+
+        mock_supabase.table.side_effect = table_router
+
+        sessions_mock.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+            "id": "session-1",
+            "current_phase": "social",
+        }
+
+        participants_mock.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
+            {"user_id": "user-1", "participant_type": "human"},
+        ]
+        participants_mock.select.return_value.eq.return_value.in_.return_value.execute.return_value.data = [
+            {"user_id": "user-1", "participant_type": "human"},
+        ]
+
+        with pytest.raises(InvalidRatingTargetError, match="Cannot rate yourself"):
+            rating_service.submit_ratings("session-1", "user-1", ratings)
+
+    @pytest.mark.unit
+    def test_duplicate_rating_rejected(self, rating_service, mock_supabase) -> None:
+        """Submitting ratings twice for the same session is rejected."""
+        ratings = [
+            SingleRating(ratee_id="user-2", rating=RatingValue.GREEN),
+        ]
+
+        sessions_mock = MagicMock()
+        participants_mock = MagicMock()
+        ratings_mock = MagicMock()
+
+        def table_router(name):
+            return {
+                "sessions": sessions_mock,
+                "session_participants": participants_mock,
+                "ratings": ratings_mock,
+            }.get(name, MagicMock())
+
+        mock_supabase.table.side_effect = table_router
+
+        sessions_mock.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+            "id": "session-1",
+            "current_phase": "social",
+        }
+
+        participants_mock.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
+            {"user_id": "user-1", "participant_type": "human"},
+        ]
+        participants_mock.select.return_value.eq.return_value.in_.return_value.execute.return_value.data = [
+            {"user_id": "user-2", "participant_type": "human"},
+        ]
+
+        # Duplicate check finds existing rating
+        ratings_mock.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+            {"id": "existing-rating"},
+        ]
+
+        with pytest.raises(RatingAlreadyExistsError):
+            rating_service.submit_ratings("session-1", "user-1", ratings)
+
+    @pytest.mark.unit
+    def test_penalty_check_only_for_red_ratees(self, rating_service, mock_supabase) -> None:
+        """Penalty check runs only for ratees who received RED, not all ratees."""
+        ratings = [
+            SingleRating(ratee_id="user-2", rating=RatingValue.GREEN),
+            SingleRating(
+                ratee_id="user-3",
+                rating=RatingValue.RED,
+                reasons=["absent_no_show"],
+            ),
+        ]
+
+        sessions_mock = MagicMock()
+        participants_mock = MagicMock()
+        users_mock = MagicMock()
+        credits_mock = MagicMock()
+        ratings_mock = MagicMock()
+        pending_mock = MagicMock()
+
+        def table_router(name):
+            return {
+                "sessions": sessions_mock,
+                "session_participants": participants_mock,
+                "users": users_mock,
+                "credits": credits_mock,
+                "ratings": ratings_mock,
+                "pending_ratings": pending_mock,
+            }.get(name, MagicMock())
+
+        mock_supabase.table.side_effect = table_router
+
+        sessions_mock.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+            "id": "session-1",
+            "current_phase": "social",
+        }
+
+        participants_mock.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
+            {"user_id": "user-1", "participant_type": "human"},
+        ]
+        participants_mock.select.return_value.eq.return_value.in_.return_value.execute.return_value.data = [
+            {"user_id": "user-2", "participant_type": "human"},
+            {"user_id": "user-3", "participant_type": "human"},
+        ]
+
+        users_mock.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+            "reliability_score": 100.0,
+            "session_count": 10,
+            "created_at": (datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
+        }
+
+        credits_mock.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+            "tier": "free",
+        }
+
+        # Duplicate check (no existing ratings)
+        ratings_mock.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        ratings_mock.insert.return_value.execute.return_value.data = [{"id": "r-1"}]
+        # Reliability recalc
+        ratings_mock.select.return_value.eq.return_value.gte.return_value.neq.return_value.execute.return_value.data = []
+        # Penalty check query
+        ratings_mock.select.return_value.eq.return_value.gte.return_value.eq.return_value.execute.return_value.data = []
+
+        users_mock.update.return_value.eq.return_value.execute.return_value = MagicMock()
+        pending_mock.update.return_value.eq.return_value.eq.return_value.execute.return_value = (
+            MagicMock()
+        )
+
+        # Spy on check_and_apply_penalty
+        original_check = rating_service.check_and_apply_penalty
+        penalty_calls = []
+
+        def spy_check(user_id):
+            penalty_calls.append(user_id)
+            return original_check(user_id)
+
+        rating_service.check_and_apply_penalty = spy_check
+
+        result = rating_service.submit_ratings("session-1", "user-1", ratings)
+        assert result.success is True
+        assert result.ratings_submitted == 2
+        # Penalty check should only be called for user-3 (RED), not user-2 (GREEN)
+        assert penalty_calls == ["user-3"]
 
 
 # =============================================================================

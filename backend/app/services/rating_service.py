@@ -11,6 +11,7 @@ Handles:
 Design doc: output/plan/2026-02-08-peer-review-system.md
 """
 
+import logging
 import math
 from datetime import datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
@@ -37,12 +38,16 @@ from app.models.rating import (
     InvalidRatingTargetError,
     PendingRatingInfo,
     RateableUser,
+    RatingAlreadyExistsError,
     RatingSubmitResponse,
     RatingValue,
     RedReasonRequiredError,
     ReliabilityTier,
     SessionNotRatableError,
+    SingleRating,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class RatingService:
@@ -65,7 +70,7 @@ class RatingService:
         self,
         session_id: str,
         rater_id: str,
-        ratings: list,
+        ratings: list[SingleRating],
     ) -> RatingSubmitResponse:
         """
         Submit batch ratings for all tablemates in a session.
@@ -85,12 +90,15 @@ class RatingService:
 
         ratee_ids = [r.ratee_id for r in ratings]
         self._verify_ratees_are_human_participants(session_id, ratee_ids)
+        self._verify_not_self_rating(rater_id, ratee_ids)
+        self._check_duplicate_ratings(session_id, rater_id)
 
         rater_profile = self._get_rater_profile(rater_id)
         reporting_power = self.get_reporting_power(rater_id)
 
         inserted_count = 0
         ratee_ids_to_recalc = []
+        red_ratee_ids: set[str] = set()
 
         for single_rating in ratings:
             reason_json = None
@@ -118,6 +126,8 @@ class RatingService:
 
             if single_rating.rating != RatingValue.SKIP:
                 ratee_ids_to_recalc.append(single_rating.ratee_id)
+            if single_rating.rating == RatingValue.RED:
+                red_ratee_ids.add(single_rating.ratee_id)
 
         self._mark_pending_completed(session_id, rater_id)
 
@@ -127,7 +137,7 @@ class RatingService:
                 "id", ratee_id
             ).execute()
 
-            if single_rating.rating == RatingValue.RED:
+            if ratee_id in red_ratee_ids:
                 self.check_and_apply_penalty(ratee_id)
 
         return RatingSubmitResponse(
@@ -221,11 +231,7 @@ class RatingService:
             .execute()
         ).data
 
-        credit_data = (
-            self.supabase.table("credits").select("tier").eq("user_id", rater_id).single().execute()
-        ).data
-
-        tier = credit_data.get("tier", "free") if credit_data else "free"
+        tier = self._get_user_tier(rater_id)
 
         if tier in ("pro", "elite", "infinite", "admin"):
             return Decimal(str(PAID_RED_WEIGHT))
@@ -270,11 +276,7 @@ class RatingService:
 
         weighted_total = sum(Decimal(str(r["weight"])) for r in result.data)
 
-        credit_data = (
-            self.supabase.table("credits").select("tier").eq("user_id", user_id).single().execute()
-        ).data
-
-        tier = credit_data.get("tier", "free") if credit_data else "free"
+        tier = self._get_user_tier(user_id)
         threshold = (
             Decimal(str(PAID_USER_BAN_THRESHOLD))
             if tier in ("pro", "elite", "infinite", "admin")
@@ -294,7 +296,9 @@ class RatingService:
                 credit_service = CreditService(supabase=self.supabase)
                 credit_service.deduct_credit(user_id, PENALTY_CREDIT_DEDUCTION)
             except Exception:
-                pass
+                logger.warning(
+                    "Failed to deduct penalty credit for user %s", user_id, exc_info=True
+                )
 
             return banned_until
 
@@ -371,7 +375,7 @@ class RatingService:
     # Private Helpers
     # =========================================================================
 
-    def _validate_ratings_input(self, ratings: list) -> None:
+    def _validate_ratings_input(self, ratings: list[SingleRating]) -> None:
         """Validate that red ratings have reasons."""
         for r in ratings:
             if r.rating == RatingValue.RED:
@@ -440,3 +444,30 @@ class RatingService:
         self.supabase.table("pending_ratings").update({"completed_at": now.isoformat()}).eq(
             "session_id", session_id
         ).eq("user_id", user_id).execute()
+
+    def _get_user_tier(self, user_id: str) -> str:
+        """Look up a user's credit tier."""
+        credit_data = (
+            self.supabase.table("credits").select("tier").eq("user_id", user_id).single().execute()
+        ).data
+        return credit_data.get("tier", "free") if credit_data else "free"
+
+    def _verify_not_self_rating(self, rater_id: str, ratee_ids: list[str]) -> None:
+        """Prevent users from rating themselves."""
+        if rater_id in ratee_ids:
+            raise InvalidRatingTargetError("Cannot rate yourself")
+
+    def _check_duplicate_ratings(self, session_id: str, rater_id: str) -> None:
+        """Check if rater already submitted ratings for this session."""
+        result = (
+            self.supabase.table("ratings")
+            .select("id")
+            .eq("session_id", session_id)
+            .eq("rater_id", rater_id)
+            .limit(1)
+            .execute()
+        )
+        if result.data:
+            raise RatingAlreadyExistsError(
+                f"User {rater_id} already rated participants in session {session_id}"
+            )
