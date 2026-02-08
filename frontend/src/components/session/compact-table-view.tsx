@@ -30,7 +30,7 @@ export function CompactTableView({ participants, speakingParticipantIds }: Compa
   return (
     <div className="flex items-center justify-center gap-3 py-2">
       {[1, 2, 3, 4].map((seatNum) => {
-        const p = participants.find((p) => participants.indexOf(p) === seatNum - 1);
+        const p = participants[seatNum - 1];
         if (!p) {
           return (
             <div

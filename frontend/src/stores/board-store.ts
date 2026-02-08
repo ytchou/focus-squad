@@ -135,10 +135,23 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
         phase: r.phase,
       }));
 
-      // Merge with existing messages (avoid duplicates)
+      // Merge with existing messages (avoid duplicates by id and content match)
       set((state) => {
         const existingIds = new Set(state.messages.map((m) => m.id));
-        const newMessages = messages.filter((m) => !existingIds.has(m.id));
+        // Also match by user+phase+content to catch temp-ID vs server-ID dupes
+        const existingContentKeys = new Set(
+          state.messages
+            .filter((m) => m.type === "reflection")
+            .map((m) => `${m.userId}-${m.phase}-${m.content}`)
+        );
+        const newMessages = messages.filter(
+          (m) =>
+            !existingIds.has(m.id) &&
+            !(
+              m.type === "reflection" &&
+              existingContentKeys.has(`${m.userId}-${m.phase}-${m.content}`)
+            )
+        );
         return {
           messages: [...newMessages, ...state.messages].sort((a, b) => a.timestamp - b.timestamp),
         };

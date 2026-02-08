@@ -434,12 +434,12 @@ function SessionPageContent({
     prevPhaseRef.current = phase;
   }, [phase, reflectionPhase]);
 
-  // Reset board store when leaving
+  // Reset board store when session ends or user navigates away
   useEffect(() => {
-    return () => {
+    if (phase === "completed") {
       useBoardStore.getState().reset();
-    };
-  }, []);
+    }
+  }, [phase]);
 
   const handleBroadcast = useCallback(
     (message: BoardMessage) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -160,6 +160,10 @@ export function useRemoteParticipants() {
  */
 export function useDataChannel(onMessage: (data: unknown) => void) {
   const room = useRoomContext();
+  const onMessageRef = useRef(onMessage);
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
   useEffect(() => {
     if (!room) return;
@@ -172,7 +176,7 @@ export function useDataChannel(onMessage: (data: unknown) => void) {
       try {
         const decoded = new TextDecoder().decode(payload);
         const parsed = JSON.parse(decoded);
-        onMessage(parsed);
+        onMessageRef.current(parsed);
       } catch (err) {
         console.error("Failed to parse data channel message:", err);
       }
@@ -183,7 +187,7 @@ export function useDataChannel(onMessage: (data: unknown) => void) {
     return () => {
       room.off(RoomEvent.DataReceived, handleDataReceived);
     };
-  }, [room, onMessage]);
+  }, [room]);
 
   const sendMessage = useCallback(
     (data: unknown) => {
