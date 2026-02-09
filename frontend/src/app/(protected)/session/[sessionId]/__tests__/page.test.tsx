@@ -85,6 +85,13 @@ vi.mock("@/stores/board-store", () => ({
   ),
 }));
 
+// Mock pixel session layout
+vi.mock("@/components/session/pixel", () => ({
+  PixelSessionLayout: ({ sessionId }: { sessionId: string }) => (
+    <div data-testid="pixel-session-layout">Pixel Layout: {sessionId}</div>
+  ),
+}));
+
 // Mock session components
 vi.mock("@/components/session", () => ({
   SessionLayout: ({
@@ -207,6 +214,24 @@ vi.mock("lucide-react", () => ({
   CheckCircle: () => <span>CheckCircle</span>,
   Star: () => <span>Star</span>,
   Clock: () => <span>Clock</span>,
+  Target: () => <span>Target</span>,
+  Coffee: () => <span>Coffee</span>,
+  MessageCircle: () => <span>MessageCircle</span>,
+  MessageSquare: () => <span>MessageSquare</span>,
+  ChevronRight: () => <span>ChevronRight</span>,
+  ChevronLeft: () => <span>ChevronLeft</span>,
+  ChevronUp: () => <span>ChevronUp</span>,
+  ChevronDown: () => <span>ChevronDown</span>,
+  Send: () => <span>Send</span>,
+  ThumbsUp: () => <span>ThumbsUp</span>,
+  ThumbsDown: () => <span>ThumbsDown</span>,
+  Minus: () => <span>Minus</span>,
+  Bot: () => <span>Bot</span>,
+  Wifi: () => <span>Wifi</span>,
+  WifiOff: () => <span>WifiOff</span>,
+  Volume2: () => <span>Volume2</span>,
+  VolumeX: () => <span>VolumeX</span>,
+  Check: () => <span>Check</span>,
 }));
 
 // Mock api client
@@ -271,6 +296,7 @@ const mockSessionResponse = {
       username: "alice",
       display_name: "Alice",
       avatar_config: {},
+      pixel_avatar_id: null,
       joined_at: new Date().toISOString(),
       is_active: true,
       ai_companion_name: null,
@@ -283,11 +309,13 @@ const mockSessionResponse = {
       username: "bob",
       display_name: "Bob",
       avatar_config: {},
+      pixel_avatar_id: null,
       joined_at: new Date().toISOString(),
       is_active: true,
       ai_companion_name: null,
     },
   ],
+  room_type: "cozy-study",
   available_seats: 2,
   livekit_room_name: "room-123",
 };
@@ -303,6 +331,9 @@ describe("SessionPage", () => {
     mockApiGet.mockReset();
     mockApiPost.mockReset();
     mockApiPost.mockResolvedValue({});
+
+    // Default to classic view mode for existing tests
+    localStorage.setItem("sessionViewMode", "classic");
 
     // Set up session store with start time (no LiveKit token by default)
     useSessionStore.setState({

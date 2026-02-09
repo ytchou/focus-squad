@@ -16,6 +16,7 @@ import {
   SessionBoard,
   BoardDrawer,
 } from "@/components/session";
+import { PixelSessionLayout } from "@/components/session/pixel";
 import {
   LiveKitRoomProvider,
   useActiveSpeakers,
@@ -56,10 +57,12 @@ interface SessionApiResponse {
     username: string | null;
     display_name: string | null;
     avatar_config: Record<string, unknown>;
+    pixel_avatar_id: string | null;
     joined_at: string;
     is_active: boolean;
     ai_companion_name: string | null;
   }>;
+  room_type: string | null;
   available_seats: number;
   livekit_room_name: string;
 }
@@ -94,10 +97,18 @@ export default function SessionPage() {
       isMuted: boolean;
       isActive: boolean;
       isCurrentUser: boolean;
+      pixelAvatarId?: string | null;
     }>
   >([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [roomType, setRoomType] = useState<string>("cozy-study");
+  const [viewMode, setViewMode] = useState<"pixel" | "classic">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("sessionViewMode") as "pixel" | "classic") || "pixel";
+    }
+    return "pixel";
+  });
 
   // Fetch session data on mount
   useEffect(() => {
@@ -114,6 +125,9 @@ export default function SessionPage() {
         setCurrentUserId(userId);
         setIsAdmin(userProfile.credit_tier === "admin");
 
+        // Set room type from session data
+        setRoomType(session.room_type || "cozy-study");
+
         // Map participants to our format
         // Note: LiveKit identity is the user_id, used for speaking detection
         const mappedParticipants = session.participants.map((p) => ({
@@ -126,6 +140,7 @@ export default function SessionPage() {
           isMuted: false, // Will be updated by LiveKit
           isActive: p.is_active,
           isCurrentUser: p.user_id === userId,
+          pixelAvatarId: p.pixel_avatar_id,
         }));
 
         setParticipants(mappedParticipants);
@@ -158,6 +173,7 @@ export default function SessionPage() {
           isMuted: false,
           isActive: p.is_active,
           isCurrentUser: p.user_id === currentUserId,
+          pixelAvatarId: p.pixel_avatar_id,
         }));
 
         // Only update if participant count changed
@@ -288,6 +304,9 @@ export default function SessionPage() {
           onLeave={handleLeave}
           onEndModalClose={handleEndModalClose}
           isAdmin={isAdmin}
+          roomType={roomType}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
         />
       </LiveKitRoomProvider>
     );
@@ -309,6 +328,9 @@ export default function SessionPage() {
       onEndModalClose={handleEndModalClose}
       disableAudio={true}
       isAdmin={isAdmin}
+      roomType={roomType}
+      viewMode={viewMode}
+      setViewMode={setViewMode}
     />
   );
 }
@@ -371,6 +393,7 @@ interface SessionPageContentProps {
     isMuted: boolean;
     isActive: boolean;
     isCurrentUser: boolean;
+    pixelAvatarId?: string | null;
   }>;
   currentUserId: string | null;
   isQuietMode: boolean;
@@ -385,6 +408,10 @@ interface SessionPageContentProps {
   speakingParticipantIds?: Set<string>;
   // Board data channel (only available inside LiveKit context)
   onBroadcastMessage?: (message: BoardMessage) => void;
+  // Pixel art view mode
+  roomType: string;
+  viewMode: "pixel" | "classic";
+  setViewMode: (mode: "pixel" | "classic") => void;
 }
 
 // Phases where the board takes over the main content area
@@ -414,11 +441,19 @@ function SessionPageContent({
   toggleMute = () => {},
   speakingParticipantIds = new Set<string>(),
   onBroadcastMessage,
+  roomType,
+  viewMode,
+  setViewMode,
 }: SessionPageContentProps) {
   const isBoardPhase = BOARD_PHASES.includes(phase);
   const reflectionPhase = REFLECTION_PHASE_MAP[phase] ?? null;
   const currentUser = participants.find((p) => p.isCurrentUser);
   const currentUserDisplayName = currentUser?.displayName || currentUser?.username || "You";
+
+  // Persist view mode to localStorage
+  useEffect(() => {
+    localStorage.setItem("sessionViewMode", viewMode);
+  }, [viewMode]);
 
   // Phase nudge: show toast when entering a reflection phase
   const prevPhaseRef = useRef<SessionPhase>(phase);
@@ -448,6 +483,50 @@ function SessionPageContent({
     [onBroadcastMessage]
   );
 
+  // Pixel art view mode
+  if (viewMode === "pixel") {
+    return (
+      <>
+        <PixelSessionLayout
+          sessionId={sessionId}
+          roomType={roomType}
+          phase={phase}
+          timeRemaining={timeRemaining}
+          totalTimeRemaining={totalTimeRemaining}
+          participants={participants}
+          currentUserId={currentUserId}
+          speakingParticipantIds={speakingParticipantIds}
+          isMuted={isMuted}
+          isQuietMode={isQuietMode || disableAudio}
+          onToggleMute={toggleMute}
+          onLeave={onLeave}
+          onBroadcastMessage={handleBroadcast}
+        />
+
+        {/* Session End Modal */}
+        <SessionEndModal
+          open={showEndModal}
+          onClose={onEndModalClose}
+          sessionId={sessionId}
+          phase={phase}
+        />
+
+        {/* View mode toggle */}
+        <button
+          onClick={() => setViewMode("classic")}
+          className="fixed bottom-4 left-4 z-30 px-3 py-1.5 text-xs bg-foreground/60 backdrop-blur-sm text-primary-foreground rounded-lg hover:bg-foreground/70 transition-colors"
+          title="Switch to classic view"
+        >
+          Classic View
+        </button>
+
+        {/* Debug Panel - only for admin users */}
+        {isAdmin && <DebugPanel currentPhase={phase} sessionId={sessionId} />}
+      </>
+    );
+  }
+
+  // Classic view mode
   return (
     <>
       <SessionLayout
@@ -516,6 +595,15 @@ function SessionPageContent({
           onBroadcastMessage={handleBroadcast}
         />
       )}
+
+      {/* View mode toggle */}
+      <button
+        onClick={() => setViewMode("pixel")}
+        className="fixed bottom-20 left-4 z-30 px-3 py-1.5 text-xs bg-primary/80 text-primary-foreground rounded-lg hover:bg-primary transition-colors"
+        title="Switch to pixel art view"
+      >
+        Pixel View
+      </button>
 
       {/* Session End Modal */}
       <SessionEndModal

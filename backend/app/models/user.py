@@ -48,6 +48,9 @@ class UserProfile(BaseModel):
     credit_tier: str = "free"
     credit_refresh_date: Optional[datetime] = None
 
+    # Pixel Art
+    pixel_avatar_id: Optional[str] = None
+
     # Settings
     activity_tracking_enabled: bool = False
     email_notifications_enabled: bool = True
@@ -95,9 +98,21 @@ class UserProfileUpdate(BaseModel):
     social_links: Optional[dict[str, Any]] = None
     study_interests: Optional[list[str]] = None
     preferred_language: Optional[str] = None
+    pixel_avatar_id: Optional[str] = None
     activity_tracking_enabled: Optional[bool] = None
     email_notifications_enabled: Optional[bool] = None
     push_notifications_enabled: Optional[bool] = None
+
+    @field_validator("pixel_avatar_id")
+    @classmethod
+    def validate_pixel_avatar(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        from app.core.constants import PIXEL_CHARACTERS
+
+        if v not in PIXEL_CHARACTERS:
+            raise ValueError(f"Invalid pixel avatar. Must be one of: {PIXEL_CHARACTERS}")
+        return v
 
     @field_validator("username")
     @classmethod
