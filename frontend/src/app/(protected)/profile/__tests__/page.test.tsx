@@ -51,10 +51,11 @@ vi.mock("@/lib/api/client", () => ({
     delete: (...args: unknown[]) => mockApiDelete(...args),
   },
   ApiError: class ApiError extends Error {
-    status: number;
-    constructor(message: string, status: number) {
+    constructor(
+      public status: number,
+      message: string
+    ) {
       super(message);
-      this.status = status;
     }
   },
 }));

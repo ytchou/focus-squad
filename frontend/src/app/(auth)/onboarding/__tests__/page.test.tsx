@@ -17,10 +17,11 @@ vi.mock("@/lib/api/client", () => ({
     patch: (...args: unknown[]) => mockApiPatch(...args),
   },
   ApiError: class ApiError extends Error {
-    status: number;
-    constructor(message: string, status: number) {
+    constructor(
+      public status: number,
+      message: string
+    ) {
       super(message);
-      this.status = status;
     }
   },
 }));
@@ -240,7 +241,7 @@ describe("OnboardingPage", () => {
 
     it("returns to step 2 on username conflict (400)", async () => {
       const { ApiError } = await import("@/lib/api/client");
-      mockApiPatch.mockRejectedValueOnce(new ApiError("Conflict", 400));
+      mockApiPatch.mockRejectedValueOnce(new ApiError(400, "Conflict"));
 
       goToStep3();
       fireEvent.click(screen.getByRole("checkbox"));
