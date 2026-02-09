@@ -3,11 +3,14 @@
 Tracks waiting room behavior for no-show analysis and user engagement metrics.
 """
 
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
 from supabase import Client
+
+logger = logging.getLogger(__name__)
 
 
 class AnalyticsService:
@@ -53,5 +56,4 @@ class AnalyticsService:
                 }
             ).execute()
         except Exception as e:
-            # Log but don't raise - analytics failures shouldn't break user flow
-            print(f"[Analytics] Failed to track event '{event_type}': {e}")
+            logger.warning("Failed to track event '%s': %s", event_type, e)

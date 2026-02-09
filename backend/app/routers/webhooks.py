@@ -14,13 +14,11 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from livekit import api
 
 from app.core.config import get_settings
+from app.core.constants import MIN_ACTIVE_MINUTES_FOR_COMPLETION
 from app.core.database import get_supabase
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-# Minimum active minutes to qualify as "completed"
-MIN_ACTIVE_MINUTES_FOR_COMPLETION = 20
 
 
 # =============================================================================

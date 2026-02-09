@@ -8,10 +8,11 @@ Endpoints:
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from app.core.auth import AuthUser, require_auth_from_state
+from app.core.rate_limit import limiter
 from app.services.analytics_service import AnalyticsService
 from app.services.user_service import UserService
 
@@ -60,8 +61,10 @@ def get_user_service() -> UserService:
 
 
 @router.post("/track", response_model=TrackEventResponse)
+@limiter.limit("60/minute")
 async def track_event(
-    request: TrackEventRequest,
+    request: Request,
+    track_request: TrackEventRequest,
     user: AuthUser = Depends(require_auth_from_state),
     analytics_service: AnalyticsService = Depends(get_analytics_service),
     user_service: UserService = Depends(get_user_service),
@@ -83,9 +86,9 @@ async def track_event(
         if profile:
             await analytics_service.track_event(
                 user_id=profile.id,
-                session_id=request.session_id,
-                event_type=request.event_type,
-                metadata=request.metadata,
+                session_id=track_request.session_id,
+                event_type=track_request.event_type,
+                metadata=track_request.metadata,
             )
     except Exception:
         # Analytics failures should not break user flow

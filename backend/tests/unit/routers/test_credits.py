@@ -28,6 +28,10 @@ from app.models.credit import (
     SelfReferralError,
     UserTier,
 )
+
+# Domain exceptions that now propagate directly (no router try/except)
+# are caught by global exception handlers in production, but in unit tests
+# we verify they are raised with the correct type.
 from app.routers.credits import (
     apply_referral_code,
     get_credit_balance,
@@ -121,22 +125,18 @@ class TestGetCreditBalance:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_credit_not_found_raises_404(
+    async def test_credit_not_found_raises_error(
         self, mock_user, credit_service, user_service
     ) -> None:
-        """Missing credit record raises 404 with onboarding hint."""
+        """Missing credit record raises CreditNotFoundError."""
         credit_service.get_balance.side_effect = CreditNotFoundError("not found")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(CreditNotFoundError):
             await get_credit_balance(
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
             )
-
-        assert exc_info.value.status_code == 404
-        assert "Credit record not found" in exc_info.value.detail
-        assert "onboarding" in exc_info.value.detail
 
 
 # =============================================================================
@@ -158,7 +158,8 @@ class TestGiftCredits:
         request = GiftRequest(recipient_user_id="recipient-789", amount=2)
 
         result = await gift_credits(
-            request=request,
+            request=MagicMock(),
+            gift_request=request,
             user=mock_user,
             credit_service=credit_service,
             user_service=user_service,
@@ -184,7 +185,8 @@ class TestGiftCredits:
         request = GiftRequest(recipient_user_id="recipient-789", amount=1)
 
         result = await gift_credits(
-            request=request,
+            request=MagicMock(),
+            gift_request=request,
             user=mock_user,
             credit_service=credit_service,
             user_service=user_service,
@@ -209,7 +211,8 @@ class TestGiftCredits:
 
         with pytest.raises(HTTPException) as exc_info:
             await gift_credits(
-                request=request,
+                request=MagicMock(),
+                gift_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service_no_profile,
@@ -224,114 +227,113 @@ class TestGiftCredits:
     async def test_gift_not_allowed_raises_403(
         self, mock_user, credit_service, user_service
     ) -> None:
-        """Free tier user attempting to gift raises 403."""
+        """Free tier user attempting to gift raises GiftNotAllowedError."""
         credit_service.gift_credit.side_effect = GiftNotAllowedError(tier=UserTier.FREE)
         request = GiftRequest(recipient_user_id="recipient-789", amount=1)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(GiftNotAllowedError) as exc_info:
             await gift_credits(
-                request=request,
+                request=MagicMock(),
+                gift_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
                 x_idempotency_key=None,
             )
 
-        assert exc_info.value.status_code == 403
-        assert "free" in exc_info.value.detail.lower()
-        assert "Upgrade to Pro or Elite" in exc_info.value.detail
+        assert exc_info.value.tier == UserTier.FREE
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_gift_limit_exceeded_raises_400(
+    async def test_gift_limit_exceeded_raises_error(
         self, mock_user, credit_service, user_service
     ) -> None:
-        """Exceeded weekly gift limit raises 400."""
+        """Exceeded weekly gift limit raises GiftLimitExceededError."""
         credit_service.gift_credit.side_effect = GiftLimitExceededError(sent=4, limit=4)
         request = GiftRequest(recipient_user_id="recipient-789", amount=1)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(GiftLimitExceededError) as exc_info:
             await gift_credits(
-                request=request,
+                request=MagicMock(),
+                gift_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
                 x_idempotency_key=None,
             )
 
-        assert exc_info.value.status_code == 400
-        assert "4/4" in exc_info.value.detail
-        assert "gift limit" in exc_info.value.detail.lower()
+        assert exc_info.value.sent == 4
+        assert exc_info.value.limit == 4
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_insufficient_credits_raises_402(
+    async def test_insufficient_credits_raises_error(
         self, mock_user, credit_service, user_service
     ) -> None:
-        """Not enough credits to gift raises 402."""
+        """Not enough credits to gift raises InsufficientCreditsError."""
         credit_service.gift_credit.side_effect = InsufficientCreditsError(
             user_id="user-uuid-456", available=0, required=2
         )
         request = GiftRequest(recipient_user_id="recipient-789", amount=2)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(InsufficientCreditsError) as exc_info:
             await gift_credits(
-                request=request,
+                request=MagicMock(),
+                gift_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
                 x_idempotency_key=None,
             )
 
-        assert exc_info.value.status_code == 402
-        assert "Available: 0" in exc_info.value.detail
-        assert "Required: 2" in exc_info.value.detail
+        assert exc_info.value.available == 0
+        assert exc_info.value.required == 2
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_recipient_credit_not_found_raises_404(
+    async def test_recipient_credit_not_found_raises_error(
         self, mock_user, credit_service, user_service
     ) -> None:
-        """Recipient credit record missing raises 404 with recipient detail."""
+        """Recipient credit record missing raises CreditNotFoundError."""
         credit_service.gift_credit.side_effect = CreditNotFoundError(
             "Recipient credit record not found"
         )
         request = GiftRequest(recipient_user_id="recipient-789", amount=1)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(CreditNotFoundError) as exc_info:
             await gift_credits(
-                request=request,
+                request=MagicMock(),
+                gift_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
                 x_idempotency_key=None,
             )
 
-        assert exc_info.value.status_code == 404
-        assert "Recipient" in exc_info.value.detail
+        assert "Recipient" in str(exc_info.value)
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_sender_credit_not_found_raises_404(
+    async def test_sender_credit_not_found_raises_error(
         self, mock_user, credit_service, user_service
     ) -> None:
-        """Sender credit record missing raises 404 with generic detail."""
+        """Sender credit record missing raises CreditNotFoundError."""
         credit_service.gift_credit.side_effect = CreditNotFoundError(
             "Sender credit record not found"
         )
         request = GiftRequest(recipient_user_id="recipient-789", amount=1)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(CreditNotFoundError) as exc_info:
             await gift_credits(
-                request=request,
+                request=MagicMock(),
+                gift_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
                 x_idempotency_key=None,
             )
 
-        assert exc_info.value.status_code == 404
-        assert exc_info.value.detail == "Credit record not found."
+        assert "Sender" in str(exc_info.value)
 
 
 # =============================================================================
@@ -379,21 +381,18 @@ class TestGetReferralInfo:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_credit_not_found_raises_404(
+    async def test_credit_not_found_raises_error(
         self, mock_user, credit_service, user_service
     ) -> None:
-        """Missing credit record raises 404."""
+        """Missing credit record raises CreditNotFoundError."""
         credit_service.get_referral_info.side_effect = CreditNotFoundError("not found")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(CreditNotFoundError):
             await get_referral_info(
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
             )
-
-        assert exc_info.value.status_code == 404
-        assert "Credit record not found" in exc_info.value.detail
 
 
 # =============================================================================
@@ -414,7 +413,8 @@ class TestApplyReferralCode:
         request = ApplyReferralRequest(referral_code="ABC123")
 
         result = await apply_referral_code(
-            request=request,
+            request=MagicMock(),
+            referral_request=request,
             user=mock_user,
             credit_service=credit_service,
             user_service=user_service,
@@ -438,7 +438,8 @@ class TestApplyReferralCode:
 
         with pytest.raises(HTTPException) as exc_info:
             await apply_referral_code(
-                request=request,
+                request=MagicMock(),
+                referral_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service_no_profile,
@@ -449,80 +450,74 @@ class TestApplyReferralCode:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_referral_already_applied_raises_400(
+    async def test_referral_already_applied_raises_error(
         self, mock_user, credit_service, user_service
     ) -> None:
-        """User already used a referral code raises 400."""
+        """User already used a referral code raises ReferralAlreadyAppliedError."""
         credit_service.apply_referral_code.side_effect = ReferralAlreadyAppliedError(
             "already applied"
         )
         request = ApplyReferralRequest(referral_code="ABC123")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(ReferralAlreadyAppliedError):
             await apply_referral_code(
-                request=request,
+                request=MagicMock(),
+                referral_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
             )
 
-        assert exc_info.value.status_code == 400
-        assert "already used" in exc_info.value.detail.lower()
-
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_self_referral_raises_400(self, mock_user, credit_service, user_service) -> None:
-        """Using own referral code raises 400."""
+    async def test_self_referral_raises_error(
+        self, mock_user, credit_service, user_service
+    ) -> None:
+        """Using own referral code raises SelfReferralError."""
         credit_service.apply_referral_code.side_effect = SelfReferralError("self referral")
         request = ApplyReferralRequest(referral_code="MY_OWN")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(SelfReferralError):
             await apply_referral_code(
-                request=request,
+                request=MagicMock(),
+                referral_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
             )
 
-        assert exc_info.value.status_code == 400
-        assert "own referral code" in exc_info.value.detail.lower()
-
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_invalid_referral_code_raises_404(
+    async def test_invalid_referral_code_raises_error(
         self, mock_user, credit_service, user_service
     ) -> None:
-        """Non-existent referral code raises 404."""
+        """Non-existent referral code raises InvalidReferralCodeError."""
         credit_service.apply_referral_code.side_effect = InvalidReferralCodeError("invalid")
         request = ApplyReferralRequest(referral_code="BOGUS")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(InvalidReferralCodeError):
             await apply_referral_code(
-                request=request,
+                request=MagicMock(),
+                referral_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
             )
-
-        assert exc_info.value.status_code == 404
-        assert "Invalid referral code" in exc_info.value.detail
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_credit_not_found_raises_404(
+    async def test_credit_not_found_raises_error(
         self, mock_user, credit_service, user_service
     ) -> None:
-        """Missing credit record raises 404."""
+        """Missing credit record raises CreditNotFoundError."""
         credit_service.apply_referral_code.side_effect = CreditNotFoundError("not found")
         request = ApplyReferralRequest(referral_code="VALID")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(CreditNotFoundError):
             await apply_referral_code(
-                request=request,
+                request=MagicMock(),
+                referral_request=request,
                 user=mock_user,
                 credit_service=credit_service,
                 user_service=user_service,
             )
-
-        assert exc_info.value.status_code == 404
-        assert "Credit record not found" in exc_info.value.detail

@@ -57,7 +57,8 @@ class TestTrackEvent:
     ) -> None:
         """Profile found and tracking succeeds returns success=True."""
         result = await track_event(
-            request=track_request,
+            request=MagicMock(),
+            track_request=track_request,
             user=mock_user,
             analytics_service=mock_analytics_service,
             user_service=mock_user_service,
@@ -81,7 +82,8 @@ class TestTrackEvent:
         mock_user_service.get_user_by_auth_id.return_value = None
 
         result = await track_event(
-            request=track_request,
+            request=MagicMock(),
+            track_request=track_request,
             user=mock_user,
             analytics_service=mock_analytics_service,
             user_service=mock_user_service,
@@ -100,7 +102,8 @@ class TestTrackEvent:
         mock_analytics_service.track_event.side_effect = Exception("Tracking failed")
 
         result = await track_event(
-            request=track_request,
+            request=MagicMock(),
+            track_request=track_request,
             user=mock_user,
             analytics_service=mock_analytics_service,
             user_service=mock_user_service,
@@ -118,7 +121,8 @@ class TestTrackEvent:
         mock_user_service.get_user_by_auth_id.side_effect = Exception("DB connection lost")
 
         result = await track_event(
-            request=track_request,
+            request=MagicMock(),
+            track_request=track_request,
             user=mock_user,
             analytics_service=mock_analytics_service,
             user_service=mock_user_service,

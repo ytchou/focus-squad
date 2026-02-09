@@ -58,6 +58,23 @@ DIARY_TAGS = [
 ]
 DIARY_NOTE_MAX_LENGTH = 2000
 
+# Content length limits
+REFLECTION_MAX_LENGTH = 500
+REASON_TEXT_MAX_LENGTH = 500  # rating reasons, leave session reasons
+TOPIC_MAX_LENGTH = 100
+REFERRAL_CODE_MAX_LENGTH = 20
+MAX_RATINGS_PER_BATCH = 3
+
+# Pagination defaults
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 100
+
+# AI companions
+AI_COMPANION_NAMES = ["Focus Fox", "Study Owl", "Calm Cat", "Zen Panda"]
+
+# Session completion
+MIN_ACTIVE_MINUTES_FOR_COMPLETION = 20
+
 # Pixel Art System
 PIXEL_CHARACTERS = [
     "char-1",

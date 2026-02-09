@@ -11,6 +11,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.constants import MAX_RATINGS_PER_BATCH, REASON_TEXT_MAX_LENGTH
+
 # ===========================================
 # Enums
 # ===========================================
@@ -54,13 +56,13 @@ class SingleRating(BaseModel):
     ratee_id: str
     rating: RatingValue
     reasons: Optional[list[RedRatingReason]] = None
-    other_reason_text: Optional[str] = Field(None, max_length=500)
+    other_reason_text: Optional[str] = Field(None, max_length=REASON_TEXT_MAX_LENGTH)
 
 
 class SubmitRatingsRequest(BaseModel):
     """Batch submission: all ratings for a session at once."""
 
-    ratings: list[SingleRating] = Field(..., min_length=1, max_length=3)
+    ratings: list[SingleRating] = Field(..., min_length=1, max_length=MAX_RATINGS_PER_BATCH)
 
 
 # ===========================================

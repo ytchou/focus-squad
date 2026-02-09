@@ -19,6 +19,7 @@ from typing import Optional
 
 from supabase import Client
 
+from app.core.constants import REFLECTION_MAX_LENGTH
 from app.core.database import get_supabase
 from app.models.reflection import (
     DiaryEntry,
@@ -33,8 +34,6 @@ from app.models.reflection import (
 )
 
 logger = logging.getLogger(__name__)
-
-REFLECTION_MAX_LENGTH = 500
 
 
 class ReflectionService:

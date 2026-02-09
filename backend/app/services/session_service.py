@@ -18,7 +18,13 @@ from livekit import api
 from supabase import Client
 
 from app.core.config import get_settings
-from app.core.constants import PIXEL_ROOMS
+from app.core.constants import (
+    AI_COMPANION_NAMES,
+    MAX_PARTICIPANTS,
+    PIXEL_ROOMS,
+    SESSION_DURATION_MINUTES,
+    SLOT_SKIP_THRESHOLD_MINUTES,
+)
 from app.core.database import get_supabase
 from app.models.session import (
     ParticipantType,
@@ -81,8 +87,7 @@ class SessionPhaseError(SessionServiceError):
 class SessionService:
     """Service for session matching and management."""
 
-    # Session timing constants (in minutes)
-    SESSION_DURATION = 55
+    # Phase timing (derived from constants, specific to session logic)
     PHASE_DURATIONS = {
         SessionPhase.SETUP: 3,  # 0-3 min
         SessionPhase.WORK_1: 25,  # 3-28 min
@@ -91,7 +96,6 @@ class SessionService:
         SessionPhase.SOCIAL: 5,  # 50-55 min
     }
 
-    # Phase boundaries (cumulative minutes from start)
     PHASE_BOUNDARIES = {
         SessionPhase.SETUP: (0, 3),
         SessionPhase.WORK_1: (3, 28),
@@ -99,13 +103,6 @@ class SessionService:
         SessionPhase.WORK_2: (30, 50),
         SessionPhase.SOCIAL: (50, 55),
     }
-
-    MAX_PARTICIPANTS = 4
-    MIN_PARTICIPANTS_TO_START = 2
-    SLOT_SKIP_THRESHOLD_MINUTES = 3  # Skip slot if less than 3 min away
-
-    # AI companion names
-    AI_COMPANION_NAMES = ["Focus Fox", "Study Owl", "Calm Cat", "Zen Panda"]
 
     def __init__(self, supabase: Optional[Client] = None):
         self._supabase = supabase
@@ -141,7 +138,7 @@ class SessionService:
 
         # If within threshold of next slot, skip to the following slot
         time_until_slot = (next_slot - now).total_seconds() / 60
-        if time_until_slot < self.SLOT_SKIP_THRESHOLD_MINUTES:
+        if time_until_slot < SLOT_SKIP_THRESHOLD_MINUTES:
             # Skip to next slot (30 minutes later)
             next_slot = next_slot + timedelta(minutes=30)
 
@@ -178,7 +175,7 @@ class SessionService:
         )
 
         session["participants"] = participants_result.data or []
-        session["available_seats"] = self.MAX_PARTICIPANTS - len(session["participants"])
+        session["available_seats"] = MAX_PARTICIPANTS - len(session["participants"])
 
         return session
 
@@ -298,7 +295,7 @@ class SessionService:
         # Note: PostgREST doesn't support WHERE on embedded aggregates
         for session in result.data:
             participant_count = session.get("session_participants", [{}])[0].get("count", 0)
-            if participant_count < self.MAX_PARTICIPANTS:
+            if participant_count < MAX_PARTICIPANTS:
                 return session
 
         return None
@@ -322,7 +319,7 @@ class SessionService:
         Returns:
             Created session data dict
         """
-        end_time = start_time + timedelta(minutes=self.SESSION_DURATION)
+        end_time = start_time + timedelta(minutes=SESSION_DURATION_MINUTES)
         room_name = f"focus-{uuid.uuid4().hex[:12]}"
 
         session_data = {
@@ -454,11 +451,11 @@ class SessionService:
         )
 
         taken_seats = {p["seat_number"] for p in (participants.data or [])}
-        available_seats = [i for i in range(1, 5) if i not in taken_seats]
+        available_seats = [i for i in range(1, MAX_PARTICIPANTS + 1) if i not in taken_seats]
 
         companions = []
         for i, seat in enumerate(available_seats[:count]):
-            name = self.AI_COMPANION_NAMES[i % len(self.AI_COMPANION_NAMES)]
+            name = AI_COMPANION_NAMES[i % len(AI_COMPANION_NAMES)]
 
             companion_data = {
                 "session_id": session_id,

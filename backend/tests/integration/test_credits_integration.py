@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.core.auth import AuthUser, require_auth_from_state
+from app.core.exceptions import register_exception_handlers
 from app.core.middleware import JWTValidationMiddleware
 from app.models.credit import (
     CreditBalance,
@@ -101,6 +102,7 @@ def mock_credit_service(mock_credit_balance, mock_referral_info):
 def test_app(mock_auth_user, mock_user_service, mock_credit_service) -> None:
     """Create test FastAPI app with dependency overrides."""
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1/credits")
 
     # Override dependencies
@@ -154,6 +156,7 @@ class TestGetBalance:
         """Returns 404 when user profile not found."""
         # Create app with user service returning None
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1/credits")
 
         user_service = MagicMock(spec=UserService)
@@ -175,10 +178,11 @@ class TestGetBalance:
     ) -> None:
         """Returns 404 when credit record not found."""
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1/credits")
 
         credit_service = MagicMock(spec=CreditService)
-        credit_service.get_balance.side_effect = CreditNotFoundError("Not found")
+        credit_service.get_balance.side_effect = CreditNotFoundError("Credit record not found")
 
         app.dependency_overrides[require_auth_from_state] = lambda: mock_auth_user
         app.dependency_overrides[get_user_service] = lambda: mock_user_service
@@ -198,6 +202,7 @@ class TestGiftCredits:
     def test_gift_success(self, mock_auth_user, mock_user_service) -> None:
         """Successfully gifts credits to another user."""
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1/credits")
 
         credit_service = MagicMock(spec=CreditService)
@@ -226,6 +231,7 @@ class TestGiftCredits:
     def test_gift_forbidden_for_free_tier(self, mock_auth_user, mock_user_service) -> None:
         """Returns 403 when free tier user tries to gift."""
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1/credits")
 
         credit_service = MagicMock(spec=CreditService)
@@ -246,8 +252,9 @@ class TestGiftCredits:
 
     @pytest.mark.integration
     def test_gift_limit_exceeded(self, mock_auth_user, mock_user_service) -> None:
-        """Returns 400 when weekly gift limit exceeded."""
+        """Returns 429 when weekly gift limit exceeded."""
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1/credits")
 
         credit_service = MagicMock(spec=CreditService)
@@ -263,13 +270,14 @@ class TestGiftCredits:
             json={"recipient_user_id": "recipient-uuid", "amount": 1},
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 429
         assert "Weekly gift limit reached" in response.json()["detail"]
 
     @pytest.mark.integration
     def test_gift_insufficient_credits(self, mock_auth_user, mock_user_service) -> None:
         """Returns 402 when sender has insufficient credits."""
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1/credits")
 
         credit_service = MagicMock(spec=CreditService)
@@ -313,6 +321,7 @@ class TestApplyReferralCode:
     def test_apply_referral_success(self, mock_auth_user, mock_user_service) -> None:
         """Successfully applies referral code."""
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1/credits")
 
         credit_service = MagicMock(spec=CreditService)
@@ -335,8 +344,9 @@ class TestApplyReferralCode:
 
     @pytest.mark.integration
     def test_apply_referral_already_applied(self, mock_auth_user, mock_user_service) -> None:
-        """Returns 400 when user already has a referrer."""
+        """Returns 409 when user already has a referrer."""
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1/credits")
 
         credit_service = MagicMock(spec=CreditService)
@@ -352,13 +362,14 @@ class TestApplyReferralCode:
             json={"referral_code": "XYZ98765"},
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 409
         assert "already used a referral code" in response.json()["detail"]
 
     @pytest.mark.integration
     def test_apply_own_referral_code(self, mock_auth_user, mock_user_service) -> None:
         """Returns 400 when user tries to use own code."""
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1/credits")
 
         credit_service = MagicMock(spec=CreditService)
@@ -381,6 +392,7 @@ class TestApplyReferralCode:
     def test_apply_invalid_referral_code(self, mock_auth_user, mock_user_service) -> None:
         """Returns 404 when referral code doesn't exist."""
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1/credits")
 
         credit_service = MagicMock(spec=CreditService)

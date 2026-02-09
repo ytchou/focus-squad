@@ -7,20 +7,17 @@ Endpoints:
 - GET /{user_id}: Get a user's public profile
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.core.auth import AuthUser, require_auth_from_state
+from app.core.rate_limit import limiter
 from app.models.user import (
     DeleteAccountResponse,
     UserProfile,
     UserProfileUpdate,
     UserPublicProfile,
 )
-from app.services.user_service import (
-    UsernameConflictError,
-    UserNotFoundError,
-    UserService,
-)
+from app.services.user_service import UserService
 
 router = APIRouter()
 
@@ -54,7 +51,9 @@ async def get_my_profile(
 
 
 @router.patch("/me", response_model=UserProfile)
+@limiter.limit("15/minute")
 async def update_my_profile(
+    request: Request,
     update: UserProfileUpdate,
     current_user: AuthUser = Depends(require_auth_from_state),
     user_service: UserService = Depends(get_user_service),
@@ -69,21 +68,10 @@ async def update_my_profile(
         400: If username is already taken
         404: If user not found (shouldn't happen with valid auth)
     """
-    try:
-        return user_service.update_user_profile(
-            auth_id=current_user.auth_id,
-            update=update,
-        )
-    except UserNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-    except UsernameConflictError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
+    return user_service.update_user_profile(
+        auth_id=current_user.auth_id,
+        update=update,
+    )
 
 
 @router.delete("/me", response_model=DeleteAccountResponse)
@@ -97,17 +85,11 @@ async def delete_my_account(
     Schedules account for deletion in 30 days. User can cancel
     by signing back in before the scheduled date.
     """
-    try:
-        scheduled = user_service.soft_delete_user(current_user.auth_id)
-        return DeleteAccountResponse(
-            message="Account scheduled for deletion in 30 days. Sign back in to cancel.",
-            deletion_scheduled_at=scheduled,
-        )
-    except UserNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+    scheduled = user_service.soft_delete_user(current_user.auth_id)
+    return DeleteAccountResponse(
+        message="Account scheduled for deletion in 30 days. Sign back in to cancel.",
+        deletion_scheduled_at=scheduled,
+    )
 
 
 @router.post("/me/cancel-deletion", response_model=UserProfile)
@@ -121,13 +103,7 @@ async def cancel_my_deletion(
     Clears deleted_at and deletion_scheduled_at when a
     soft-deleted user signs back in.
     """
-    try:
-        return user_service.cancel_account_deletion(current_user.auth_id)
-    except UserNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+    return user_service.cancel_account_deletion(current_user.auth_id)
 
 
 @router.get("/{user_id}", response_model=UserPublicProfile)

@@ -92,8 +92,9 @@ class TestSaveReflection:
         mock_reflection_service.save_reflection.return_value = expected
 
         result = await save_reflection(
+            request=MagicMock(),
             session_id="session-1",
-            request=request,
+            reflection_request=request,
             user=auth_user,
             reflection_service=mock_reflection_service,
             user_service=mock_user_service,
@@ -118,8 +119,9 @@ class TestSaveReflection:
 
         with pytest.raises(HTTPException) as exc_info:
             await save_reflection(
+                request=MagicMock(),
                 session_id="session-1",
-                request=request,
+                reflection_request=request,
                 user=auth_user,
                 reflection_service=mock_reflection_service,
                 user_service=mock_user_service_no_user,
@@ -131,40 +133,40 @@ class TestSaveReflection:
     async def test_save_reflection_session_not_found(
         self, auth_user, mock_user_service, mock_reflection_service
     ) -> None:
-        """Returns 404 when session doesn't exist."""
+        """Raises SessionNotFoundError when session doesn't exist."""
         request = SaveReflectionRequest(phase=ReflectionPhase.SETUP, content="Test")
         mock_reflection_service.save_reflection.side_effect = SessionNotFoundError("Not found")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(SessionNotFoundError):
             await save_reflection(
+                request=MagicMock(),
                 session_id="nonexistent",
-                request=request,
+                reflection_request=request,
                 user=auth_user,
                 reflection_service=mock_reflection_service,
                 user_service=mock_user_service,
             )
-        assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
     @pytest.mark.unit
     async def test_save_reflection_not_participant(
         self, auth_user, mock_user_service, mock_reflection_service
     ) -> None:
-        """Returns 403 when user isn't a session participant."""
+        """Raises NotSessionParticipantError when user isn't a session participant."""
         request = SaveReflectionRequest(phase=ReflectionPhase.SETUP, content="Test")
         mock_reflection_service.save_reflection.side_effect = NotSessionParticipantError(
             "Not a participant"
         )
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(NotSessionParticipantError):
             await save_reflection(
+                request=MagicMock(),
                 session_id="session-1",
-                request=request,
+                reflection_request=request,
                 user=auth_user,
                 reflection_service=mock_reflection_service,
                 user_service=mock_user_service,
             )
-        assert exc_info.value.status_code == 403
 
 
 # =============================================================================
@@ -206,18 +208,17 @@ class TestGetSessionReflections:
     async def test_get_reflections_session_not_found(
         self, auth_user, mock_reflection_service
     ) -> None:
-        """Returns 404 when session doesn't exist."""
+        """Raises SessionNotFoundError when session doesn't exist."""
         mock_reflection_service.get_session_reflections.side_effect = SessionNotFoundError(
             "Not found"
         )
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(SessionNotFoundError):
             await get_session_reflections(
                 session_id="nonexistent",
                 user=auth_user,
                 reflection_service=mock_reflection_service,
             )
-        assert exc_info.value.status_code == 404
 
 
 # =============================================================================

@@ -1,28 +1,33 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import get_settings
+from app.core.exceptions import register_exception_handlers
+from app.core.logging_config import setup_logging
 from app.core.middleware import JWTValidationMiddleware
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.redis import close_redis, init_redis
 from app.routers import analytics, credits, health, reflections, sessions, users, webhooks
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    # Startup
-    print(f"Starting {settings.app_name}...")
+    setup_logging()
+    logger.info("Starting %s...", settings.app_name)
     await init_redis()
-    print("Redis connection initialized")
+    logger.info("Redis connection initialized")
     yield
-    # Shutdown
-    print(f"Shutting down {settings.app_name}...")
+    logger.info("Shutting down %s...", settings.app_name)
     await close_redis()
-    print("Redis connection closed")
+    logger.info("Redis connection closed")
 
 
 app = FastAPI(
@@ -43,6 +48,13 @@ app.add_middleware(
 
 # JWT validation middleware (runs after CORS, before routes)
 app.add_middleware(JWTValidationMiddleware)
+
+# Rate limiting (slowapi + Redis)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+# Global exception handlers (domain exceptions → HTTP responses)
+register_exception_handlers(app)
 
 # Include routers
 app.include_router(health.router, tags=["Health"])

@@ -17,18 +17,17 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
+from app.core.rate_limit import limiter
 from app.models.reflection import (
     DiaryNoteResponse,
     DiaryResponse,
     DiaryStatsResponse,
-    NotSessionParticipantError,
     ReflectionResponse,
     SaveDiaryNoteRequest,
     SaveReflectionRequest,
-    SessionNotFoundError,
     SessionReflectionsResponse,
 )
 from app.services.reflection_service import ReflectionService
@@ -122,9 +121,11 @@ async def get_diary_stats(
     response_model=DiaryNoteResponse,
     status_code=201,
 )
+@limiter.limit("30/minute")
 async def save_diary_note(
+    request: Request,
     session_id: str,
-    request: SaveDiaryNoteRequest,
+    diary_request: SaveDiaryNoteRequest,
     user: AuthUser = Depends(require_auth_from_state),
     reflection_service: ReflectionService = Depends(get_reflection_service),
     user_service: UserService = Depends(get_user_service),
@@ -134,28 +135,20 @@ async def save_diary_note(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    try:
-        return reflection_service.save_diary_note(
-            session_id=session_id,
-            user_id=profile.id,
-            note=request.note,
-            tags=request.tags,
-        )
-    except SessionNotFoundError:
-        raise HTTPException(status_code=404, detail="Session not found")
-    except NotSessionParticipantError:
-        raise HTTPException(
-            status_code=403,
-            detail="You are not a participant in this session",
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return reflection_service.save_diary_note(
+        session_id=session_id,
+        user_id=profile.id,
+        note=diary_request.note,
+        tags=diary_request.tags,
+    )
 
 
 @router.post("/{session_id}/reflections", response_model=ReflectionResponse, status_code=201)
+@limiter.limit("30/minute")
 async def save_reflection(
+    request: Request,
     session_id: str,
-    request: SaveReflectionRequest,
+    reflection_request: SaveReflectionRequest,
     user: AuthUser = Depends(require_auth_from_state),
     reflection_service: ReflectionService = Depends(get_reflection_service),
     user_service: UserService = Depends(get_user_service),
@@ -170,20 +163,12 @@ async def save_reflection(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    try:
-        return reflection_service.save_reflection(
-            session_id=session_id,
-            user_id=profile.id,
-            phase=request.phase,
-            content=request.content,
-        )
-    except SessionNotFoundError:
-        raise HTTPException(status_code=404, detail="Session not found")
-    except NotSessionParticipantError:
-        raise HTTPException(
-            status_code=403,
-            detail="You are not a participant in this session",
-        )
+    return reflection_service.save_reflection(
+        session_id=session_id,
+        user_id=profile.id,
+        phase=reflection_request.phase,
+        content=reflection_request.content,
+    )
 
 
 @router.get("/{session_id}/reflections", response_model=SessionReflectionsResponse)
@@ -197,8 +182,5 @@ async def get_session_reflections(
 
     Used for board hydration when joining a session.
     """
-    try:
-        reflections = reflection_service.get_session_reflections(session_id)
-        return SessionReflectionsResponse(reflections=reflections)
-    except SessionNotFoundError:
-        raise HTTPException(status_code=404, detail="Session not found")
+    reflections = reflection_service.get_session_reflections(session_id)
+    return SessionReflectionsResponse(reflections=reflections)

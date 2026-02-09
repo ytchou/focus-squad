@@ -5,8 +5,11 @@ Intercepts all requests, validates JWT tokens if present,
 and attaches user context to request.state for downstream use.
 """
 
+import logging
 import time
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import Request
 from jose import JWTError, jwt
@@ -103,8 +106,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         user = getattr(request.state, "user", None)
 
         if user and user.is_authenticated:
-            # In production, use proper logging
-            pass  # print(f"Authenticated request: {user.auth_id} -> {request.method} {request.url.path}")
+            logger.debug(
+                "Authenticated request: %s -> %s %s",
+                user.auth_id,
+                request.method,
+                request.url.path,
+            )
 
         response = await call_next(request)
         return response

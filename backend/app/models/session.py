@@ -14,6 +14,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.constants import MAX_PARTICIPANTS, REASON_TEXT_MAX_LENGTH, TOPIC_MAX_LENGTH
+
 
 class TableMode(str, Enum):
     """Table audio mode."""
@@ -46,7 +48,7 @@ class ParticipantType(str, Enum):
 class SessionFilters(BaseModel):
     """Filters for quick-match session finding."""
 
-    topic: Optional[str] = Field(None, max_length=100)
+    topic: Optional[str] = Field(None, max_length=TOPIC_MAX_LENGTH)
     mode: Optional[TableMode] = None
     language: Optional[str] = None  # "en" or "zh-TW"
 
@@ -69,7 +71,7 @@ class QuickMatchRequest(BaseModel):
 class LeaveSessionRequest(BaseModel):
     """Request to leave a session early."""
 
-    reason: Optional[str] = Field(None, max_length=500)
+    reason: Optional[str] = Field(None, max_length=REASON_TEXT_MAX_LENGTH)
 
 
 # --- Response Models ---
@@ -83,7 +85,7 @@ class ParticipantInfo(BaseModel):
     id: str
     user_id: Optional[str] = None  # None for AI companions
     participant_type: ParticipantType
-    seat_number: int = Field(..., ge=1, le=4)
+    seat_number: int = Field(..., ge=1, le=MAX_PARTICIPANTS)
     username: Optional[str] = None
     display_name: Optional[str] = None
     avatar_config: dict[str, Any] = Field(default_factory=dict)
@@ -110,7 +112,7 @@ class SessionInfo(BaseModel):
     phase_started_at: Optional[datetime] = None
     room_type: Optional[str] = None
     participants: list[ParticipantInfo] = Field(default_factory=list)
-    available_seats: int = Field(..., ge=0, le=4)
+    available_seats: int = Field(..., ge=0, le=MAX_PARTICIPANTS)
     livekit_room_name: str
 
 
@@ -119,7 +121,7 @@ class QuickMatchResponse(BaseModel):
 
     session: SessionInfo
     livekit_token: str
-    seat_number: int = Field(..., ge=1, le=4)
+    seat_number: int = Field(..., ge=1, le=MAX_PARTICIPANTS)
     credit_deducted: bool = True
     wait_minutes: int = Field(..., description="Minutes until session starts (0 if immediate)")
     is_immediate: bool = Field(..., description="True if session starts within 1 minute")
@@ -137,8 +139,8 @@ class UpcomingSession(BaseModel):
     topic: Optional[str] = None
     language: str = "en"
     current_phase: SessionPhase
-    participant_count: int = Field(..., ge=0, le=4)
-    my_seat_number: int = Field(..., ge=1, le=4)
+    participant_count: int = Field(..., ge=0, le=MAX_PARTICIPANTS)
+    my_seat_number: int = Field(..., ge=1, le=MAX_PARTICIPANTS)
 
 
 class UpcomingSessionsResponse(BaseModel):
@@ -224,7 +226,7 @@ class ParticipantCreate(BaseModel):
     session_id: str
     user_id: Optional[str] = None
     participant_type: ParticipantType
-    seat_number: int = Field(..., ge=1, le=4)
+    seat_number: int = Field(..., ge=1, le=MAX_PARTICIPANTS)
     ai_companion_name: Optional[str] = None
     ai_companion_avatar: Optional[dict[str, Any]] = None
 
