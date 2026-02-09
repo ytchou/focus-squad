@@ -27,6 +27,7 @@ interface Participant {
   presenceState: PresenceState;
   isCurrentUser: boolean;
   pixelAvatarId?: string | null;
+  isTyping?: boolean;
 }
 
 interface PixelSessionLayoutProps {
@@ -111,6 +112,7 @@ export function PixelSessionLayout({
           isPiPActive={isPiPActive}
           isPiPSupported={isPiPSupported}
           onTogglePiP={onTogglePiP}
+          isPixelMode
         />
       </div>
     </div>

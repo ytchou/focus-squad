@@ -7,9 +7,15 @@ interface PiPToggleButtonProps {
   isPiPActive: boolean;
   isPiPSupported: boolean;
   onToggle: () => void;
+  isPixelMode?: boolean;
 }
 
-export function PiPToggleButton({ isPiPActive, isPiPSupported, onToggle }: PiPToggleButtonProps) {
+export function PiPToggleButton({
+  isPiPActive,
+  isPiPSupported,
+  onToggle,
+  isPixelMode,
+}: PiPToggleButtonProps) {
   if (!isPiPSupported) return null;
 
   return (
@@ -17,7 +23,8 @@ export function PiPToggleButton({ isPiPActive, isPiPSupported, onToggle }: PiPTo
       <button
         onClick={onToggle}
         className={cn(
-          "rounded-xl h-10 w-10 flex items-center justify-center transition-colors",
+          "h-10 w-10 flex items-center justify-center transition-colors",
+          isPixelMode ? "rounded-pixel shadow-pixel" : "rounded-xl",
           isPiPActive
             ? "bg-accent text-accent-foreground"
             : "bg-muted/60 text-muted-foreground hover:bg-muted"
@@ -26,7 +33,14 @@ export function PiPToggleButton({ isPiPActive, isPiPSupported, onToggle }: PiPTo
       >
         <PictureInPicture2 className="h-4 w-4" />
       </button>
-      <span className="text-[10px] text-muted-foreground">Mini</span>
+      <span
+        className={cn(
+          "text-[10px] text-muted-foreground",
+          isPixelMode && "font-pixel text-[0.4rem]"
+        )}
+      >
+        Mini
+      </span>
     </div>
   );
 }

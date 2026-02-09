@@ -6,6 +6,7 @@ import { PresenceState } from "@/types/activity";
 const GRACE_TIMEOUT = 2 * 60 * 1000;
 const AWAY_TIMEOUT = 5 * 60 * 1000;
 const TICK_INTERVAL = 10 * 1000;
+const TYPING_TIMEOUT = 3 * 1000;
 
 export interface UsePresenceDetectionOptions {
   enabled: boolean;
@@ -17,6 +18,7 @@ export interface UsePresenceDetectionOptions {
 export interface UsePresenceDetectionReturn {
   presenceState: PresenceState;
   isPageVisible: boolean;
+  isTyping: boolean;
 }
 
 function deriveState(isPageVisible: boolean, elapsed: number): PresenceState {
@@ -34,11 +36,13 @@ export function usePresenceDetection({
 }: UsePresenceDetectionOptions): UsePresenceDetectionReturn {
   const [isPageVisible, setIsPageVisible] = useState(true);
   const [presenceState, setPresenceState] = useState<PresenceState>("active");
+  const [isTyping, setIsTyping] = useState(false);
 
   const lastSignalAt = useRef(0);
   const prevStateRef = useRef<PresenceState>("active");
   const onStateChangeRef = useRef(onStateChange);
   const isPiPActiveRef = useRef(isPiPActive ?? false);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     onStateChangeRef.current = onStateChange;
@@ -76,8 +80,18 @@ export function usePresenceDetection({
 
     if (inputTrackingConsent) {
       const handleInput = () => recordSignal();
-      const events = ["keydown", "mousedown", "mousemove", "touchstart"];
-      for (const event of events) {
+      const handleKeydown = () => {
+        recordSignal();
+        setIsTyping(true);
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = setTimeout(() => setIsTyping(false), TYPING_TIMEOUT);
+      };
+
+      window.addEventListener("keydown", handleKeydown, { passive: true });
+      inputListeners.push(["keydown", handleKeydown]);
+
+      const otherEvents = ["mousedown", "mousemove", "touchstart"];
+      for (const event of otherEvents) {
         window.addEventListener(event, handleInput, { passive: true });
         inputListeners.push([event, handleInput]);
       }
@@ -102,12 +116,13 @@ export function usePresenceDetection({
         window.removeEventListener(event, handler);
       }
       clearInterval(interval);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, [enabled, inputTrackingConsent, recordSignal]);
 
   if (!enabled) {
-    return { presenceState: "active", isPageVisible: true };
+    return { presenceState: "active", isPageVisible: true, isTyping: false };
   }
 
-  return { presenceState, isPageVisible };
+  return { presenceState, isPageVisible, isTyping };
 }

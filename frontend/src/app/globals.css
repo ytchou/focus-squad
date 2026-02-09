@@ -96,7 +96,34 @@ body {
   transition-duration: 150ms;
 }
 
+/* ── Pixel mode utility classes ── */
+@utility shadow-pixel {
+  box-shadow: var(--shadow-pixel);
+}
+
+@utility border-pixel {
+  border-width: var(--border-pixel);
+  border-style: solid;
+}
+
+@utility rounded-pixel {
+  border-radius: var(--radius-pixel);
+}
+
+@utility font-pixel {
+  font-family: var(--font-pixel);
+}
+
 /* ── Pixel art sprite animations ── */
+@keyframes sprite-walk-2 {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: -128px; /* 2 frames * 64px */
+  }
+}
+
 @keyframes sprite-walk-3 {
   from {
     background-position-x: 0;
@@ -112,6 +139,41 @@ body {
   }
   to {
     background-position-x: -256px; /* 4 frames * 64px */
+  }
+}
+
+/* ── Room ambient animations (pixel mode only) ── */
+@keyframes lamp-flicker {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes steam-rise {
+  0% {
+    transform: translateY(0) scaleX(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(-40px) scaleX(1.2);
+    opacity: 0.15;
+  }
+  100% {
+    transform: translateY(-80px) scaleX(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes rain-fall {
+  0% {
+    background-position-y: 0;
+  }
+  100% {
+    background-position-y: 60px;
   }
 }
 

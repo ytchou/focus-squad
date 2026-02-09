@@ -454,10 +454,27 @@
 - [x] Onboarding gate: redirects un-onboarded users, allows onboarded through
 
 ### Phase 3E: Utility & Polish
+> **Design Doc:** [output/plan/2026-02-09-utility-polish-design.md](output/plan/2026-02-09-utility-polish-design.md)
 
-- [ ] Pixel-styled UI component variants (HUD bar, chat panel, control bar refinement)
-- [ ] Room ambient animations (flickering lamp, coffee steam, rain on window)
-- [ ] Full Character Animation States (8 states)
+- [x] Pixel-styled UI component variants
+  - [x] Add pixel utility classes to globals.css (@utility shadow-pixel, border-pixel, rounded-pixel, font-pixel)
+  - [x] Restyle HudOverlay: opaque bg, sharp corners, pixel font for timer + phase label
+  - [x] Restyle ChatPanel: opaque bg, hard border, sharp corners, pixel font for header
+  - [x] Add isPixelMode prop to ControlBar + AmbientMixerControls + PiPToggleButton
+  - [x] Pass isPixelMode from PixelSessionLayout; verify classic mode unchanged
+- [x] Room ambient animations (CSS keyframes, always on in pixel mode)
+  - [x] Create RoomAmbientAnimation component (switch on roomType)
+  - [x] Cozy Study: warm flickering lamp glow (radial gradient, 2s cycle)
+  - [x] Coffee Shop: 3 rising steam wisps (staggered, 3-4s loops)
+  - [x] Library: rain streaks on window (repeating gradient, 4s loop, ~12% opacity)
+  - [x] Wire into PixelRoom between background (z-0) and characters (z-10)
+- [x] 5-State character animation system (Working, Speaking, Away, Typing, Ghosting)
+  - [x] Add isTyping tracking to usePresenceDetection (keyboard activity, 3s timeout)
+  - [x] Extract getCharacterState() utility with priority logic + tests
+  - [x] Expand SpriteState type, CharacterConfig states, all 8 character configs
+  - [x] Wire isTyping through LiveKit data channel broadcast + participant objects
+  - [x] Generate typing + ghosting sprite rows for 8 characters (Pillow script, 256x192 → 256x320)
+  - [x] Tests: state priority (8 cases), typing detection (6 cases), sprite states (4 cases)
 
 ---
 

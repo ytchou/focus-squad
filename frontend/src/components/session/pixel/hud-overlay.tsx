@@ -51,20 +51,19 @@ export function HudOverlay({
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-20 bg-foreground/60 backdrop-blur-sm px-4 py-2">
+      <div className="fixed top-0 left-0 right-0 z-20 bg-foreground/90 shadow-pixel px-4 py-2 border-b-2 border-border/80">
         <div className="flex items-center justify-between max-w-screen-xl mx-auto">
           {/* Phase Badge */}
-          <Badge className={cn("text-sm font-medium", PHASE_COLORS[phase])}>
+          <Badge
+            className={cn("text-sm font-pixel text-[0.55rem] rounded-pixel", PHASE_COLORS[phase])}
+          >
             {PHASE_LABELS[phase]}
           </Badge>
 
           {/* Timer */}
           <div className="flex items-center gap-2 text-primary-foreground">
             <Clock className="h-4 w-4" />
-            <span
-              className="text-lg tracking-wider"
-              style={{ fontFamily: "var(--font-pixel)", fontSize: "0.7rem" }}
-            >
+            <span className="font-pixel text-[0.7rem] tracking-wider">
               {formatTime(timeRemaining)}
             </span>
           </div>
@@ -74,7 +73,7 @@ export function HudOverlay({
             variant="ghost"
             size="sm"
             onClick={() => setShowLeaveDialog(true)}
-            className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+            className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10 rounded-pixel"
           >
             <LogOut className="h-4 w-4" />
           </Button>

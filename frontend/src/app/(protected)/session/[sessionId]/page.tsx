@@ -104,6 +104,7 @@ export default function SessionPage() {
       presenceState: PresenceState;
       isCurrentUser: boolean;
       pixelAvatarId?: string | null;
+      isTyping?: boolean;
     }>
   >([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -248,7 +249,7 @@ export default function SessionPage() {
   const [isPiPActive, setIsPiPActive] = useState(false);
 
   // Presence detection (replaces useActivityTracking)
-  const { presenceState: myPresenceState } = usePresenceDetection({
+  const { presenceState: myPresenceState, isTyping: myIsTyping } = usePresenceDetection({
     enabled: true,
     inputTrackingConsent,
     isPiPActive,
@@ -308,7 +309,7 @@ export default function SessionPage() {
 
   // Enhance participants with current user's local presence (non-LiveKit path)
   const enhancedParticipants = participants.map((p) =>
-    p.isCurrentUser ? { ...p, presenceState: myPresenceState } : p
+    p.isCurrentUser ? { ...p, presenceState: myPresenceState, isTyping: myIsTyping } : p
   );
 
   // If we have a LiveKit token, wrap in LiveKit provider
@@ -337,6 +338,7 @@ export default function SessionPage() {
             viewMode={viewMode}
             setViewMode={setViewMode}
             myPresenceState={myPresenceState}
+            myIsTyping={myIsTyping}
             onPiPActiveChange={setIsPiPActive}
           />
         </LiveKitRoomProvider>
@@ -376,14 +378,16 @@ export default function SessionPage() {
 function LiveKitSessionContent(
   props: Omit<SessionPageContentProps, "disableAudio"> & {
     myPresenceState: PresenceState;
+    myIsTyping: boolean;
   }
 ) {
   const { isMuted, toggleMute } = useLocalMicrophone();
   const speakingParticipantIds = useActiveSpeakers();
   const { addMessage, incrementUnread, isDrawerOpen } = useBoardStore();
 
-  // Remote participants' presence states
+  // Remote participants' presence states and typing status
   const [presenceMap, setPresenceMap] = useState<Map<string, PresenceState>>(new Map());
+  const [typingMap, setTypingMap] = useState<Map<string, boolean>>(new Map());
 
   // Receive data channel messages from other participants
   const handleDataMessage = useCallback(
@@ -397,6 +401,11 @@ function LiveKitSessionContent(
         setPresenceMap((prev) => {
           const next = new Map(prev);
           next.set(presenceMsg.userId, presenceMsg.presenceState);
+          return next;
+        });
+        setTypingMap((prev) => {
+          const next = new Map(prev);
+          next.set(presenceMsg.userId, presenceMsg.isTyping);
           return next;
         });
         return;
@@ -416,9 +425,13 @@ function LiveKitSessionContent(
 
   // Broadcast presence on state changes
   const myPresenceRef = useRef(props.myPresenceState);
+  const myTypingRef = useRef(props.myIsTyping);
   useEffect(() => {
     myPresenceRef.current = props.myPresenceState;
   }, [props.myPresenceState]);
+  useEffect(() => {
+    myTypingRef.current = props.myIsTyping;
+  }, [props.myIsTyping]);
 
   useEffect(() => {
     if (!props.currentUserId) return;
@@ -426,9 +439,10 @@ function LiveKitSessionContent(
       type: "presence",
       userId: props.currentUserId,
       presenceState: props.myPresenceState,
+      isTyping: props.myIsTyping,
       timestamp: Date.now(),
     } satisfies PresenceMessage);
-  }, [props.myPresenceState, props.currentUserId, sendMessage]);
+  }, [props.myPresenceState, props.myIsTyping, props.currentUserId, sendMessage]);
 
   // Periodic keepalive broadcast every 30s (for late joiners)
   useEffect(() => {
@@ -439,18 +453,26 @@ function LiveKitSessionContent(
         type: "presence",
         userId,
         presenceState: myPresenceRef.current,
+        isTyping: myTypingRef.current,
         timestamp: Date.now(),
       } satisfies PresenceMessage);
     }, 30_000);
     return () => clearInterval(interval);
   }, [props.currentUserId, sendMessage]);
 
-  // Merge presence into participants
+  // Merge presence and typing into participants
   const enhancedParticipants = props.participants.map((p) => {
-    if (p.isCurrentUser) return { ...p, presenceState: props.myPresenceState };
+    if (p.isCurrentUser) {
+      return { ...p, presenceState: props.myPresenceState, isTyping: props.myIsTyping };
+    }
     if (p.isAI) return p; // AI companions stay "active"
     const remoteState = p.livekitIdentity ? presenceMap.get(p.livekitIdentity) : undefined;
-    return remoteState ? { ...p, presenceState: remoteState } : p;
+    const remoteTyping = p.livekitIdentity ? typingMap.get(p.livekitIdentity) : undefined;
+    return {
+      ...p,
+      ...(remoteState !== undefined && { presenceState: remoteState }),
+      ...(remoteTyping !== undefined && { isTyping: remoteTyping }),
+    };
   });
 
   // Broadcast board messages to other participants
@@ -490,6 +512,7 @@ interface SessionPageContentProps {
     presenceState: PresenceState;
     isCurrentUser: boolean;
     pixelAvatarId?: string | null;
+    isTyping?: boolean;
   }>;
   currentUserId: string | null;
   isQuietMode: boolean;

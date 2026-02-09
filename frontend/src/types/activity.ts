@@ -4,5 +4,6 @@ export interface PresenceMessage {
   type: "presence";
   userId: string;
   presenceState: PresenceState;
+  isTyping: boolean;
   timestamp: number;
 }

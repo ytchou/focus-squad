@@ -164,6 +164,63 @@ describe("CharacterSprite", () => {
     expect(sprite).toBeInTheDocument();
   });
 
+  it("applies typing state", () => {
+    const { container } = render(
+      <CharacterSprite
+        characterId="char-1"
+        state="typing"
+        deskPosition={{ top: "40%", left: "20%" }}
+        displayName="Alice"
+      />
+    );
+    const sprite = container.querySelector("[data-state='typing']");
+    expect(sprite).toBeInTheDocument();
+  });
+
+  it("applies ghosting state with dimmed opacity", () => {
+    const { container } = render(
+      <CharacterSprite
+        characterId="char-1"
+        state="ghosting"
+        deskPosition={{ top: "40%", left: "20%" }}
+        displayName="Alice"
+      />
+    );
+    const sprite = container.querySelector("[data-state='ghosting']");
+    expect(sprite).toBeInTheDocument();
+    // The wrapper should be dimmed (opacity 0.4) for ghosting state
+    const wrapper = container.firstChild as HTMLElement;
+    expect(wrapper.style.opacity).toBe("0.4");
+  });
+
+  it("applies dimmed opacity when isGhosting prop is true", () => {
+    const { container } = render(
+      <CharacterSprite
+        characterId="char-1"
+        state="working"
+        deskPosition={{ top: "40%", left: "20%" }}
+        displayName="Alice"
+        isGhosting={true}
+      />
+    );
+    const wrapper = container.firstChild as HTMLElement;
+    expect(wrapper.style.opacity).toBe("0.4");
+  });
+
+  it("has full opacity when not ghosting", () => {
+    const { container } = render(
+      <CharacterSprite
+        characterId="char-1"
+        state="working"
+        deskPosition={{ top: "40%", left: "20%" }}
+        displayName="Alice"
+        isGhosting={false}
+      />
+    );
+    const wrapper = container.firstChild as HTMLElement;
+    expect(wrapper.style.opacity).toBe("1");
+  });
+
   it("falls back to default character for unknown ID", () => {
     render(
       <CharacterSprite
