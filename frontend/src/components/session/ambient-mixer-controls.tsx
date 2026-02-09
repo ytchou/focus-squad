@@ -11,7 +11,11 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   CloudRain,
 };
 
-export function AmbientMixerControls() {
+interface AmbientMixerControlsProps {
+  isPixelMode?: boolean;
+}
+
+export function AmbientMixerControls({ isPixelMode }: AmbientMixerControlsProps = {}) {
   const { tracks, toggleTrack, setVolume } = useAmbientMixer();
 
   return (
@@ -26,7 +30,8 @@ export function AmbientMixerControls() {
             <button
               onClick={() => toggleTrack(track.id)}
               className={cn(
-                "rounded-xl h-10 w-10 flex items-center justify-center transition-colors",
+                "h-10 w-10 flex items-center justify-center transition-colors",
+                isPixelMode ? "rounded-pixel shadow-pixel" : "rounded-xl",
                 state.enabled
                   ? "bg-accent text-accent-foreground"
                   : "bg-muted/60 text-muted-foreground hover:bg-muted"
@@ -35,7 +40,14 @@ export function AmbientMixerControls() {
             >
               <Icon className="h-4 w-4" />
             </button>
-            <span className="text-[10px] text-muted-foreground">{track.name}</span>
+            <span
+              className={cn(
+                "text-[10px] text-muted-foreground",
+                isPixelMode && "font-pixel text-[0.4rem]"
+              )}
+            >
+              {track.name}
+            </span>
             {state.enabled && (
               <input
                 type="range"

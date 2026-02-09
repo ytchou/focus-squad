@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PIXEL_CHARACTERS, DEFAULT_CHARACTER, type CharacterConfig } from "@/config/pixel-rooms";
 
-export type SpriteState = "working" | "speaking" | "away";
+export type SpriteState = "working" | "speaking" | "away" | "typing" | "ghosting";
 
 const SPEAKING_DEBOUNCE_MS = 2000;
 
@@ -64,6 +64,7 @@ export function CharacterSprite({
 
   const stateConfig = config.states[displayState];
   const animationDuration = stateConfig.frames / stateConfig.fps;
+  const shouldDim = isGhosting || displayState === "ghosting";
 
   return (
     <div
@@ -72,7 +73,7 @@ export function CharacterSprite({
         top: deskPosition.top,
         left: deskPosition.left,
         transform: "translate(-50%, -50%)",
-        opacity: isGhosting ? 0.4 : 1,
+        opacity: shouldDim ? 0.4 : 1,
         transition: "opacity 1s ease-in-out",
       }}
       className="flex flex-col items-center"

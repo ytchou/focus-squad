@@ -34,13 +34,13 @@ export function ChatPanel({
     return (
       <button
         onClick={() => setIsCollapsed(false)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-20 bg-foreground/60 backdrop-blur-sm text-primary-foreground p-3 rounded-l-xl hover:bg-foreground/70 transition-colors"
+        className="fixed right-0 top-1/2 -translate-y-1/2 z-20 bg-foreground/90 text-primary-foreground p-3 rounded-pixel shadow-pixel border-pixel border-border hover:bg-foreground transition-colors"
       >
         <div className="flex flex-col items-center gap-1">
           <ChevronLeft className="h-5 w-5" />
           <MessageSquare className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="bg-accent text-accent-foreground text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
+            <span className="bg-accent text-accent-foreground text-xs rounded-pixel px-1.5 py-0.5 min-w-[1.25rem] text-center">
               {unreadCount}
             </span>
           )}
@@ -52,13 +52,13 @@ export function ChatPanel({
   return (
     <div
       className={cn(
-        "fixed right-0 top-12 bottom-16 z-20 bg-surface/90 backdrop-blur-sm border-l border-border/50 flex flex-col transition-all duration-300",
+        "fixed right-0 top-12 bottom-16 z-20 bg-surface border-l-2 border-border shadow-pixel flex flex-col transition-all duration-300",
         panelWidth
       )}
     >
       {/* Header with collapse button */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
-        <span className="text-sm font-medium text-foreground">
+      <div className="flex items-center justify-between px-3 py-2 border-b-2 border-border">
+        <span className="font-pixel text-[0.55rem] text-foreground">
           {reflectionPhase ? "Reflections" : "Chat"}
         </span>
         <button

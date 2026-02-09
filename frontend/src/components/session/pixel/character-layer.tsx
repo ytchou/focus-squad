@@ -1,12 +1,13 @@
 "use client";
 
-import { CharacterSprite, type SpriteState } from "./character-sprite";
+import { CharacterSprite } from "./character-sprite";
 import {
   PIXEL_ROOMS,
   PIXEL_CHARACTERS,
   DEFAULT_ROOM,
   DEFAULT_CHARACTER,
 } from "@/config/pixel-rooms";
+import { getCharacterState } from "@/lib/session/character-state";
 import type { PresenceState } from "@/types/activity";
 
 interface Participant {
@@ -19,6 +20,7 @@ interface Participant {
   presenceState: PresenceState;
   isCurrentUser: boolean;
   pixelAvatarId?: string | null;
+  isTyping?: boolean;
 }
 
 interface CharacterLayerProps {
@@ -33,13 +35,6 @@ export function CharacterLayer({
   speakingParticipantIds,
 }: CharacterLayerProps) {
   const room = PIXEL_ROOMS[roomType] ?? PIXEL_ROOMS[DEFAULT_ROOM];
-
-  // Determine state for each participant
-  const getState = (p: Participant): SpriteState => {
-    if (p.presenceState === "away" || p.presenceState === "ghosting") return "away";
-    if (p.livekitIdentity && speakingParticipantIds.has(p.livekitIdentity)) return "speaking";
-    return "working";
-  };
 
   // Assign characters - use participant's selected avatar, or assign from pool
   const getCharacterId = (p: Participant): string => {
@@ -56,11 +51,21 @@ export function CharacterLayer({
         if (deskIndex < 0 || deskIndex >= 4) return null;
         const position = room.deskPositions[deskIndex];
 
+        const isSpeaking = !!(
+          participant.livekitIdentity && speakingParticipantIds.has(participant.livekitIdentity)
+        );
+
+        const state = getCharacterState({
+          presenceState: participant.presenceState,
+          isSpeaking,
+          isTyping: participant.isTyping ?? false,
+        });
+
         return (
           <CharacterSprite
             key={participant.id}
             characterId={getCharacterId(participant)}
-            state={getState(participant)}
+            state={state}
             deskPosition={position}
             displayName={
               participant.displayName ||

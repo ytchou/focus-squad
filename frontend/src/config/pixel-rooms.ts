@@ -69,6 +69,8 @@ export interface CharacterConfig {
     working: { frames: number; fps: number; row: number };
     speaking: { frames: number; fps: number; row: number };
     away: { frames: number; fps: number; row: number };
+    typing: { frames: number; fps: number; row: number };
+    ghosting: { frames: number; fps: number; row: number };
   };
 }
 
@@ -83,6 +85,8 @@ export const PIXEL_CHARACTERS: Record<string, CharacterConfig> = {
       working: { frames: 4, fps: 4, row: 0 },
       speaking: { frames: 4, fps: 6, row: 1 },
       away: { frames: 3, fps: 3, row: 2 },
+      typing: { frames: 3, fps: 5, row: 3 },
+      ghosting: { frames: 2, fps: 1, row: 4 },
     },
   },
   "char-2": {
@@ -95,6 +99,8 @@ export const PIXEL_CHARACTERS: Record<string, CharacterConfig> = {
       working: { frames: 4, fps: 4, row: 0 },
       speaking: { frames: 4, fps: 6, row: 1 },
       away: { frames: 3, fps: 3, row: 2 },
+      typing: { frames: 3, fps: 5, row: 3 },
+      ghosting: { frames: 2, fps: 1, row: 4 },
     },
   },
   "char-3": {
@@ -107,6 +113,8 @@ export const PIXEL_CHARACTERS: Record<string, CharacterConfig> = {
       working: { frames: 4, fps: 4, row: 0 },
       speaking: { frames: 4, fps: 6, row: 1 },
       away: { frames: 3, fps: 3, row: 2 },
+      typing: { frames: 3, fps: 5, row: 3 },
+      ghosting: { frames: 2, fps: 1, row: 4 },
     },
   },
   "char-4": {
@@ -119,6 +127,8 @@ export const PIXEL_CHARACTERS: Record<string, CharacterConfig> = {
       working: { frames: 4, fps: 4, row: 0 },
       speaking: { frames: 4, fps: 6, row: 1 },
       away: { frames: 3, fps: 3, row: 2 },
+      typing: { frames: 3, fps: 5, row: 3 },
+      ghosting: { frames: 2, fps: 1, row: 4 },
     },
   },
   "char-5": {
@@ -131,6 +141,8 @@ export const PIXEL_CHARACTERS: Record<string, CharacterConfig> = {
       working: { frames: 4, fps: 4, row: 0 },
       speaking: { frames: 4, fps: 6, row: 1 },
       away: { frames: 3, fps: 3, row: 2 },
+      typing: { frames: 3, fps: 5, row: 3 },
+      ghosting: { frames: 2, fps: 1, row: 4 },
     },
   },
   "char-6": {
@@ -143,6 +155,8 @@ export const PIXEL_CHARACTERS: Record<string, CharacterConfig> = {
       working: { frames: 4, fps: 4, row: 0 },
       speaking: { frames: 4, fps: 6, row: 1 },
       away: { frames: 3, fps: 3, row: 2 },
+      typing: { frames: 3, fps: 5, row: 3 },
+      ghosting: { frames: 2, fps: 1, row: 4 },
     },
   },
   "char-7": {
@@ -155,6 +169,8 @@ export const PIXEL_CHARACTERS: Record<string, CharacterConfig> = {
       working: { frames: 4, fps: 4, row: 0 },
       speaking: { frames: 4, fps: 6, row: 1 },
       away: { frames: 3, fps: 3, row: 2 },
+      typing: { frames: 3, fps: 5, row: 3 },
+      ghosting: { frames: 2, fps: 1, row: 4 },
     },
   },
   "char-8": {
@@ -167,6 +183,8 @@ export const PIXEL_CHARACTERS: Record<string, CharacterConfig> = {
       working: { frames: 4, fps: 4, row: 0 },
       speaking: { frames: 4, fps: 6, row: 1 },
       away: { frames: 3, fps: 3, row: 2 },
+      typing: { frames: 3, fps: 5, row: 3 },
+      ghosting: { frames: 2, fps: 1, row: 4 },
     },
   },
 };

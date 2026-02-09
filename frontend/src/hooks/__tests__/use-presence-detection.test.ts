@@ -5,6 +5,7 @@ import { usePresenceDetection } from "../use-presence-detection";
 const GRACE_TIMEOUT = 2 * 60 * 1000;
 const AWAY_TIMEOUT = 5 * 60 * 1000;
 const TICK_INTERVAL = 10 * 1000;
+const TYPING_TIMEOUT = 3 * 1000;
 
 function setPageVisibility(state: "visible" | "hidden") {
   Object.defineProperty(document, "visibilityState", {
@@ -482,6 +483,143 @@ describe("usePresenceDetection", () => {
 
       docAddSpy.mockRestore();
       winAddSpy.mockRestore();
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // Typing detection
+  // ---------------------------------------------------------------
+  describe("typing detection", () => {
+    it("sets isTyping to true on keydown", () => {
+      const { result } = renderHook(() =>
+        usePresenceDetection({
+          enabled: true,
+          inputTrackingConsent: true,
+        })
+      );
+
+      expect(result.current.isTyping).toBe(false);
+
+      act(() => {
+        window.dispatchEvent(new Event("keydown"));
+      });
+
+      expect(result.current.isTyping).toBe(true);
+    });
+
+    it("resets isTyping to false after 3s of no typing", () => {
+      const { result } = renderHook(() =>
+        usePresenceDetection({
+          enabled: true,
+          inputTrackingConsent: true,
+        })
+      );
+
+      act(() => {
+        window.dispatchEvent(new Event("keydown"));
+      });
+      expect(result.current.isTyping).toBe(true);
+
+      act(() => {
+        vi.advanceTimersByTime(TYPING_TIMEOUT);
+      });
+
+      expect(result.current.isTyping).toBe(false);
+    });
+
+    it("resets the 3s timer on subsequent keydowns", () => {
+      const { result } = renderHook(() =>
+        usePresenceDetection({
+          enabled: true,
+          inputTrackingConsent: true,
+        })
+      );
+
+      act(() => {
+        window.dispatchEvent(new Event("keydown"));
+      });
+
+      // Advance 2s, then type again
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      act(() => {
+        window.dispatchEvent(new Event("keydown"));
+      });
+
+      // After another 2s (4s total from first keydown), still typing
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(result.current.isTyping).toBe(true);
+
+      // After 3s from the second keydown (5s total), resets
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(result.current.isTyping).toBe(false);
+    });
+
+    it("does not set isTyping when consent is false", () => {
+      const { result } = renderHook(() =>
+        usePresenceDetection({
+          enabled: true,
+          inputTrackingConsent: false,
+        })
+      );
+
+      act(() => {
+        window.dispatchEvent(new Event("keydown"));
+      });
+
+      expect(result.current.isTyping).toBe(false);
+    });
+
+    it("returns isTyping false when disabled", () => {
+      const { result } = renderHook(() =>
+        usePresenceDetection({
+          enabled: false,
+          inputTrackingConsent: true,
+        })
+      );
+
+      expect(result.current.isTyping).toBe(false);
+    });
+
+    it("mousedown does not set isTyping", () => {
+      const { result } = renderHook(() =>
+        usePresenceDetection({
+          enabled: true,
+          inputTrackingConsent: true,
+        })
+      );
+
+      act(() => {
+        window.dispatchEvent(new Event("mousedown"));
+      });
+
+      expect(result.current.isTyping).toBe(false);
+    });
+
+    it("resets isTyping when consent is revoked while typing", () => {
+      let consent = true;
+      const { result, rerender } = renderHook(() =>
+        usePresenceDetection({
+          enabled: true,
+          inputTrackingConsent: consent,
+        })
+      );
+
+      act(() => {
+        window.dispatchEvent(new Event("keydown"));
+      });
+      expect(result.current.isTyping).toBe(true);
+
+      // Revoke consent — effect cleanup should reset isTyping
+      consent = false;
+      rerender();
+
+      expect(result.current.isTyping).toBe(false);
     });
   });
 
