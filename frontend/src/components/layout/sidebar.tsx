@@ -8,6 +8,7 @@ import {
   Users,
   Clock,
   Trophy,
+  User,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/sessions", icon: Clock, label: "Sessions" },
   { href: "/find-table", icon: Users, label: "Find Table" },
   { href: "/collection", icon: Trophy, label: "Collection" },
+  { href: "/profile", icon: User, label: "Profile" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
 

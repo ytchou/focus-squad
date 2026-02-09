@@ -10,6 +10,7 @@ Handles:
 
 import random
 import string
+from datetime import datetime
 from typing import Any, Optional, cast
 
 from supabase import Client
@@ -348,6 +349,39 @@ class UserService:
             raise UserServiceError("Failed to update user profile")
 
         return UserProfile(**result.data[0])
+
+    def soft_delete_user(self, auth_id: str) -> datetime:
+        """
+        Soft-delete a user account with 30-day grace period.
+
+        Sets deleted_at and schedules actual deletion 30 days out.
+        User can cancel by signing back in before the scheduled date.
+
+        Args:
+            auth_id: Supabase auth.uid() of the user
+
+        Returns:
+            deletion_scheduled_at datetime
+
+        Raises:
+            UserNotFoundError: If user not found
+        """
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        scheduled = now + timedelta(days=30)
+
+        result = (
+            self.supabase.table("users")
+            .update({"deleted_at": now.isoformat(), "deletion_scheduled_at": scheduled.isoformat()})
+            .eq("auth_id", auth_id)
+            .execute()
+        )
+
+        if not result.data:
+            raise UserNotFoundError(f"User with auth_id {auth_id} not found")
+
+        return scheduled
 
     def record_session_completion(self, user_id: str, focus_minutes: int) -> None:
         """

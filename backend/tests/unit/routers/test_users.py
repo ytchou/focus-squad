@@ -15,7 +15,12 @@ from fastapi import HTTPException
 
 from app.core.auth import AuthUser
 from app.models.user import UserProfile, UserProfileUpdate, UserPublicProfile
-from app.routers.users import get_my_profile, get_user_profile, update_my_profile
+from app.routers.users import (
+    delete_my_account,
+    get_my_profile,
+    get_user_profile,
+    update_my_profile,
+)
 from app.services.user_service import UsernameConflictError, UserNotFoundError
 
 
@@ -42,12 +47,17 @@ def _make_user_profile(**overrides) -> UserProfile:
         "credits_used_this_week": 0,
         "credit_tier": "free",
         "credit_refresh_date": None,
+        "pixel_avatar_id": None,
+        "is_onboarded": False,
+        "default_table_mode": "forced_audio",
         "activity_tracking_enabled": False,
         "email_notifications_enabled": True,
         "push_notifications_enabled": True,
         "created_at": datetime(2025, 1, 1, tzinfo=timezone.utc),
         "updated_at": datetime(2025, 1, 1, tzinfo=timezone.utc),
         "banned_until": None,
+        "deleted_at": None,
+        "deletion_scheduled_at": None,
     }
     defaults.update(overrides)
     return UserProfile(**defaults)
@@ -294,3 +304,40 @@ class TestGetUserProfile:
         result = await get_user_profile(user_id="user-uuid-123", user_service=user_service)
 
         assert result == public_profile
+
+
+# =============================================================================
+# DELETE /me - delete_my_account()
+# =============================================================================
+
+
+class TestDeleteMyAccount:
+    """Tests for the DELETE /me endpoint (soft delete)."""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_successful_soft_delete(self) -> None:
+        """Returns 200 with deletion scheduled message."""
+        current_user = AuthUser(auth_id="auth-abc-123", email="test@example.com")
+        scheduled = datetime(2025, 1, 31, tzinfo=timezone.utc)
+        user_service = MagicMock()
+        user_service.soft_delete_user.return_value = scheduled
+
+        result = await delete_my_account(current_user=current_user, user_service=user_service)
+
+        assert result.deletion_scheduled_at == scheduled
+        assert "30 days" in result.message
+        user_service.soft_delete_user.assert_called_once_with("auth-abc-123")
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_user_not_found_raises_404(self) -> None:
+        """Raises 404 when user doesn't exist."""
+        current_user = AuthUser(auth_id="auth-ghost", email="ghost@example.com")
+        user_service = MagicMock()
+        user_service.soft_delete_user.side_effect = UserNotFoundError("User not found")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await delete_my_account(current_user=current_user, user_service=user_service)
+
+        assert exc_info.value.status_code == 404

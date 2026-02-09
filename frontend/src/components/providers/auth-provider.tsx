@@ -30,6 +30,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         try {
           const profile = await api.get<UserProfile>("/users/me");
+
+          // Onboarding gate: redirect un-onboarded users to the wizard
+          if (!profile.is_onboarded) {
+            useUserStore.getState().setUser(profile);
+            useUserStore.getState().setLoading(false);
+            if (
+              typeof window !== "undefined" &&
+              !window.location.pathname.startsWith("/onboarding")
+            ) {
+              window.location.href = "/onboarding";
+            }
+            return;
+          }
+
           useUserStore.getState().setUser(profile);
           useCreditsStore
             .getState()

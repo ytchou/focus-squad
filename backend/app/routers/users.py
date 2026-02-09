@@ -10,7 +10,12 @@ Endpoints:
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.auth import AuthUser, require_auth_from_state
-from app.models.user import UserProfile, UserProfileUpdate, UserPublicProfile
+from app.models.user import (
+    DeleteAccountResponse,
+    UserProfile,
+    UserProfileUpdate,
+    UserPublicProfile,
+)
 from app.services.user_service import (
     UsernameConflictError,
     UserNotFoundError,
@@ -78,6 +83,30 @@ async def update_my_profile(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
+        )
+
+
+@router.delete("/me", response_model=DeleteAccountResponse)
+async def delete_my_account(
+    current_user: AuthUser = Depends(require_auth_from_state),
+    user_service: UserService = Depends(get_user_service),
+) -> DeleteAccountResponse:
+    """
+    Soft-delete current user's account.
+
+    Schedules account for deletion in 30 days. User can cancel
+    by signing back in before the scheduled date.
+    """
+    try:
+        scheduled = user_service.soft_delete_user(current_user.auth_id)
+        return DeleteAccountResponse(
+            message="Account scheduled for deletion in 30 days. Sign back in to cancel.",
+            deletion_scheduled_at=scheduled,
+        )
+    except UserNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
         )
 
 
