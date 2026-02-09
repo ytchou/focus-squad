@@ -474,7 +474,7 @@
   - [x] Expand SpriteState type, CharacterConfig states, all 8 character configs
   - [x] Wire isTyping through LiveKit data channel broadcast + participant objects
   - [x] Generate typing + ghosting sprite rows for 8 characters (Pillow script, 256x192 → 256x320)
-  - [x] Tests: state priority (8 cases), typing detection (6 cases), sprite states (4 cases)
+  - [x] Tests: state priority (8 cases), typing detection (7 cases), sprite states (4 cases), ambient animation (4 cases)
 
 ---
 
@@ -511,6 +511,7 @@
 
 ### Testimonial / Science-based proof
 - [ ] Use this as marketing assets, or some built in prompts in the system, need to brainstorm more
+- [ ] Comments about attention span issues, how to regain focus
 
 ### Analytics
 - [ ] Integrate PostHog
