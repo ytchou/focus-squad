@@ -6,6 +6,7 @@ import { useSessionStore } from "@/stores/session-store";
 import { api } from "@/lib/api/client";
 import { useSessionTimer } from "@/hooks/use-session-timer";
 import { usePresenceDetection } from "@/hooks/use-presence-detection";
+import { usePictureInPicture } from "@/hooks/use-picture-in-picture";
 import {
   ActivityConsentPrompt,
   getStoredConsent,
@@ -243,10 +244,14 @@ export default function SessionPage() {
   );
   const [showConsentPrompt, setShowConsentPrompt] = useState(() => getStoredConsent() === null);
 
+  // PiP state (set by SessionPageContent, consumed by presence detection)
+  const [isPiPActive, setIsPiPActive] = useState(false);
+
   // Presence detection (replaces useActivityTracking)
   const { presenceState: myPresenceState } = usePresenceDetection({
     enabled: true,
     inputTrackingConsent,
+    isPiPActive,
   });
 
   // Leave session handler
@@ -332,6 +337,7 @@ export default function SessionPage() {
             viewMode={viewMode}
             setViewMode={setViewMode}
             myPresenceState={myPresenceState}
+            onPiPActiveChange={setIsPiPActive}
           />
         </LiveKitRoomProvider>
         {consentPrompt}
@@ -359,6 +365,7 @@ export default function SessionPage() {
         roomType={roomType}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        onPiPActiveChange={setIsPiPActive}
       />
       {consentPrompt}
     </>
@@ -501,6 +508,8 @@ interface SessionPageContentProps {
   roomType: string;
   viewMode: "pixel" | "classic";
   setViewMode: (mode: "pixel" | "classic") => void;
+  // PiP state callback
+  onPiPActiveChange?: (active: boolean) => void;
 }
 
 // Phases where the board takes over the main content area
@@ -533,11 +542,27 @@ function SessionPageContent({
   roomType,
   viewMode,
   setViewMode,
+  onPiPActiveChange,
 }: SessionPageContentProps) {
   const isBoardPhase = BOARD_PHASES.includes(phase);
   const reflectionPhase = REFLECTION_PHASE_MAP[phase] ?? null;
   const currentUser = participants.find((p) => p.isCurrentUser);
   const currentUserDisplayName = currentUser?.displayName || currentUser?.username || "You";
+
+  // Picture-in-Picture mini view
+  const { isPiPActive, isPiPSupported, togglePiP } = usePictureInPicture({
+    phase,
+    timeRemaining,
+    participants: participants.map((p) => ({
+      displayName: p.displayName,
+      presenceState: p.presenceState,
+    })),
+  });
+
+  // Sync PiP active state back to parent for presence detection
+  useEffect(() => {
+    onPiPActiveChange?.(isPiPActive);
+  }, [isPiPActive, onPiPActiveChange]);
 
   // Persist view mode to localStorage
   useEffect(() => {
@@ -590,6 +615,9 @@ function SessionPageContent({
           onToggleMute={toggleMute}
           onLeave={onLeave}
           onBroadcastMessage={handleBroadcast}
+          isPiPActive={isPiPActive}
+          isPiPSupported={isPiPSupported}
+          onTogglePiP={togglePiP}
         />
 
         {/* Session End Modal */}
@@ -626,6 +654,9 @@ function SessionPageContent({
             isQuietMode={isQuietMode || disableAudio}
             onToggleMute={toggleMute}
             presenceState={currentUser?.presenceState}
+            isPiPActive={isPiPActive}
+            isPiPSupported={isPiPSupported}
+            onTogglePiP={togglePiP}
           />
         }
       >
