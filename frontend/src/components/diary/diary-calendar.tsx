@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { DayPicker } from "react-day-picker";
-import "react-day-picker/style.css";
 import { DiaryEntryCard } from "./diary-entry-card";
 import type { DiaryEntry } from "@/lib/api/client";
 
