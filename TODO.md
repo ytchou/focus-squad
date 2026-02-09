@@ -387,31 +387,31 @@
 ### Phase 3C: Picture-in-Picture Mini View
 > **Design Doc:** [output/plan/2026-02-09-pip-mini-view-design.md](output/plan/2026-02-09-pip-mini-view-design.md)
 
-- [ ] TypeScript type declarations for Document PiP API (`types/document-pip.d.ts`)
-- [ ] Canvas PiP Renderer (`components/session/pip/pip-canvas-renderer.ts`)
+- [x] TypeScript type declarations for Document PiP API (`types/document-pip.d.ts`)
+- [x] Canvas PiP Renderer (`components/session/pip/pip-canvas-renderer.ts`)
   - 320x180 canvas: phase-colored timer + 4 participant circles with presence borders
   - Fallback for Safari/Firefox (static frames, system fonts)
-- [ ] Document PiP React component (`components/session/pip/pip-mini-view.tsx`)
+- [x] Document PiP React component (`components/session/pip/pip-mini-view.tsx`)
   - Same layout, real React rendering for Chrome/Edge
   - All inline styles (PiP window is separate browsing context)
-- [ ] PiP toggle button (`components/session/pip/pip-toggle-button.tsx`) + barrel export
-- [ ] `usePictureInPicture` hook (`hooks/use-picture-in-picture.ts`)
+- [x] PiP toggle button (`components/session/pip/pip-toggle-button.tsx`) + barrel export
+- [x] `usePictureInPicture` hook (`hooks/use-picture-in-picture.ts`)
   - Dual strategy: Document PiP (primary) + Canvas Video PiP (fallback)
   - Auto-close on session end, cleanup on unmount
-- [ ] Presence detection integration: add `isPiPActive` to `usePresenceDetection`
+- [x] Presence detection integration: add `isPiPActive` to `usePresenceDetection`
   - PiP open = page considered "visible" for activity
-- [ ] Control bar integration: add PiP toggle after ambient mixer controls
-- [ ] Session page wiring: PiP state flow between hook and presence detection
-- [ ] PixelSessionLayout: forward PiP props to ControlBar
-- [ ] Tests: PiP hook, PiPMiniView, PiPToggleButton
-- [ ] Verification: build, lint, all tests pass
+- [x] Control bar integration: add PiP toggle after ambient mixer controls
+- [x] Session page wiring: PiP state flow between hook and presence detection
+- [x] PixelSessionLayout: forward PiP props to ControlBar
+- [x] Tests: PiP hook, PiPMiniView, PiPToggleButton
+- [x] Verification: build, lint, all tests pass
 
-### Phase 3D-2: Utility & Polish (Deferred)
+### Phase 3D: Utility & Polish (Deferred)
 
 - [ ] Pixel-styled UI component variants (HUD bar, chat panel, control bar refinement)
 - [ ] Room ambient animations (flickering lamp, coffee steam, rain on window)
 
-### Phase 3D: Onboarding Flow & Profile Page
+### Phase 3E: Onboarding Flow & Profile Page
 > **Design Doc:** [output/plan/2026-02-09-onboarding-profile-design.md] (to be written)
 > **Plan File:** [.claude/plans/twinkling-tickling-candle.md]
 

@@ -46,6 +46,7 @@ export function usePictureInPicture({
   // Canvas PiP refs
   const canvasRendererRef = useRef<PiPCanvasRenderer | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Keep latest props in refs for use in intervals/callbacks
@@ -78,6 +79,10 @@ export function usePictureInPicture({
     }
     if (videoRef.current && document.pictureInPictureElement === videoRef.current) {
       document.exitPictureInPicture().catch(() => {});
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;
@@ -144,6 +149,7 @@ export function usePictureInPicture({
     // Create video from canvas stream
     const canvas = renderer.getCanvas();
     const stream = canvas.captureStream(0); // 0 fps = manual frame push
+    streamRef.current = stream;
     const video = document.createElement("video");
     video.srcObject = stream;
     video.muted = true;
