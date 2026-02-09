@@ -69,3 +69,4 @@ coverage.xml
 TODO.md
 
 celerybeat-schedule.db
+ui-examples/

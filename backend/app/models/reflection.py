@@ -11,7 +11,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # =============================================================================
 # Enums
@@ -76,7 +76,10 @@ class DiaryEntry(BaseModel):
     session_id: str
     session_date: datetime
     session_topic: Optional[str] = None
+    focus_minutes: int = 0
     reflections: list[DiaryReflection]
+    note: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class DiaryResponse(BaseModel):
@@ -86,6 +89,46 @@ class DiaryResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+# =============================================================================
+# Diary Note Models
+# =============================================================================
+
+
+class SaveDiaryNoteRequest(BaseModel):
+    """Request to save/update a post-session diary note."""
+
+    note: Optional[str] = Field(None, max_length=2000)
+    tags: list[str] = Field(default_factory=list)
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v: list[str]) -> list[str]:
+        from app.core.constants import DIARY_TAGS
+
+        invalid = [tag for tag in v if tag not in DIARY_TAGS]
+        if invalid:
+            raise ValueError(f"Invalid tags: {invalid}")
+        return v
+
+
+class DiaryNoteResponse(BaseModel):
+    """Response after saving a diary note."""
+
+    session_id: str
+    note: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class DiaryStatsResponse(BaseModel):
+    """Personal diary statistics."""
+
+    current_streak: int
+    weekly_focus_minutes: int
+    total_sessions: int
 
 
 # =============================================================================

@@ -241,6 +241,9 @@ class TestGetDiary:
         result = await get_diary(
             page=1,
             per_page=20,
+            search=None,
+            date_from=None,
+            date_to=None,
             user=auth_user,
             reflection_service=mock_reflection_service,
             user_service=mock_user_service,
@@ -248,7 +251,12 @@ class TestGetDiary:
 
         assert isinstance(result, DiaryResponse)
         mock_reflection_service.get_diary.assert_called_once_with(
-            user_id="user-123", page=1, per_page=20
+            user_id="user-123",
+            page=1,
+            per_page=20,
+            search=None,
+            date_from=None,
+            date_to=None,
         )
 
     @pytest.mark.asyncio
@@ -261,6 +269,9 @@ class TestGetDiary:
             await get_diary(
                 page=1,
                 per_page=20,
+                search=None,
+                date_from=None,
+                date_to=None,
                 user=auth_user,
                 reflection_service=mock_reflection_service,
                 user_service=mock_user_service_no_user,

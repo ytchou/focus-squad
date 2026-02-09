@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, Clock, Trophy, Settings, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Home,
+  BookOpen,
+  Users,
+  Clock,
+  Trophy,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores";
 import { useDebugBanner } from "@/hooks/use-debug-banner";
@@ -10,6 +19,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Home" },
+  { href: "/diary", icon: BookOpen, label: "Diary" },
   { href: "/sessions", icon: Clock, label: "Sessions" },
   { href: "/find-table", icon: Users, label: "Find Table" },
   { href: "/collection", icon: Trophy, label: "Collection" },
