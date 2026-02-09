@@ -514,7 +514,7 @@ function SessionPageContent({
         {/* View mode toggle */}
         <button
           onClick={() => setViewMode("classic")}
-          className="fixed bottom-4 left-4 z-30 px-3 py-1.5 text-xs bg-foreground/60 backdrop-blur-sm text-white rounded-lg hover:bg-foreground/70 transition-colors"
+          className="fixed bottom-4 left-4 z-30 px-3 py-1.5 text-xs bg-foreground/60 backdrop-blur-sm text-primary-foreground rounded-lg hover:bg-foreground/70 transition-colors"
           title="Switch to classic view"
         >
           Classic View

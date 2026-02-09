@@ -88,15 +88,8 @@ export function CharacterSprite({
         }}
       />
       <span
-        className="mt-1 text-center text-xs font-bold"
-        style={{
-          color: "white",
-          textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
-          maxWidth: "80px",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
+        className="mt-1 text-center text-xs font-bold text-primary-foreground max-w-[80px] overflow-hidden text-ellipsis whitespace-nowrap"
+        style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.8)" }}
       >
         {displayName}
       </span>

@@ -171,7 +171,7 @@ class SessionService:
         # Fetch participants
         participants_result = (
             self.supabase.table("session_participants")
-            .select("*, users(id, username, display_name, avatar_config)")
+            .select("*, users(id, username, display_name, avatar_config, pixel_avatar_id)")
             .eq("session_id", session_id)
             .is_("left_at", "null")
             .execute()

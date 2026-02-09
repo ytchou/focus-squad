@@ -34,7 +34,7 @@ export function ChatPanel({
     return (
       <button
         onClick={() => setIsCollapsed(false)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-20 bg-foreground/60 backdrop-blur-sm text-white p-3 rounded-l-xl hover:bg-foreground/70 transition-colors"
+        className="fixed right-0 top-1/2 -translate-y-1/2 z-20 bg-foreground/60 backdrop-blur-sm text-primary-foreground p-3 rounded-l-xl hover:bg-foreground/70 transition-colors"
       >
         <div className="flex flex-col items-center gap-1">
           <ChevronLeft className="h-5 w-5" />

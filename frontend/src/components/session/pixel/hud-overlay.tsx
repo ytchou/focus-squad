@@ -59,7 +59,7 @@ export function HudOverlay({
           </Badge>
 
           {/* Timer */}
-          <div className="flex items-center gap-2 text-white">
+          <div className="flex items-center gap-2 text-primary-foreground">
             <Clock className="h-4 w-4" />
             <span
               className="text-lg tracking-wider"
@@ -74,7 +74,7 @@ export function HudOverlay({
             variant="ghost"
             size="sm"
             onClick={() => setShowLeaveDialog(true)}
-            className="text-white/70 hover:text-white hover:bg-white/10"
+            className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
           >
             <LogOut className="h-4 w-4" />
           </Button>
