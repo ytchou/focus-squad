@@ -155,8 +155,8 @@ describe("WaitingRoomPage", () => {
 
       // Check that the session info card is displayed
       expect(screen.getByTestId("card")).toBeInTheDocument();
-      // Timer should be showing
-      expect(screen.getByText(/[0-9]{2}:[0-9]{2}/)).toBeInTheDocument();
+      // Timer should be showing (anchored to match only the standalone countdown, not the start time)
+      expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeInTheDocument();
     });
   });
 

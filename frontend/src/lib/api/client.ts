@@ -103,3 +103,41 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
+
+// =============================================================================
+// Diary Types
+// =============================================================================
+
+export interface DiaryReflection {
+  phase: "setup" | "break" | "social";
+  content: string;
+  created_at: string;
+}
+
+export interface DiaryEntry {
+  session_id: string;
+  session_date: string;
+  session_topic: string | null;
+  focus_minutes: number;
+  reflections: DiaryReflection[];
+  note: string | null;
+  tags: string[];
+}
+
+export interface DiaryResponse {
+  items: DiaryEntry[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface DiaryStats {
+  current_streak: number;
+  weekly_focus_minutes: number;
+  total_sessions: number;
+}
+
+export interface SaveDiaryNoteRequest {
+  note?: string;
+  tags: string[];
+}

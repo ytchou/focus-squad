@@ -303,25 +303,87 @@
 - [x] Build shared message board component (LiveKit data channels for real-time sync)
 - [x] Persist reflections to DB (free-form chat is ephemeral)
 - [x] Add gentle nudge notifications at phase transitions
-- [ ] Support both typed input and mic-prompted mode (Forced Audio)
 
-### Session Diary (Future)
-- [ ] Build personal session diary page (view past session reflections)
-- [ ] Display reflection history with date, session info, and personal goals/outcomes
-- [ ] Add filtering/search across past reflections
+### Session Diary
+> **Design Doc:** [output/plan/2026-02-09-session-diary-design.md](output/plan/2026-02-09-session-diary-design.md)
+
+- [x] Database migration (`012_diary_notes.sql`): diary_notes table with RLS, GIN index on tags
+- [x] Backend models: `SaveDiaryNoteRequest`, `DiaryNoteResponse`, `DiaryStatsResponse`, updated `DiaryEntry`
+- [x] Constants: `DIARY_TAGS` (8 predefined), `DIARY_NOTE_MAX_LENGTH = 2000`
+- [x] `ReflectionService` updates: `save_diary_note()`, `get_diary_stats()`, enhanced `get_diary()` with search/date filters
+- [x] API endpoints: `GET /diary` (updated with search, date_from, date_to), `GET /diary/stats`, `POST /diary/{session_id}/note`
+- [x] Build personal session diary page (`/diary` route) with timeline + calendar views
+- [x] 7 diary components: header, entry card, tag picker, journal editor, timeline, calendar, barrel export
+- [x] Display reflection history with date, session info, phase-colored reflections, focus time, essence indicator
+- [x] Add filtering/search across past reflections (debounced text search + date range)
+- [x] Post-session journaling: expandable textarea + predefined tag picker (8 tags)
+- [x] Calendar view with react-day-picker (session day highlighting, click-to-view)
+- [x] Sidebar: added Diary link with BookOpen icon
+- [x] Dashboard: renamed "View History" to "Diary", removed RatingHistoryCard
+- [x] Backend tests: 9 new unit tests (service) + router test updates (21 total reflection tests)
+- [x] Frontend tests: 16 component tests (DiaryEntryCard + DiaryTagPicker)
+
+### Pixel Art Design System
+> **Design Doc:** [output/plan/2026-02-09-pixel-art-ui-design.md](output/plan/2026-02-09-pixel-art-ui-design.md)
+
+- [ ] Source royalty-free pixel art assets (room backgrounds, furniture, character sprites)
+  - Room: isometric cozy study room (bookshelves, plants, desks, warm lighting)
+  - Characters: 4+ character styles with 8 animation states each
+  - Furniture: desks, chairs, bean bags, decorative items
+- [ ] Build pixel art asset pipeline (sprite sheets, color adjustment to design tokens)
+- [ ] Create `PixelRoom` background component (static/semi-animated room illustration)
+- [ ] Create `CharacterSprite` component with animation state machine
+  - States: working, typing, speaking, sound-reaction, flow-state, away, ghosting, phase-transition
+  - 3-4 frames per state, driven by real user events
+- [ ] Build pixel-styled UI component variants (HUD bar, chat panel, control bar)
+- [ ] Update session page layout: room scene + overlaid UI panels
+- [ ] Migrate existing session functionality into pixel art layout (timer, chat, ratings, controls)
+
+### Activity & Presence Detection
+- [ ] Implement Page Visibility API integration (`document.visibilityState` + `visibilitychange` event)
+- [ ] Implement Picture-in-Picture (PiP) mini view
+  - Canvas-rendered: timer countdown + 4 avatar sprites with status borders
+  - `canvas.captureStream()` → hidden `<video>` → `requestPictureInPicture()`
+  - PiP active = page considered "visible" for activity purposes
+- [ ] Implement local audio level detection via WebAudioAPI
+  - Fork mic MediaStream: LiveKit path + local AnalyserNode path
+  - `getByteFrequencyData()` → compute RMS volume level
+  - 3-second baseline calibration on session start
+  - Works even when mic muted in LiveKit (Quiet Mode presence detection)
+- [ ] Build activity state machine with grace periods
+  - ACTIVE: page visible OR audio above threshold
+  - Grace: <2 min since last signal → stay ACTIVE
+  - AWAY: 2-5 min since last signal ("in flow")
+  - GHOSTING: >5 min since last signal
+- [ ] Broadcast activity state via LiveKit data channel to other participants
+- [ ] Connect activity state to character sprite animations
+- [ ] Replace current `useActivityTracking` hook (keyboard/mouse based) with new signal-based system
+
+### Ambient Sound Mixer
+- [ ] Source royalty-free audio tracks
+  - Lo-Fi Beats: [Pixabay](https://pixabay.com/music/search/lofi/) (no attribution required)
+  - Coffee Shop Chatter: [Mixkit](https://mixkit.co/free-sound-effects/ambience/) (no attribution required)
+  - Rain: [Mixkit](https://mixkit.co/free-sound-effects/rain/) (no attribution required)
+- [ ] Trim audio files to seamless loops (~2-5 min each)
+- [ ] Build `useAmbientMixer` hook with WebAudioAPI
+  - AudioBufferSourceNode → GainNode → AudioContext.destination per track
+  - Independent on/off and volume control per track
+  - Mixable (multiple tracks simultaneously)
+  - Local-only playback (never sent to LiveKit)
+- [ ] Add ambient mixer controls to session bottom bar (3 toggle buttons)
+- [ ] Persist ambient preferences to localStorage per user
 
 ### Avatar & Profile
-- [ ] Create avatar builder component
-- [ ] Implement avatar customization options (hair, face, accessories)
-- [ ] Build user profile page
-- [ ] Display collection grid (furniture items)
-- [ ] Show session statistics and streaks
+- [ ] Create pixel art avatar selection (choose from character sprite styles)
+- [ ] Build user profile page with pixel art avatar display
+- [ ] Display session statistics and streaks
+- [ ] Show reliability badge and rating history
 
 ### Gamification
 - [x] Award essence on session completion (implemented in webhook room_finished handler)
 - [ ] Implement `EssenceService` for furniture essence (purchase, spend, history)
 - [ ] Implement streak bonuses (10 sessions = bonus essence)
-- [ ] Build item catalog display
+- [ ] Build item catalog display (pixel art collectibles)
 - [ ] Add item purchase flow
 
 ---
@@ -344,12 +406,10 @@
 - [ ] Integrate Mixpanel/Amplitude
 - [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.)
 - [ ] Add user identification and properties
-- [ ] Create analytics dashboard queries
 
 ### Moderation
 - [ ] Build report submission flow
 - [ ] Create admin moderation queue (basic)
-- [ ] Implement report review actions
 
 ### Payment Research
 - [ ] Research Taiwan payment gateways (ECPay, LINE Pay, NewebPay)
@@ -362,7 +422,6 @@
 - [ ] Mobile responsiveness check
 - [ ] Accessibility audit (basic)
 - [ ] Error handling and user-friendly messages
-- [ ] Documentation (API docs, setup guide)
 - [ ] Add rate limiting middleware (`slowapi`)
 - [ ] Implement structured logging (replace `print()` with `structlog`)
 - [ ] Add JWKS cache TTL (1-hour expiration with background refresh)

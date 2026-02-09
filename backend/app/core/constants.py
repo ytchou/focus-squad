@@ -44,3 +44,16 @@ FREE_USER_BAN_THRESHOLD = 1.5
 PAID_RED_WEIGHT = 1.0
 FREE_ESTABLISHED_RED_WEIGHT = 0.5  # Free user with 5+ sessions
 FREE_NEW_RED_WEIGHT = 0.0  # Free user <5 sessions or <7 days old
+
+# Session Diary
+DIARY_TAGS = [
+    "productive",
+    "distracted",
+    "breakthrough",
+    "tired",
+    "energized",
+    "social",
+    "deep-focus",
+    "struggled",
+]
+DIARY_NOTE_MAX_LENGTH = 2000

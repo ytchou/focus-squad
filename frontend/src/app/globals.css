@@ -89,3 +89,16 @@ body {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
+
+/* Diary calendar (react-day-picker) */
+.diary-calendar {
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.diary-calendar-session-day {
+  font-weight: 700;
+  background-color: color-mix(in srgb, var(--primary) 20%, transparent);
+  color: var(--primary);
+  border-radius: 9999px;
+}
