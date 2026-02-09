@@ -349,38 +349,40 @@
 - [x] Tests: CharacterSprite, pixel-rooms config, CharacterPicker
 
 ### Phase 3B: Immersion Layer
+> **Design Doc:** [output/plan/2026-02-09-immersion-layer-plan.md](output/plan/2026-02-09-immersion-layer-plan.md)
 
-- [ ] Ambient Sound Mixer
-  - [ ] Source royalty-free audio tracks
-    - Lo-Fi Beats: [Pixabay](https://pixabay.com/music/search/lofi/) (no attribution required)
-    - Coffee Shop Chatter: [Mixkit](https://mixkit.co/free-sound-effects/ambience/) (no attribution required)
-    - Rain: [Mixkit](https://mixkit.co/free-sound-effects/rain/) (no attribution required)
-  - [ ] Trim audio files to seamless loops (~2-5 min each)
-  - [ ] Build `useAmbientMixer` hook with WebAudioAPI
+- [x] Ambient Sound Mixer
+  - [x] Source royalty-free audio tracks (Lo-Fi, Coffee Shop, Rain) from Pixabay/Mixkit
+  - [x] Trim audio files to seamless loops (~2-5 min each, MP3 128kbps)
+  - [x] Create track config (`frontend/src/config/ambient-tracks.ts`)
+  - [x] Build `useAmbientMixer` hook with WebAudioAPI
     - AudioBufferSourceNode → GainNode → AudioContext.destination per track
     - Independent on/off and volume control per track
     - Mixable (multiple tracks simultaneously)
     - Local-only playback (never sent to LiveKit)
-  - [ ] Add ambient mixer controls to session bottom bar (3 toggle buttons)
-  - [ ] Persist ambient preferences to localStorage per user
-- [ ] Full Character Animation States (8 states)
-  - [ ] Add typing, sound-reaction, flow-state, ghosting, phase-transition states
-  - [ ] Connect to activity detection signals
-- [ ] Activity & Presence Detection
-  - [ ] Implement Page Visibility API integration (`document.visibilityState` + `visibilitychange` event)
-  - [ ] Implement local audio level detection via WebAudioAPI
-    - Fork mic MediaStream: LiveKit path + local AnalyserNode path
-    - `getByteFrequencyData()` → compute RMS volume level
-    - 3-second baseline calibration on session start
-    - Works even when mic muted in LiveKit (Quiet Mode presence detection)
-  - [ ] Build activity state machine with grace periods
-    - ACTIVE: page visible OR audio above threshold
-    - Grace: <2 min since last signal → stay ACTIVE
-    - AWAY: 2-5 min since last signal ("in flow")
-    - GHOSTING: >5 min since last signal
-  - [ ] Broadcast activity state via LiveKit data channel to other participants
-  - [ ] Connect activity state to character sprite animations
-  - [ ] Replace current `useActivityTracking` hook (keyboard/mouse based) with new signal-based system
+    - Handle browser autoplay policy (lazy AudioContext)
+  - [x] Build `AmbientMixerControls` component (3 toggle buttons + volume sliders)
+  - [x] Integrate into shared ControlBar (works in pixel + classic layouts)
+  - [x] Persist ambient preferences to localStorage per user
+  - [x] Tests for `useAmbientMixer` hook
+- [x] Activity & Presence Detection
+  - [x] Create presence types (`frontend/src/types/activity.ts`): PresenceState, PresenceMessage
+  - [x] Build `usePresenceDetection` hook (replaces `useActivityTracking`)
+    - Page Visibility API (`visibilitychange` event)
+    - Keyboard/mouse tracking (opt-in, timestamps only, privacy-first)
+    - 4-state machine: ACTIVE → GRACE (2min) → AWAY (5min) → GHOSTING
+    - 10s interval for state derivation, 30s periodic broadcast for late joiners
+  - [x] Build `ActivityConsentPrompt` component (non-blocking card, localStorage consent)
+  - [x] Integrate into session page: broadcast + receive presence via LiveKit data channel
+  - [x] Update `Participant` interface: `isActive: boolean` → `presenceState: PresenceState`
+  - [x] Update `ParticipantSeat` badge (Focused/Away/Gone)
+  - [x] Update `ControlBar` presence indicator (dynamic green/yellow/red dot)
+  - [x] Deprecate `useActivityTracking` hook
+  - [x] Tests for `usePresenceDetection` hook
+- [x] Character Animation Enhancement
+  - [x] Update `CharacterLayer` state logic to use `presenceState`
+  - [x] Add `isGhosting` prop to `CharacterSprite` (opacity: 0.4, 1s ease transition)
+  - [x] Update existing CharacterSprite tests for ghosting
 
 ### Phase 3C: Utility & Polish
 
@@ -394,6 +396,7 @@
 - [ ] Build user profile page with pixel art avatar display
 - [ ] Display session statistics and streaks
 - [ ] Show reliability badge and rating history
+- [ ] Full Character Animation States (8 states)
 
 ### Gamification
 - [x] Award essence on session completion (implemented in webhook room_finished handler)

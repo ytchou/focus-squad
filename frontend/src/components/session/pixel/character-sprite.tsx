@@ -12,6 +12,7 @@ interface CharacterSpriteProps {
   state: SpriteState;
   deskPosition: { top: string; left: string };
   displayName: string;
+  isGhosting?: boolean;
 }
 
 export function CharacterSprite({
@@ -19,6 +20,7 @@ export function CharacterSprite({
   state,
   deskPosition,
   displayName,
+  isGhosting = false,
 }: CharacterSpriteProps) {
   const [displayState, setDisplayState] = useState<SpriteState>(state);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,6 +72,8 @@ export function CharacterSprite({
         top: deskPosition.top,
         left: deskPosition.left,
         transform: "translate(-50%, -50%)",
+        opacity: isGhosting ? 0.4 : 1,
+        transition: "opacity 1s ease-in-out",
       }}
       className="flex flex-col items-center"
     >

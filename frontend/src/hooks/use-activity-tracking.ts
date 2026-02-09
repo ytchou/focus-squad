@@ -15,9 +15,10 @@ interface UseActivityTrackingReturn {
 }
 
 /**
- * Hook that tracks keyboard and mouse activity.
- * User is considered "active" if they've had input within the last 30 seconds.
- * This is opt-in per SPEC.md privacy requirements.
+ * @deprecated Use `usePresenceDetection` from `@/hooks/use-presence-detection` instead.
+ * This hook has a simple 30s timeout and no page visibility awareness.
+ * The new hook provides a 4-state presence machine (active/grace/away/ghosting)
+ * with proper Page Visibility API integration and opt-in input tracking.
  *
  * @param options - Configuration options
  * @returns Activity state

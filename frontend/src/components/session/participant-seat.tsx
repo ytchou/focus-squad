@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { PresenceState } from "@/types/activity";
 
 export interface ParticipantSeatProps {
   id: string;
@@ -12,7 +13,7 @@ export interface ParticipantSeatProps {
   displayName: string | null;
   isAI: boolean;
   isMuted: boolean;
-  isActive: boolean;
+  presenceState: PresenceState;
   isSpeaking: boolean;
   isCurrentUser: boolean;
   isEmpty?: boolean;
@@ -24,7 +25,7 @@ export function ParticipantSeat({
   displayName,
   isAI,
   isMuted,
-  isActive,
+  presenceState,
   isSpeaking,
   isCurrentUser,
   isEmpty = false,
@@ -98,10 +99,21 @@ export function ParticipantSeat({
         )}
         {!isAI && (
           <Badge
-            variant={isActive ? "default" : "secondary"}
-            className={cn("text-xs", isActive && "bg-success text-success-foreground")}
+            variant={
+              presenceState === "active" || presenceState === "grace" ? "default" : "secondary"
+            }
+            className={cn(
+              "text-xs",
+              (presenceState === "active" || presenceState === "grace") &&
+                "bg-success text-success-foreground",
+              presenceState === "away" && "bg-warning text-warning-foreground"
+            )}
           >
-            {isActive ? "Focused" : "Idle"}
+            {presenceState === "active" || presenceState === "grace"
+              ? "Focused"
+              : presenceState === "away"
+                ? "Away"
+                : "Gone"}
           </Badge>
         )}
       </div>

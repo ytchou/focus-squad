@@ -7,6 +7,7 @@ import {
   DEFAULT_ROOM,
   DEFAULT_CHARACTER,
 } from "@/config/pixel-rooms";
+import type { PresenceState } from "@/types/activity";
 
 interface Participant {
   id: string;
@@ -15,7 +16,7 @@ interface Participant {
   username: string | null;
   displayName: string | null;
   isAI: boolean;
-  isActive: boolean;
+  presenceState: PresenceState;
   isCurrentUser: boolean;
   pixelAvatarId?: string | null;
 }
@@ -35,7 +36,7 @@ export function CharacterLayer({
 
   // Determine state for each participant
   const getState = (p: Participant): SpriteState => {
-    if (!p.isActive) return "away";
+    if (p.presenceState === "away" || p.presenceState === "ghosting") return "away";
     if (p.livekitIdentity && speakingParticipantIds.has(p.livekitIdentity)) return "speaking";
     return "working";
   };
@@ -66,6 +67,7 @@ export function CharacterLayer({
               participant.username ||
               (participant.isAI ? "AI Companion" : "Guest")
             }
+            isGhosting={participant.presenceState === "ghosting"}
           />
         );
       })}

@@ -35,7 +35,7 @@ export function TableView({ participants, speakingParticipantIds, currentUserId 
           displayName={null}
           isAI={false}
           isMuted={true}
-          isActive={false}
+          presenceState="active"
           isSpeaking={false}
           isCurrentUser={false}
           isEmpty={true}
