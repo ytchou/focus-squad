@@ -116,7 +116,11 @@ export function usePresenceDetection({
         window.removeEventListener(event, handler);
       }
       clearInterval(interval);
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+      setIsTyping(false);
     };
   }, [enabled, inputTrackingConsent, recordSignal]);
 

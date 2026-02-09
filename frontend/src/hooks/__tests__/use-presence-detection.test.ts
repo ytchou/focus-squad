@@ -600,6 +600,27 @@ describe("usePresenceDetection", () => {
 
       expect(result.current.isTyping).toBe(false);
     });
+
+    it("resets isTyping when consent is revoked while typing", () => {
+      let consent = true;
+      const { result, rerender } = renderHook(() =>
+        usePresenceDetection({
+          enabled: true,
+          inputTrackingConsent: consent,
+        })
+      );
+
+      act(() => {
+        window.dispatchEvent(new Event("keydown"));
+      });
+      expect(result.current.isTyping).toBe(true);
+
+      // Revoke consent — effect cleanup should reset isTyping
+      consent = false;
+      rerender();
+
+      expect(result.current.isTyping).toBe(false);
+    });
   });
 
   // ---------------------------------------------------------------

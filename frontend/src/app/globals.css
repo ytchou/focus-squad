@@ -39,6 +39,11 @@
   --border-pixel: 2px;
   --radius-pixel: 0px;
   --shadow-pixel: 4px 4px 0px rgba(0, 0, 0, 0.2);
+
+  /* Ambient Animation Colors (pixel room decorative effects) */
+  --ambient-lamp-glow: rgba(212, 165, 116, 0.25);
+  --ambient-steam: rgba(255, 255, 255, 0.3);
+  --ambient-rain: rgba(180, 200, 220, 0.12);
 }
 
 @theme inline {
@@ -142,7 +147,37 @@ body {
   }
 }
 
-/* ── Room ambient animations (pixel mode only) ── */
+/* ── Room ambient animation classes ── */
+.ambient-lamp {
+  background: radial-gradient(
+    ellipse 300px 200px at 50% 30%,
+    var(--ambient-lamp-glow),
+    transparent
+  );
+  animation: lamp-flicker 2s ease-in-out infinite;
+}
+
+.ambient-steam-wisp {
+  width: 8px;
+  height: 16px;
+  background: var(--ambient-steam);
+  filter: blur(4px);
+  bottom: 35%;
+}
+
+.ambient-rain {
+  background: repeating-linear-gradient(
+    180deg,
+    transparent,
+    transparent 20px,
+    var(--ambient-rain) 20px,
+    var(--ambient-rain) 21px
+  );
+  animation: rain-fall 4s linear infinite;
+  opacity: 0.12;
+}
+
+/* ── Room ambient animation keyframes (pixel mode only) ── */
 @keyframes lamp-flicker {
   0%,
   100% {
