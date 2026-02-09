@@ -5,12 +5,16 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PresenceState } from "@/types/activity";
 import { AmbientMixerControls } from "./ambient-mixer-controls";
+import { PiPToggleButton } from "./pip/pip-toggle-button";
 
 interface ControlBarProps {
   isMuted: boolean;
   isQuietMode: boolean;
   onToggleMute: () => void;
   presenceState?: PresenceState;
+  isPiPActive?: boolean;
+  isPiPSupported?: boolean;
+  onTogglePiP?: () => void;
 }
 
 const PRESENCE_CONFIG: Record<PresenceState, { color: string; label: string }> = {
@@ -20,7 +24,15 @@ const PRESENCE_CONFIG: Record<PresenceState, { color: string; label: string }> =
   ghosting: { color: "bg-destructive", label: "Away" },
 };
 
-export function ControlBar({ isMuted, isQuietMode, onToggleMute, presenceState }: ControlBarProps) {
+export function ControlBar({
+  isMuted,
+  isQuietMode,
+  onToggleMute,
+  presenceState,
+  isPiPActive,
+  isPiPSupported,
+  onTogglePiP,
+}: ControlBarProps) {
   const presence = presenceState ? PRESENCE_CONFIG[presenceState] : null;
 
   return (
@@ -57,6 +69,18 @@ export function ControlBar({ isMuted, isQuietMode, onToggleMute, presenceState }
 
       {/* Ambient Sound Mixer */}
       <AmbientMixerControls />
+
+      {/* PiP Toggle */}
+      {isPiPSupported && onTogglePiP && (
+        <>
+          <div className="h-8 w-px bg-border" />
+          <PiPToggleButton
+            isPiPActive={isPiPActive ?? false}
+            isPiPSupported={isPiPSupported}
+            onToggle={onTogglePiP}
+          />
+        </>
+      )}
 
       {/* Quiet Mode Indicator */}
       {isQuietMode && (

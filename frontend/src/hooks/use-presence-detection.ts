@@ -10,6 +10,7 @@ const TICK_INTERVAL = 10 * 1000;
 export interface UsePresenceDetectionOptions {
   enabled: boolean;
   inputTrackingConsent: boolean;
+  isPiPActive?: boolean;
   onStateChange?: (state: PresenceState, prev: PresenceState) => void;
 }
 
@@ -28,6 +29,7 @@ function deriveState(isPageVisible: boolean, elapsed: number): PresenceState {
 export function usePresenceDetection({
   enabled,
   inputTrackingConsent,
+  isPiPActive,
   onStateChange,
 }: UsePresenceDetectionOptions): UsePresenceDetectionReturn {
   const [isPageVisible, setIsPageVisible] = useState(true);
@@ -36,10 +38,15 @@ export function usePresenceDetection({
   const lastSignalAt = useRef(0);
   const prevStateRef = useRef<PresenceState>("active");
   const onStateChangeRef = useRef(onStateChange);
+  const isPiPActiveRef = useRef(isPiPActive ?? false);
 
   useEffect(() => {
     onStateChangeRef.current = onStateChange;
   }, [onStateChange]);
+
+  useEffect(() => {
+    isPiPActiveRef.current = isPiPActive ?? false;
+  }, [isPiPActive]);
 
   const recordSignal = useCallback(() => {
     lastSignalAt.current = Date.now();
@@ -56,7 +63,7 @@ export function usePresenceDetection({
     lastSignalAt.current = Date.now();
 
     const handleVisibilityChange = () => {
-      const visible = document.visibilityState === "visible";
+      const visible = document.visibilityState === "visible" || isPiPActiveRef.current;
       setIsPageVisible(visible);
       if (visible) {
         recordSignal();
@@ -78,7 +85,7 @@ export function usePresenceDetection({
 
     const interval = setInterval(() => {
       const elapsed = Date.now() - lastSignalAt.current;
-      const visible = document.visibilityState === "visible";
+      const visible = document.visibilityState === "visible" || isPiPActiveRef.current;
       const next = deriveState(visible, elapsed);
 
       setPresenceState(next);

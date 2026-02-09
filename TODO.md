@@ -384,18 +384,77 @@
   - [x] Add `isGhosting` prop to `CharacterSprite` (opacity: 0.4, 1s ease transition)
   - [x] Update existing CharacterSprite tests for ghosting
 
-### Phase 3C: Utility & Polish
+### Phase 3C: Picture-in-Picture Mini View
+> **Design Doc:** [output/plan/2026-02-09-pip-mini-view-design.md](output/plan/2026-02-09-pip-mini-view-design.md)
 
-- [ ] Picture-in-Picture (PiP) mini view
-  - Canvas-rendered: timer + 4 avatar sprites with status borders
-  - PiP active = page considered "visible" for activity
+- [x] TypeScript type declarations for Document PiP API (`types/document-pip.d.ts`)
+- [x] Canvas PiP Renderer (`components/session/pip/pip-canvas-renderer.ts`)
+  - 320x180 canvas: phase-colored timer + 4 participant circles with presence borders
+  - Fallback for Safari/Firefox (static frames, system fonts)
+- [x] Document PiP React component (`components/session/pip/pip-mini-view.tsx`)
+  - Same layout, real React rendering for Chrome/Edge
+  - All inline styles (PiP window is separate browsing context)
+- [x] PiP toggle button (`components/session/pip/pip-toggle-button.tsx`) + barrel export
+- [x] `usePictureInPicture` hook (`hooks/use-picture-in-picture.ts`)
+  - Dual strategy: Document PiP (primary) + Canvas Video PiP (fallback)
+  - Auto-close on session end, cleanup on unmount
+- [x] Presence detection integration: add `isPiPActive` to `usePresenceDetection`
+  - PiP open = page considered "visible" for activity
+- [x] Control bar integration: add PiP toggle after ambient mixer controls
+- [x] Session page wiring: PiP state flow between hook and presence detection
+- [x] PixelSessionLayout: forward PiP props to ControlBar
+- [x] Tests: PiP hook, PiPMiniView, PiPToggleButton
+- [x] Verification: build, lint, all tests pass
+
+### Phase 3D: Utility & Polish (Deferred)
+
 - [ ] Pixel-styled UI component variants (HUD bar, chat panel, control bar refinement)
 - [ ] Room ambient animations (flickering lamp, coffee steam, rain on window)
 
-### Avatar & Profile
-- [ ] Build user profile page with pixel art avatar display
-- [ ] Display session statistics and streaks
-- [ ] Show reliability badge and rating history
+### Phase 3E: Onboarding Flow & Profile Page
+> **Design Doc:** [output/plan/2026-02-09-onboarding-profile-design.md] (to be written)
+> **Plan File:** [.claude/plans/twinkling-tickling-candle.md]
+
+**Database Migration (`014_onboarding_profile.sql`):**
+- [ ] Add `is_onboarded BOOLEAN DEFAULT FALSE` to users table
+- [ ] Add `default_table_mode TEXT DEFAULT 'forced_audio'` to users table
+- [ ] Backfill: `SET is_onboarded = TRUE WHERE pixel_avatar_id IS NOT NULL`
+
+**Backend — Models & Endpoints:**
+- [ ] Update `UserProfile` model: add `is_onboarded`, `default_table_mode` fields
+- [ ] Update `UserProfileUpdate` model: add `is_onboarded`, `default_table_mode` fields
+- [ ] Add `UserStatsResponse` model (total_sessions, total_focus_minutes, current_streak, longest_streak)
+- [ ] Add `GET /api/v1/users/me/stats` endpoint (aggregate from session_participants + sessions)
+- [ ] Add `GET /api/v1/users/me/preferences` endpoint (notification prefs + default_table_mode)
+- [ ] Add `PATCH /api/v1/users/me/preferences` endpoint
+- [ ] Backend tests for stats, preferences, onboarding flag
+
+**Frontend — Onboarding Wizard (3 Screens):**
+- [ ] Refactor `/onboarding/page.tsx` into step-based wizard with progress indicator
+- [ ] Screen 1 — Welcome: pixel room background, animated characters, "Your cozy corner for getting things done."
+- [ ] Screen 2 — Profile: username + display name + character picker (reuse `CharacterPicker`)
+- [ ] Screen 3 — House Rules: 3 community norms + "3 reports = 48hr timeout" note + "I'm in" CTA
+- [ ] Single `PATCH /users/me` on completion (username + display_name + pixel_avatar_id + is_onboarded=true)
+- [ ] Smooth step transitions + back buttons
+
+**Frontend — Onboarding Gate:**
+- [ ] Add `is_onboarded` check in AuthProvider or protected layout
+- [ ] Redirect unauthenticated-but-not-onboarded users to `/onboarding`
+- [ ] Prevent redirect loop (allow `/onboarding` route through)
+
+**Frontend — Profile Page (`/profile`):**
+- [ ] Identity section: large animated avatar, change character dialog, edit username + display name
+- [ ] Stats section: total sessions, focus minutes, current streak, reliability badge
+- [ ] Preferences section: default table mode, default ambient mix (localStorage), email notifications (coming soon), push notification toggles
+- [ ] Account section: connected Google account, sign out, delete account (danger zone)
+- [ ] Add "Profile" link to sidebar navigation
+
+**Frontend Tests:**
+- [ ] Onboarding wizard: step navigation, validation, API call on completion
+- [ ] Profile page: renders sections, edit flow, save
+- [ ] Onboarding gate: redirects unonboarded users, allows onboarded through
+
+**Character Animation (moved from Phase 3C):**
 - [ ] Full Character Animation States (8 states)
 
 ### Gamification
@@ -424,8 +483,8 @@
 - [ ] Send notifications for: session start, match found, credit refresh, Red rating
 
 ### Analytics
-- [ ] Integrate Mixpanel/Amplitude
-- [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.)
+- [ ] Integrate PostHog
+- [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.). Need more design
 - [ ] Add user identification and properties
 
 ### Moderation
@@ -433,7 +492,7 @@
 - [ ] Create admin moderation queue (basic)
 
 ### Payment Research
-- [ ] Research Taiwan payment gateways (ECPay, LINE Pay, NewebPay)
+- [ ] Research Taiwan payment gateways (ECPay, LINE Pay, NewebPay), or some other international gateways (Stripe, LemonSqueezy, etc.)
 - [ ] Document integration requirements
 - [ ] Design subscription upgrade flow (UI mockups)
 

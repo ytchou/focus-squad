@@ -43,6 +43,9 @@ interface PixelSessionLayoutProps {
   onToggleMute: () => void;
   onLeave: () => Promise<void>;
   onBroadcastMessage?: (message: BoardMessage) => void;
+  isPiPActive?: boolean;
+  isPiPSupported?: boolean;
+  onTogglePiP?: () => void;
 }
 
 export function PixelSessionLayout({
@@ -59,6 +62,9 @@ export function PixelSessionLayout({
   onToggleMute,
   onLeave,
   onBroadcastMessage,
+  isPiPActive,
+  isPiPSupported,
+  onTogglePiP,
 }: PixelSessionLayoutProps) {
   const isBoardPhase = BOARD_PHASES.includes(phase);
   const reflectionPhase = REFLECTION_PHASE_MAP[phase] ?? null;
@@ -102,6 +108,9 @@ export function PixelSessionLayout({
           isQuietMode={isQuietMode}
           onToggleMute={onToggleMute}
           presenceState={participants.find((p) => p.isCurrentUser)?.presenceState}
+          isPiPActive={isPiPActive}
+          isPiPSupported={isPiPSupported}
+          onTogglePiP={onTogglePiP}
         />
       </div>
     </div>
