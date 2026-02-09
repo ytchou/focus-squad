@@ -110,6 +110,26 @@ async def delete_my_account(
         )
 
 
+@router.post("/me/cancel-deletion", response_model=UserProfile)
+async def cancel_my_deletion(
+    current_user: AuthUser = Depends(require_auth_from_state),
+    user_service: UserService = Depends(get_user_service),
+) -> UserProfile:
+    """
+    Cancel a pending account deletion.
+
+    Clears deleted_at and deletion_scheduled_at when a
+    soft-deleted user signs back in.
+    """
+    try:
+        return user_service.cancel_account_deletion(current_user.auth_id)
+    except UserNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+
 @router.get("/{user_id}", response_model=UserPublicProfile)
 async def get_user_profile(
     user_id: str,

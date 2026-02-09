@@ -99,7 +99,7 @@ class UserProfileUpdate(BaseModel):
 
     username: Optional[str] = Field(None, min_length=3, max_length=30)
     display_name: Optional[str] = Field(None, max_length=50)
-    bio: Optional[str] = Field(None, max_length=500)
+    bio: Optional[str] = Field(None, max_length=160)
     avatar_config: Optional[dict[str, Any]] = None
     social_links: Optional[dict[str, Any]] = None
     study_interests: Optional[list[str]] = None

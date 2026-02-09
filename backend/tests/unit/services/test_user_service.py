@@ -375,3 +375,36 @@ class TestSoftDeleteUser:
 
         with pytest.raises(UserNotFoundError):
             user_service.soft_delete_user("nonexistent")
+
+
+class TestCancelAccountDeletion:
+    """Tests for cancel account deletion method."""
+
+    @pytest.mark.unit
+    def test_cancel_clears_deletion_fields(
+        self, user_service, mock_supabase, sample_user_row
+    ) -> None:
+        """Cancel deletion clears deleted_at and deletion_scheduled_at."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+        # update() returns user row
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = [sample_user_row]
+        # get_user_by_auth_id needs select + credits
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [sample_user_row]
+
+        result = user_service.cancel_account_deletion("auth-123")
+
+        assert result is not None
+        mock_table.update.assert_called_once_with(
+            {"deleted_at": None, "deletion_scheduled_at": None}
+        )
+
+    @pytest.mark.unit
+    def test_cancel_deletion_user_not_found(self, user_service, mock_supabase) -> None:
+        """UserNotFoundError raised when user doesn't exist."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = []
+
+        with pytest.raises(UserNotFoundError):
+            user_service.cancel_account_deletion("nonexistent")

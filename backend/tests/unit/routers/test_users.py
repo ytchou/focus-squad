@@ -16,6 +16,7 @@ from fastapi import HTTPException
 from app.core.auth import AuthUser
 from app.models.user import UserProfile, UserProfileUpdate, UserPublicProfile
 from app.routers.users import (
+    cancel_my_deletion,
     delete_my_account,
     get_my_profile,
     get_user_profile,
@@ -339,5 +340,42 @@ class TestDeleteMyAccount:
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_my_account(current_user=current_user, user_service=user_service)
+
+        assert exc_info.value.status_code == 404
+
+
+# =============================================================================
+# POST /me/cancel-deletion - cancel_my_deletion()
+# =============================================================================
+
+
+class TestCancelMyDeletion:
+    """Tests for the POST /me/cancel-deletion endpoint."""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_successful_cancel_deletion(self) -> None:
+        """Returns updated profile with cleared deletion fields."""
+        current_user = AuthUser(auth_id="auth-abc-123", email="test@example.com")
+        profile = _make_user_profile(deleted_at=None, deletion_scheduled_at=None)
+        user_service = MagicMock()
+        user_service.cancel_account_deletion.return_value = profile
+
+        result = await cancel_my_deletion(current_user=current_user, user_service=user_service)
+
+        assert result.deleted_at is None
+        assert result.deletion_scheduled_at is None
+        user_service.cancel_account_deletion.assert_called_once_with("auth-abc-123")
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_user_not_found_raises_404(self) -> None:
+        """Raises 404 when user doesn't exist."""
+        current_user = AuthUser(auth_id="auth-ghost", email="ghost@example.com")
+        user_service = MagicMock()
+        user_service.cancel_account_deletion.side_effect = UserNotFoundError("User not found")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await cancel_my_deletion(current_user=current_user, user_service=user_service)
 
         assert exc_info.value.status_code == 404

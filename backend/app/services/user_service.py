@@ -383,6 +383,38 @@ class UserService:
 
         return scheduled
 
+    def cancel_account_deletion(self, auth_id: str) -> UserProfile:
+        """
+        Cancel a pending account deletion.
+
+        Clears deleted_at and deletion_scheduled_at fields.
+        Called automatically when a soft-deleted user signs back in.
+
+        Args:
+            auth_id: Supabase auth.uid() of the user
+
+        Returns:
+            Updated UserProfile
+
+        Raises:
+            UserNotFoundError: If user not found
+        """
+        result = (
+            self.supabase.table("users")
+            .update({"deleted_at": None, "deletion_scheduled_at": None})
+            .eq("auth_id", auth_id)
+            .execute()
+        )
+
+        if not result.data:
+            raise UserNotFoundError(f"User with auth_id {auth_id} not found")
+
+        # Re-fetch with credits join (update only returns users table data)
+        profile = self.get_user_by_auth_id(auth_id)
+        if not profile:
+            raise UserNotFoundError(f"User with auth_id {auth_id} not found")
+        return profile
+
     def record_session_completion(self, user_id: str, focus_minutes: int) -> None:
         """
         Update user stats after completing a session.
