@@ -30,13 +30,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         try {
           const profile = await api.get<UserProfile>("/users/me");
-          useUserStore.getState().setUser(profile);
+
+          // Onboarding gate: redirect un-onboarded users to the wizard
+          if (!profile.is_onboarded) {
+            useUserStore.getState().setUser(profile);
+            useUserStore.getState().setLoading(false);
+            if (
+              typeof window !== "undefined" &&
+              !window.location.pathname.startsWith("/onboarding")
+            ) {
+              window.location.href = "/onboarding";
+            }
+            return;
+          }
+
+          // Auto-cancel pending deletion when user signs back in
+          let activeProfile = profile;
+          if (profile.deleted_at) {
+            try {
+              activeProfile = await api.post<UserProfile>("/users/me/cancel-deletion");
+            } catch {
+              // Non-critical: proceed with stale profile
+            }
+          }
+
+          useUserStore.getState().setUser(activeProfile);
           useCreditsStore
             .getState()
-            .setCredits(profile.credits_remaining, profile.credits_used_this_week);
-          useCreditsStore.getState().setTier(profile.credit_tier as CreditTier);
-          if (profile.credit_refresh_date) {
-            useCreditsStore.getState().setRefreshDate(profile.credit_refresh_date);
+            .setCredits(activeProfile.credits_remaining, activeProfile.credits_used_this_week);
+          useCreditsStore.getState().setTier(activeProfile.credit_tier as CreditTier);
+          if (activeProfile.credit_refresh_date) {
+            useCreditsStore.getState().setRefreshDate(activeProfile.credit_refresh_date);
           }
         } catch (err) {
           if (err instanceof ApiError) {

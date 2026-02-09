@@ -406,58 +406,62 @@
 - [x] Tests: PiP hook, PiPMiniView, PiPToggleButton
 - [x] Verification: build, lint, all tests pass
 
-### Phase 3D: Utility & Polish (Deferred)
+### Phase 3D: Onboarding Flow & Profile Page
+> **Design Doc:** [output/plan/2026-02-09-onboarding-profile-design.md]
+> **Plan File:** [.claude/plans/concurrent-dancing-dove.md]
+
+**Database Migration (`014_onboarding_profile.sql`):**
+- [x] Add `is_onboarded BOOLEAN DEFAULT FALSE` to users table
+- [x] Add `default_table_mode TEXT DEFAULT 'forced_audio'` to users table
+- [x] Add `deleted_at TIMESTAMPTZ` and `deletion_scheduled_at TIMESTAMPTZ` (soft delete)
+- [x] Backfill: `SET is_onboarded = TRUE WHERE pixel_avatar_id IS NOT NULL`
+
+**Backend — Models & Endpoints:**
+- [x] Update `UserProfile` model: add `is_onboarded`, `default_table_mode`, `deleted_at`, `deletion_scheduled_at`
+- [x] Update `UserProfileUpdate` model: add `is_onboarded`, `default_table_mode` with validator
+- [x] Add `DeleteAccountResponse` model
+- [x] Add `soft_delete_user()` method to `UserService`
+- [x] Add `DELETE /api/v1/users/me` endpoint (soft delete with 30-day grace)
+- [x] Backend tests for soft delete, onboarding flag, updated fixtures
+
+**Frontend — Onboarding Wizard (3 Screens):**
+- [x] Refactor `/onboarding/page.tsx` into step-based wizard with progress indicator
+- [x] Screen 1 — Welcome: CharacterSprite animations on styled gradient, "Your cozy corner for getting things done."
+- [x] Screen 2 — Profile: username + display name + character picker (reuse `CharacterPicker`)
+- [x] Screen 3 — House Rules: Stay Focused, Be Kind, Stay Accountable + "I'm in" CTA
+- [x] Single `PATCH /users/me` on completion (username + display_name + pixel_avatar_id + is_onboarded=true)
+- [x] Smooth step transitions + back buttons
+- [x] Guard: already-onboarded users redirected to `/dashboard`
+
+**Frontend — Onboarding Gate:**
+- [x] Add `is_onboarded` check in `AuthProvider` after profile fetch
+- [x] Redirect un-onboarded users to `/onboarding` via `window.location.href`
+- [x] Prevent redirect loop (`/onboarding` is in `(auth)/` group, outside gate)
+
+**Frontend — User Store Updates:**
+- [x] Add missing fields to `UserProfile` interface: `pixel_avatar_id`, `is_onboarded`, `default_table_mode`, `longest_streak`, `last_session_date`, notification settings, `banned_until`, `deleted_at`
+
+**Frontend — Profile Page (`/profile`):**
+- [x] Identity section: large animated avatar, change character dialog, edit username + display name + bio
+- [x] Stats section: total sessions, focus minutes, current streak, reliability badge (read from cached user fields)
+- [x] Preferences section: default table mode toggle, ambient mix note, notification toggles
+- [x] Account section: connected Google account, sign out, delete account (soft delete with confirmation)
+- [x] Add "Profile" link to sidebar navigation
+
+**Frontend Tests:**
+- [x] Onboarding wizard: step navigation, validation, API call on completion
+- [x] Profile page: renders sections, edit flow, save, delete account flow
+- [x] Onboarding gate: redirects un-onboarded users, allows onboarded through
+
+### Phase 3E: Utility & Polish
 
 - [ ] Pixel-styled UI component variants (HUD bar, chat panel, control bar refinement)
 - [ ] Room ambient animations (flickering lamp, coffee steam, rain on window)
-
-### Phase 3E: Onboarding Flow & Profile Page
-> **Design Doc:** [output/plan/2026-02-09-onboarding-profile-design.md] (to be written)
-> **Plan File:** [.claude/plans/twinkling-tickling-candle.md]
-
-**Database Migration (`014_onboarding_profile.sql`):**
-- [ ] Add `is_onboarded BOOLEAN DEFAULT FALSE` to users table
-- [ ] Add `default_table_mode TEXT DEFAULT 'forced_audio'` to users table
-- [ ] Backfill: `SET is_onboarded = TRUE WHERE pixel_avatar_id IS NOT NULL`
-
-**Backend — Models & Endpoints:**
-- [ ] Update `UserProfile` model: add `is_onboarded`, `default_table_mode` fields
-- [ ] Update `UserProfileUpdate` model: add `is_onboarded`, `default_table_mode` fields
-- [ ] Add `UserStatsResponse` model (total_sessions, total_focus_minutes, current_streak, longest_streak)
-- [ ] Add `GET /api/v1/users/me/stats` endpoint (aggregate from session_participants + sessions)
-- [ ] Add `GET /api/v1/users/me/preferences` endpoint (notification prefs + default_table_mode)
-- [ ] Add `PATCH /api/v1/users/me/preferences` endpoint
-- [ ] Backend tests for stats, preferences, onboarding flag
-
-**Frontend — Onboarding Wizard (3 Screens):**
-- [ ] Refactor `/onboarding/page.tsx` into step-based wizard with progress indicator
-- [ ] Screen 1 — Welcome: pixel room background, animated characters, "Your cozy corner for getting things done."
-- [ ] Screen 2 — Profile: username + display name + character picker (reuse `CharacterPicker`)
-- [ ] Screen 3 — House Rules: 3 community norms + "3 reports = 48hr timeout" note + "I'm in" CTA
-- [ ] Single `PATCH /users/me` on completion (username + display_name + pixel_avatar_id + is_onboarded=true)
-- [ ] Smooth step transitions + back buttons
-
-**Frontend — Onboarding Gate:**
-- [ ] Add `is_onboarded` check in AuthProvider or protected layout
-- [ ] Redirect unauthenticated-but-not-onboarded users to `/onboarding`
-- [ ] Prevent redirect loop (allow `/onboarding` route through)
-
-**Frontend — Profile Page (`/profile`):**
-- [ ] Identity section: large animated avatar, change character dialog, edit username + display name
-- [ ] Stats section: total sessions, focus minutes, current streak, reliability badge
-- [ ] Preferences section: default table mode, default ambient mix (localStorage), email notifications (coming soon), push notification toggles
-- [ ] Account section: connected Google account, sign out, delete account (danger zone)
-- [ ] Add "Profile" link to sidebar navigation
-
-**Frontend Tests:**
-- [ ] Onboarding wizard: step navigation, validation, API call on completion
-- [ ] Profile page: renders sections, edit flow, save
-- [ ] Onboarding gate: redirects unonboarded users, allows onboarded through
-
-**Character Animation (moved from Phase 3C):**
 - [ ] Full Character Animation States (8 states)
 
-### Gamification
+---
+
+### Phase 4: Gamification
 - [x] Award essence on session completion (implemented in webhook room_finished handler)
 - [ ] Implement `EssenceService` for furniture essence (purchase, spend, history)
 - [ ] Implement streak bonuses (10 sessions = bonus essence)
@@ -468,7 +472,13 @@
 
 ---
 
-## Phase 4: Launch Prep (Week 7-8)
+## Phase 5: Launch Prep (Week 7-8)
+
+### Friends & Private Study Groups
+- [ ] Friend request/accept flow
+- [ ] Private table creation & invitation (≤4 friends)
+- [ ] Recurring schedule management
+- [ ] Credit implications for private tables
 
 ### Internationalization (i18n)
 - [ ] Configure next-intl with EN + zh-TW
@@ -481,6 +491,9 @@
 - [ ] Implement browser push notifications
 - [ ] Create notification preferences settings
 - [ ] Send notifications for: session start, match found, credit refresh, Red rating
+
+### Testimonial / Science-based proof
+- [ ] Use this as marketing assets, or some built in prompts in the system, need to brainstorm more
 
 ### Analytics
 - [ ] Integrate PostHog
@@ -497,7 +510,7 @@
 - [ ] Design subscription upgrade flow (UI mockups)
 
 ### Pre-Launch Checklist
-- [ ] Security audit (OWASP top 10)
+- [ ] Security audit (OWASP top 10, use [shannon](https://github.com/KeygraphHQ/shannon))
 - [ ] Performance testing
 - [ ] Mobile responsiveness check
 - [ ] Accessibility audit (basic)
@@ -506,3 +519,16 @@
 - [ ] Implement structured logging (replace `print()` with `structlog`)
 - [ ] Add JWKS cache TTL (1-hour expiration with background refresh)
 - [ ] Convert JWKS fetch to async (`httpx.AsyncClient`)
+- [ ] Legal Audit (Any legality issues?)
+- [ ] End to End FLow Testing?
+
+---
+
+## Appendix: Post-Launch Improvement Ideas
+
+### Customizable Avatar Builder
+- Replace CharacterPicker with mix-and-match avatar builder
+- Components: 10+ hair styles, 5+ face shapes, accessories, colors/tints
+- Canvas-based compositing engine for layer rendering
+- Store as `avatar_config` JSON (field already exists in DB)
+- Estimated effort: 3-5 days depending on art asset sourcing

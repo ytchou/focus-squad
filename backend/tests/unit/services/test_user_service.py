@@ -47,12 +47,17 @@ def sample_user_row():
         "current_streak": 0,
         "longest_streak": 0,
         "last_session_date": None,
+        "pixel_avatar_id": None,
+        "is_onboarded": False,
+        "default_table_mode": "forced_audio",
         "activity_tracking_enabled": False,
         "email_notifications_enabled": True,
         "push_notifications_enabled": True,
         "created_at": datetime.now(),
         "updated_at": datetime.now(),
         "banned_until": None,
+        "deleted_at": None,
+        "deletion_scheduled_at": None,
     }
 
 
@@ -339,3 +344,67 @@ class TestGetPublicProfile:
         result = user_service.get_public_profile("nonexistent")
 
         assert result is None
+
+
+class TestSoftDeleteUser:
+    """Tests for soft delete user method."""
+
+    @pytest.mark.unit
+    def test_soft_delete_sets_deletion_fields(self, user_service, mock_supabase) -> None:
+        """Soft delete sets deleted_at and deletion_scheduled_at."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = [
+            {"id": "user-123", "auth_id": "auth-123"}
+        ]
+
+        result = user_service.soft_delete_user("auth-123")
+
+        assert result is not None
+        mock_table.update.assert_called_once()
+        update_arg = mock_table.update.call_args[0][0]
+        assert "deleted_at" in update_arg
+        assert "deletion_scheduled_at" in update_arg
+
+    @pytest.mark.unit
+    def test_soft_delete_user_not_found(self, user_service, mock_supabase) -> None:
+        """UserNotFoundError raised when user doesn't exist."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = []
+
+        with pytest.raises(UserNotFoundError):
+            user_service.soft_delete_user("nonexistent")
+
+
+class TestCancelAccountDeletion:
+    """Tests for cancel account deletion method."""
+
+    @pytest.mark.unit
+    def test_cancel_clears_deletion_fields(
+        self, user_service, mock_supabase, sample_user_row
+    ) -> None:
+        """Cancel deletion clears deleted_at and deletion_scheduled_at."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+        # update() returns user row
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = [sample_user_row]
+        # get_user_by_auth_id needs select + credits
+        mock_table.select.return_value.eq.return_value.execute.return_value.data = [sample_user_row]
+
+        result = user_service.cancel_account_deletion("auth-123")
+
+        assert result is not None
+        mock_table.update.assert_called_once_with(
+            {"deleted_at": None, "deletion_scheduled_at": None}
+        )
+
+    @pytest.mark.unit
+    def test_cancel_deletion_user_not_found(self, user_service, mock_supabase) -> None:
+        """UserNotFoundError raised when user doesn't exist."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+        mock_table.update.return_value.eq.return_value.execute.return_value.data = []
+
+        with pytest.raises(UserNotFoundError):
+            user_service.cancel_account_deletion("nonexistent")

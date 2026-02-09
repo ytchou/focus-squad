@@ -9,13 +9,27 @@ export interface UserProfile {
   display_name: string | null;
   bio: string | null;
   avatar_config: Record<string, unknown>;
+  pixel_avatar_id: string | null;
+  // Onboarding & preferences
+  is_onboarded: boolean;
+  default_table_mode: "forced_audio" | "quiet";
+  // Stats
   reliability_score: number;
   total_focus_minutes: number;
   session_count: number;
   current_streak: number;
+  longest_streak: number;
+  last_session_date: string | null;
   language: string;
+  // Settings
+  activity_tracking_enabled: boolean;
+  email_notifications_enabled: boolean;
+  push_notifications_enabled: boolean;
+  // Timestamps
   created_at: string;
   updated_at: string;
+  banned_until: string | null;
+  deleted_at: string | null;
   // Credit info (joined from credits table)
   credits_remaining: number;
   credits_used_this_week: number;

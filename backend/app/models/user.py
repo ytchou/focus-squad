@@ -51,6 +51,10 @@ class UserProfile(BaseModel):
     # Pixel Art
     pixel_avatar_id: Optional[str] = None
 
+    # Onboarding & Preferences
+    is_onboarded: bool = False
+    default_table_mode: str = "forced_audio"
+
     # Settings
     activity_tracking_enabled: bool = False
     email_notifications_enabled: bool = True
@@ -60,6 +64,8 @@ class UserProfile(BaseModel):
     created_at: datetime
     updated_at: datetime
     banned_until: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
+    deletion_scheduled_at: Optional[datetime] = None
 
 
 class UserPublicProfile(BaseModel):
@@ -93,15 +99,26 @@ class UserProfileUpdate(BaseModel):
 
     username: Optional[str] = Field(None, min_length=3, max_length=30)
     display_name: Optional[str] = Field(None, max_length=50)
-    bio: Optional[str] = Field(None, max_length=500)
+    bio: Optional[str] = Field(None, max_length=160)
     avatar_config: Optional[dict[str, Any]] = None
     social_links: Optional[dict[str, Any]] = None
     study_interests: Optional[list[str]] = None
     preferred_language: Optional[str] = None
     pixel_avatar_id: Optional[str] = None
+    is_onboarded: Optional[bool] = None
+    default_table_mode: Optional[str] = None
     activity_tracking_enabled: Optional[bool] = None
     email_notifications_enabled: Optional[bool] = None
     push_notifications_enabled: Optional[bool] = None
+
+    @field_validator("default_table_mode")
+    @classmethod
+    def validate_table_mode(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if v not in ("forced_audio", "quiet"):
+            raise ValueError("Table mode must be 'forced_audio' or 'quiet'")
+        return v
 
     @field_validator("pixel_avatar_id")
     @classmethod
@@ -132,3 +149,10 @@ class UserProfileUpdate(BaseModel):
         if v not in ("en", "zh-TW"):
             raise ValueError("Language must be 'en' or 'zh-TW'")
         return v
+
+
+class DeleteAccountResponse(BaseModel):
+    """Response for DELETE /users/me (soft delete with grace period)."""
+
+    message: str
+    deletion_scheduled_at: datetime
