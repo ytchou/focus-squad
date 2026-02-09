@@ -327,26 +327,26 @@
 > **Design Doc:** [output/plan/2026-02-09-pixel-art-ui-design.md](output/plan/2026-02-09-pixel-art-ui-design.md)
 > **Implementation Plan:** [output/plan/2026-02-09-pixel-art-implementation-plan.md](output/plan/2026-02-09-pixel-art-implementation-plan.md)
 
-- [ ] Source royalty-free pixel art assets from itch.io/OpenGameArt
+- [x] Source royalty-free pixel art assets from itch.io/OpenGameArt
   - 3 room backgrounds: cozy study room, coffee shop, library (isometric, 4 desk positions each)
   - 8+ character sprite sheets: distinct styles, 3 states (working/speaking/away), 3-4 frames each
   - Color-adjust assets to match design tokens (earth tones)
-- [ ] Create asset pipeline and room config (`frontend/src/config/pixel-rooms.ts`)
-- [ ] Database migration `013_pixel_art_system.sql`: `pixel_avatar_id` on users, `room_type` on sessions
-- [ ] Backend updates: models, services, constants for pixel avatar + room type
-- [ ] Add pixel design tokens to `globals.css` (`--font-pixel`, `--border-pixel`, `--shadow-pixel`)
-- [ ] Build `CharacterSprite` component with CSS sprite animation (steps() timing)
+- [x] Create asset pipeline and room config (`frontend/src/config/pixel-rooms.ts`)
+- [x] Database migration `013_pixel_art_system.sql`: `pixel_avatar_id` on users, `room_type` on sessions
+- [x] Backend updates: models, services, constants for pixel avatar + room type
+- [x] Add pixel design tokens to `globals.css` (`--font-pixel`, `--border-pixel`, `--shadow-pixel`)
+- [x] Build `CharacterSprite` component with CSS sprite animation (steps() timing)
   - 3 states: working (4fps), speaking (6fps, 2s debounce), away (3fps)
-- [ ] Build `CharacterLayer` component (maps participants to sprites at desk positions)
-- [ ] Build `PixelRoom` background component (full viewport, object-fit cover)
-- [ ] Build `HudOverlay` (semi-transparent top bar: timer, phase, credits, leave)
-- [ ] Build `ChatPanel` (floating right panel, expands during reflection phases)
-- [ ] Create `PixelSessionLayout` (full-scene: room + characters + HUD + chat + controls)
-- [ ] Extract current layout to `ClassicSessionLayout` (preserved as fallback toggle)
-- [ ] Integrate pixel/classic toggle in session page (default: pixel, stored in localStorage)
-- [ ] Build `CharacterPicker` component (grid of 8+ animated previews)
-- [ ] Add character selection to onboarding flow
-- [ ] Tests: CharacterSprite, pixel-rooms config, CharacterPicker
+- [x] Build `CharacterLayer` component (maps participants to sprites at desk positions)
+- [x] Build `PixelRoom` background component (full viewport, object-fit cover)
+- [x] Build `HudOverlay` (semi-transparent top bar: timer, phase, credits, leave)
+- [x] Build `ChatPanel` (floating right panel, expands during reflection phases)
+- [x] Create `PixelSessionLayout` (full-scene: room + characters + HUD + chat + controls)
+- [x] Extract current layout to `ClassicSessionLayout` (preserved as fallback toggle)
+- [x] Integrate pixel/classic toggle in session page (default: pixel, stored in localStorage)
+- [x] Build `CharacterPicker` component (grid of 8+ animated previews)
+- [x] Add character selection to onboarding flow
+- [x] Tests: CharacterSprite, pixel-rooms config, CharacterPicker
 
 ### Phase 3B: Immersion Layer
 
