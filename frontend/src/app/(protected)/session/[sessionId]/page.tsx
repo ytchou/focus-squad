@@ -425,11 +425,12 @@ function LiveKitSessionContent(
 
   // Periodic keepalive broadcast every 30s (for late joiners)
   useEffect(() => {
-    if (!props.currentUserId) return;
+    const userId = props.currentUserId;
+    if (!userId) return;
     const interval = setInterval(() => {
       sendMessage({
         type: "presence",
-        userId: props.currentUserId!,
+        userId,
         presenceState: myPresenceRef.current,
         timestamp: Date.now(),
       } satisfies PresenceMessage);

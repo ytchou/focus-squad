@@ -67,6 +67,7 @@ export function useAmbientMixer(): UseAmbientMixerReturn {
   const buffersRef = useRef<Record<string, AudioBuffer>>({});
   const nodesRef = useRef<Record<string, AudioNodes>>({});
   const loadingRef = useRef<Record<string, boolean>>({});
+  const mountedRef = useRef(true);
 
   const ensureAudioContext = useCallback(async (): Promise<AudioContext> => {
     if (!audioContextRef.current) {
@@ -112,6 +113,8 @@ export function useAmbientMixer(): UseAmbientMixerReturn {
       try {
         const ctx = await ensureAudioContext();
         const buffer = await fetchAndDecode(trackId, track.audioSrc);
+
+        if (!mountedRef.current) return;
 
         if (nodesRef.current[trackId]) {
           try {
@@ -211,6 +214,7 @@ export function useAmbientMixer(): UseAmbientMixerReturn {
 
   useEffect(() => {
     return () => {
+      mountedRef.current = false;
       for (const trackId of Object.keys(nodesRef.current)) {
         try {
           nodesRef.current[trackId].source.stop();
