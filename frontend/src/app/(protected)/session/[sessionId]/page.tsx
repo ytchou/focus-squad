@@ -5,7 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { useSessionStore } from "@/stores/session-store";
 import { api } from "@/lib/api/client";
 import { useSessionTimer } from "@/hooks/use-session-timer";
-import { useActivityTracking } from "@/hooks/use-activity-tracking";
+import { usePresenceDetection } from "@/hooks/use-presence-detection";
+import {
+  ActivityConsentPrompt,
+  getStoredConsent,
+} from "@/components/session/activity-consent-prompt";
+import type { PresenceState, PresenceMessage } from "@/types/activity";
 import {
   SessionLayout,
   SessionHeader,
@@ -95,7 +100,7 @@ export default function SessionPage() {
       displayName: string | null;
       isAI: boolean;
       isMuted: boolean;
-      isActive: boolean;
+      presenceState: PresenceState;
       isCurrentUser: boolean;
       pixelAvatarId?: string | null;
     }>
@@ -138,7 +143,7 @@ export default function SessionPage() {
           displayName: p.display_name || p.ai_companion_name,
           isAI: p.participant_type === "ai_companion",
           isMuted: false, // Will be updated by LiveKit
-          isActive: p.is_active,
+          presenceState: "active" as PresenceState, // Default; overridden by presence detection
           isCurrentUser: p.user_id === userId,
           pixelAvatarId: p.pixel_avatar_id,
         }));
@@ -171,7 +176,7 @@ export default function SessionPage() {
           displayName: p.display_name || p.ai_companion_name,
           isAI: p.participant_type === "ai_companion",
           isMuted: false,
-          isActive: p.is_active,
+          presenceState: "active" as PresenceState,
           isCurrentUser: p.user_id === currentUserId,
           pixelAvatarId: p.pixel_avatar_id,
         }));
@@ -232,13 +237,16 @@ export default function SessionPage() {
     onPhaseChange: handlePhaseChange,
   });
 
-  // Activity tracking (always enabled)
-  useActivityTracking({
+  // Consent for input tracking (keyboard/mouse)
+  const [inputTrackingConsent, setInputTrackingConsent] = useState<boolean>(
+    () => getStoredConsent() === "granted"
+  );
+  const [showConsentPrompt, setShowConsentPrompt] = useState(() => getStoredConsent() === null);
+
+  // Presence detection (replaces useActivityTracking)
+  const { presenceState: myPresenceState } = usePresenceDetection({
     enabled: true,
-    onActivityChange: (isActive) => {
-      // Broadcast activity via data channel (handled in LiveKit context)
-      console.log("Activity changed:", isActive);
-    },
+    inputTrackingConsent,
   });
 
   // Leave session handler
@@ -283,80 +291,159 @@ export default function SessionPage() {
     );
   }
 
+  // Consent prompt (rendered in both LiveKit and non-LiveKit paths)
+  const consentPrompt = showConsentPrompt ? (
+    <ActivityConsentPrompt
+      onConsent={(granted) => {
+        setInputTrackingConsent(granted);
+        setShowConsentPrompt(false);
+      }}
+    />
+  ) : null;
+
+  // Enhance participants with current user's local presence (non-LiveKit path)
+  const enhancedParticipants = participants.map((p) =>
+    p.isCurrentUser ? { ...p, presenceState: myPresenceState } : p
+  );
+
   // If we have a LiveKit token, wrap in LiveKit provider
   if (livekitToken && livekitServerUrl) {
     return (
-      <LiveKitRoomProvider
-        token={livekitToken}
-        serverUrl={livekitServerUrl}
-        isQuietMode={isQuietMode}
-      >
-        <LiveKitSessionContent
-          sessionId={sessionId}
-          phase={phase}
-          timeRemaining={timeRemaining}
-          totalTimeRemaining={totalTimeRemaining}
-          progress={progress}
-          participants={participants}
-          currentUserId={currentUserId}
+      <>
+        <LiveKitRoomProvider
+          token={livekitToken}
+          serverUrl={livekitServerUrl}
           isQuietMode={isQuietMode}
-          showEndModal={showEndModal}
-          onLeave={handleLeave}
-          onEndModalClose={handleEndModalClose}
-          isAdmin={isAdmin}
-          roomType={roomType}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-        />
-      </LiveKitRoomProvider>
+        >
+          <LiveKitSessionContent
+            sessionId={sessionId}
+            phase={phase}
+            timeRemaining={timeRemaining}
+            totalTimeRemaining={totalTimeRemaining}
+            progress={progress}
+            participants={participants}
+            currentUserId={currentUserId}
+            isQuietMode={isQuietMode}
+            showEndModal={showEndModal}
+            onLeave={handleLeave}
+            onEndModalClose={handleEndModalClose}
+            isAdmin={isAdmin}
+            roomType={roomType}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            myPresenceState={myPresenceState}
+          />
+        </LiveKitRoomProvider>
+        {consentPrompt}
+      </>
     );
   }
 
   // Fallback without LiveKit (for testing or when token not available)
   return (
-    <SessionPageContent
-      sessionId={sessionId}
-      phase={phase}
-      timeRemaining={timeRemaining}
-      totalTimeRemaining={totalTimeRemaining}
-      progress={progress}
-      participants={participants}
-      currentUserId={currentUserId}
-      isQuietMode={isQuietMode}
-      showEndModal={showEndModal}
-      onLeave={handleLeave}
-      onEndModalClose={handleEndModalClose}
-      disableAudio={true}
-      isAdmin={isAdmin}
-      roomType={roomType}
-      viewMode={viewMode}
-      setViewMode={setViewMode}
-    />
+    <>
+      <SessionPageContent
+        sessionId={sessionId}
+        phase={phase}
+        timeRemaining={timeRemaining}
+        totalTimeRemaining={totalTimeRemaining}
+        progress={progress}
+        participants={enhancedParticipants}
+        currentUserId={currentUserId}
+        isQuietMode={isQuietMode}
+        showEndModal={showEndModal}
+        onLeave={handleLeave}
+        onEndModalClose={handleEndModalClose}
+        disableAudio={true}
+        isAdmin={isAdmin}
+        roomType={roomType}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+      />
+      {consentPrompt}
+    </>
   );
 }
 
 // Wrapper component that uses LiveKit hooks (must be inside LiveKitRoomProvider)
-function LiveKitSessionContent(props: Omit<SessionPageContentProps, "disableAudio">) {
+function LiveKitSessionContent(
+  props: Omit<SessionPageContentProps, "disableAudio"> & {
+    myPresenceState: PresenceState;
+  }
+) {
   const { isMuted, toggleMute } = useLocalMicrophone();
   const speakingParticipantIds = useActiveSpeakers();
   const { addMessage, incrementUnread, isDrawerOpen } = useBoardStore();
 
+  // Remote participants' presence states
+  const [presenceMap, setPresenceMap] = useState<Map<string, PresenceState>>(new Map());
+
   // Receive data channel messages from other participants
   const handleDataMessage = useCallback(
     (data: unknown) => {
-      const msg = data as BoardMessage;
-      if (msg?.type && msg?.userId && msg.userId !== props.currentUserId) {
-        addMessage(msg);
-        // Increment unread counter if drawer is closed during work phases
-        if (!isDrawerOpen) {
-          incrementUnread();
-        }
+      const msg = data as Record<string, unknown>;
+      if (!msg?.type || !msg?.userId || msg.userId === props.currentUserId) return;
+
+      // Handle presence messages
+      if (msg.type === "presence") {
+        const presenceMsg = msg as unknown as PresenceMessage;
+        setPresenceMap((prev) => {
+          const next = new Map(prev);
+          next.set(presenceMsg.userId, presenceMsg.presenceState);
+          return next;
+        });
+        return;
+      }
+
+      // Handle board messages (reflections, chat, etc.)
+      const boardMsg = data as BoardMessage;
+      addMessage(boardMsg);
+      if (!isDrawerOpen) {
+        incrementUnread();
       }
     },
     [props.currentUserId, addMessage, incrementUnread, isDrawerOpen]
   );
 
   const { sendMessage } = useDataChannel(handleDataMessage);
+
+  // Broadcast presence on state changes
+  const myPresenceRef = useRef(props.myPresenceState);
+  useEffect(() => {
+    myPresenceRef.current = props.myPresenceState;
+  }, [props.myPresenceState]);
+
+  useEffect(() => {
+    if (!props.currentUserId) return;
+    sendMessage({
+      type: "presence",
+      userId: props.currentUserId,
+      presenceState: props.myPresenceState,
+      timestamp: Date.now(),
+    } satisfies PresenceMessage);
+  }, [props.myPresenceState, props.currentUserId, sendMessage]);
+
+  // Periodic keepalive broadcast every 30s (for late joiners)
+  useEffect(() => {
+    if (!props.currentUserId) return;
+    const interval = setInterval(() => {
+      sendMessage({
+        type: "presence",
+        userId: props.currentUserId!,
+        presenceState: myPresenceRef.current,
+        timestamp: Date.now(),
+      } satisfies PresenceMessage);
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [props.currentUserId, sendMessage]);
+
+  // Merge presence into participants
+  const enhancedParticipants = props.participants.map((p) => {
+    if (p.isCurrentUser) return { ...p, presenceState: props.myPresenceState };
+    if (p.isAI) return p; // AI companions stay "active"
+    const remoteState = p.livekitIdentity ? presenceMap.get(p.livekitIdentity) : undefined;
+    return remoteState ? { ...p, presenceState: remoteState } : p;
+  });
 
   // Broadcast board messages to other participants
   const handleBroadcastMessage = useCallback(
@@ -369,6 +456,7 @@ function LiveKitSessionContent(props: Omit<SessionPageContentProps, "disableAudi
   return (
     <SessionPageContent
       {...props}
+      participants={enhancedParticipants}
       isMuted={isMuted}
       toggleMute={toggleMute}
       speakingParticipantIds={speakingParticipantIds}
@@ -391,7 +479,7 @@ interface SessionPageContentProps {
     displayName: string | null;
     isAI: boolean;
     isMuted: boolean;
-    isActive: boolean;
+    presenceState: PresenceState;
     isCurrentUser: boolean;
     pixelAvatarId?: string | null;
   }>;
@@ -536,6 +624,7 @@ function SessionPageContent({
             isMuted={isMuted}
             isQuietMode={isQuietMode || disableAudio}
             onToggleMute={toggleMute}
+            presenceState={currentUser?.presenceState}
           />
         }
       >

@@ -7,6 +7,7 @@ import { CharacterLayer } from "./character-layer";
 import { HudOverlay } from "./hud-overlay";
 import { ChatPanel } from "./chat-panel";
 import { ControlBar } from "@/components/session/control-bar";
+import type { PresenceState } from "@/types/activity";
 
 // Phases where chat panel expands
 const BOARD_PHASES: SessionPhase[] = ["setup", "break", "social"];
@@ -23,7 +24,7 @@ interface Participant {
   username: string | null;
   displayName: string | null;
   isAI: boolean;
-  isActive: boolean;
+  presenceState: PresenceState;
   isCurrentUser: boolean;
   pixelAvatarId?: string | null;
 }
@@ -96,7 +97,12 @@ export function PixelSessionLayout({
 
       {/* z-20: Control bar */}
       <div className="fixed bottom-0 left-0 right-0 z-20">
-        <ControlBar isMuted={isMuted} isQuietMode={isQuietMode} onToggleMute={onToggleMute} />
+        <ControlBar
+          isMuted={isMuted}
+          isQuietMode={isQuietMode}
+          onToggleMute={onToggleMute}
+          presenceState={participants.find((p) => p.isCurrentUser)?.presenceState}
+        />
       </div>
     </div>
   );
