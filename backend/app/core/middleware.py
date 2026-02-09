@@ -9,14 +9,14 @@ import logging
 import time
 from typing import Optional
 
-logger = logging.getLogger(__name__)
-
 from fastapi import Request
 from jose import JWTError, jwt
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
 from app.core.auth import AuthOptionalUser, get_signing_key
+
+logger = logging.getLogger(__name__)
 
 
 class JWTValidationMiddleware(BaseHTTPMiddleware):
