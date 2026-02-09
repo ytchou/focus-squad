@@ -9,6 +9,7 @@ Handles:
 - AI companion seat filling
 """
 
+import random
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -17,6 +18,7 @@ from livekit import api
 from supabase import Client
 
 from app.core.config import get_settings
+from app.core.constants import PIXEL_ROOMS
 from app.core.database import get_supabase
 from app.models.session import (
     ParticipantType,
@@ -332,6 +334,7 @@ class SessionService:
             "current_phase": SessionPhase.SETUP.value,
             "phase_started_at": start_time.isoformat(),
             "livekit_room_name": room_name,
+            "room_type": random.choice(PIXEL_ROOMS),
         }
 
         result = self.supabase.table("sessions").insert(session_data).execute()

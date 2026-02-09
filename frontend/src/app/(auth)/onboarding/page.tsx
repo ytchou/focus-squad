@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { CharacterPicker } from "@/components/character-picker";
+import { DEFAULT_CHARACTER } from "@/config/pixel-rooms";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [pixelAvatarId, setPixelAvatarId] = useState<string>(DEFAULT_CHARACTER);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,6 +39,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           username: username.toLowerCase(),
           display_name: displayName || username,
+          pixel_avatar_id: pixelAvatarId,
         }),
       });
 
@@ -64,9 +68,9 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-md rounded-2xl bg-card p-8 shadow-lg">
-        <h1 className="mb-2 text-2xl font-semibold text-foreground">Choose your username</h1>
-        <p className="mb-6 text-primary">This is how others will see you in study sessions.</p>
+      <div className="w-full max-w-lg rounded-2xl bg-card p-8 shadow-lg">
+        <h1 className="mb-2 text-2xl font-semibold text-foreground">Set up your profile</h1>
+        <p className="mb-6 text-primary">Choose a username and character for study sessions.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -100,6 +104,13 @@ export default function OnboardingPage() {
               placeholder="How you want to be called"
               maxLength={50}
             />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-foreground">
+              Choose Your Character
+            </label>
+            <CharacterPicker selectedId={pixelAvatarId} onSelect={setPixelAvatarId} />
           </div>
 
           {error && (

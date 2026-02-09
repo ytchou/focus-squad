@@ -33,6 +33,12 @@
 
   /* Radius - soft, rounded corners for "lo-fi cozy" feel */
   --radius: 0.75rem;
+
+  /* Pixel Art Design Tokens (session view only) */
+  --font-pixel: "Press Start 2P", monospace;
+  --border-pixel: 2px;
+  --radius-pixel: 0px;
+  --shadow-pixel: 4px 4px 0px rgba(0, 0, 0, 0.2);
 }
 
 @theme inline {
@@ -88,6 +94,25 @@ body {
     transform, filter, backdrop-filter;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
+}
+
+/* ── Pixel art sprite animations ── */
+@keyframes sprite-walk-3 {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: -192px; /* 3 frames * 64px */
+  }
+}
+
+@keyframes sprite-walk-4 {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: -256px; /* 4 frames * 64px */
+  }
 }
 
 /* ── react-day-picker base styles (inlined to avoid external CSS import) ── */

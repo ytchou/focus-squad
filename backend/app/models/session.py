@@ -87,6 +87,7 @@ class ParticipantInfo(BaseModel):
     username: Optional[str] = None
     display_name: Optional[str] = None
     avatar_config: dict[str, Any] = Field(default_factory=dict)
+    pixel_avatar_id: Optional[str] = None
     joined_at: datetime
     is_active: bool = True  # False if left_at is set
 
@@ -107,6 +108,7 @@ class SessionInfo(BaseModel):
     language: str = "en"
     current_phase: SessionPhase
     phase_started_at: Optional[datetime] = None
+    room_type: Optional[str] = None
     participants: list[ParticipantInfo] = Field(default_factory=list)
     available_seats: int = Field(..., ge=0, le=4)
     livekit_room_name: str
@@ -177,6 +179,7 @@ class SessionDB(BaseModel):
     language: str = "en"
     current_phase: str  # Store as string, convert to enum in service
     phase_started_at: Optional[datetime] = None
+    room_type: Optional[str] = None
     livekit_room_name: str
     created_at: datetime
     updated_at: datetime

@@ -323,58 +323,74 @@
 - [x] Backend tests: 9 new unit tests (service) + router test updates (21 total reflection tests)
 - [x] Frontend tests: 16 component tests (DiaryEntryCard + DiaryTagPicker)
 
-### Pixel Art Design System
+### Phase 3A: Pixel Art Visual Foundation
 > **Design Doc:** [output/plan/2026-02-09-pixel-art-ui-design.md](output/plan/2026-02-09-pixel-art-ui-design.md)
+> **Implementation Plan:** [output/plan/2026-02-09-pixel-art-implementation-plan.md](output/plan/2026-02-09-pixel-art-implementation-plan.md)
 
-- [ ] Source royalty-free pixel art assets (room backgrounds, furniture, character sprites)
-  - Room: isometric cozy study room (bookshelves, plants, desks, warm lighting)
-  - Characters: 4+ character styles with 8 animation states each
-  - Furniture: desks, chairs, bean bags, decorative items
-- [ ] Build pixel art asset pipeline (sprite sheets, color adjustment to design tokens)
-- [ ] Create `PixelRoom` background component (static/semi-animated room illustration)
-- [ ] Create `CharacterSprite` component with animation state machine
-  - States: working, typing, speaking, sound-reaction, flow-state, away, ghosting, phase-transition
-  - 3-4 frames per state, driven by real user events
-- [ ] Build pixel-styled UI component variants (HUD bar, chat panel, control bar)
-- [ ] Update session page layout: room scene + overlaid UI panels
-- [ ] Migrate existing session functionality into pixel art layout (timer, chat, ratings, controls)
+- [ ] Source royalty-free pixel art assets from itch.io/OpenGameArt
+  - 3 room backgrounds: cozy study room, coffee shop, library (isometric, 4 desk positions each)
+  - 8+ character sprite sheets: distinct styles, 3 states (working/speaking/away), 3-4 frames each
+  - Color-adjust assets to match design tokens (earth tones)
+- [ ] Create asset pipeline and room config (`frontend/src/config/pixel-rooms.ts`)
+- [ ] Database migration `013_pixel_art_system.sql`: `pixel_avatar_id` on users, `room_type` on sessions
+- [ ] Backend updates: models, services, constants for pixel avatar + room type
+- [ ] Add pixel design tokens to `globals.css` (`--font-pixel`, `--border-pixel`, `--shadow-pixel`)
+- [ ] Build `CharacterSprite` component with CSS sprite animation (steps() timing)
+  - 3 states: working (4fps), speaking (6fps, 2s debounce), away (3fps)
+- [ ] Build `CharacterLayer` component (maps participants to sprites at desk positions)
+- [ ] Build `PixelRoom` background component (full viewport, object-fit cover)
+- [ ] Build `HudOverlay` (semi-transparent top bar: timer, phase, credits, leave)
+- [ ] Build `ChatPanel` (floating right panel, expands during reflection phases)
+- [ ] Create `PixelSessionLayout` (full-scene: room + characters + HUD + chat + controls)
+- [ ] Extract current layout to `ClassicSessionLayout` (preserved as fallback toggle)
+- [ ] Integrate pixel/classic toggle in session page (default: pixel, stored in localStorage)
+- [ ] Build `CharacterPicker` component (grid of 8+ animated previews)
+- [ ] Add character selection to onboarding flow
+- [ ] Tests: CharacterSprite, pixel-rooms config, CharacterPicker
 
-### Activity & Presence Detection
-- [ ] Implement Page Visibility API integration (`document.visibilityState` + `visibilitychange` event)
-- [ ] Implement Picture-in-Picture (PiP) mini view
-  - Canvas-rendered: timer countdown + 4 avatar sprites with status borders
-  - `canvas.captureStream()` → hidden `<video>` → `requestPictureInPicture()`
-  - PiP active = page considered "visible" for activity purposes
-- [ ] Implement local audio level detection via WebAudioAPI
-  - Fork mic MediaStream: LiveKit path + local AnalyserNode path
-  - `getByteFrequencyData()` → compute RMS volume level
-  - 3-second baseline calibration on session start
-  - Works even when mic muted in LiveKit (Quiet Mode presence detection)
-- [ ] Build activity state machine with grace periods
-  - ACTIVE: page visible OR audio above threshold
-  - Grace: <2 min since last signal → stay ACTIVE
-  - AWAY: 2-5 min since last signal ("in flow")
-  - GHOSTING: >5 min since last signal
-- [ ] Broadcast activity state via LiveKit data channel to other participants
-- [ ] Connect activity state to character sprite animations
-- [ ] Replace current `useActivityTracking` hook (keyboard/mouse based) with new signal-based system
+### Phase 3B: Immersion Layer
 
-### Ambient Sound Mixer
-- [ ] Source royalty-free audio tracks
-  - Lo-Fi Beats: [Pixabay](https://pixabay.com/music/search/lofi/) (no attribution required)
-  - Coffee Shop Chatter: [Mixkit](https://mixkit.co/free-sound-effects/ambience/) (no attribution required)
-  - Rain: [Mixkit](https://mixkit.co/free-sound-effects/rain/) (no attribution required)
-- [ ] Trim audio files to seamless loops (~2-5 min each)
-- [ ] Build `useAmbientMixer` hook with WebAudioAPI
-  - AudioBufferSourceNode → GainNode → AudioContext.destination per track
-  - Independent on/off and volume control per track
-  - Mixable (multiple tracks simultaneously)
-  - Local-only playback (never sent to LiveKit)
-- [ ] Add ambient mixer controls to session bottom bar (3 toggle buttons)
-- [ ] Persist ambient preferences to localStorage per user
+- [ ] Ambient Sound Mixer
+  - [ ] Source royalty-free audio tracks
+    - Lo-Fi Beats: [Pixabay](https://pixabay.com/music/search/lofi/) (no attribution required)
+    - Coffee Shop Chatter: [Mixkit](https://mixkit.co/free-sound-effects/ambience/) (no attribution required)
+    - Rain: [Mixkit](https://mixkit.co/free-sound-effects/rain/) (no attribution required)
+  - [ ] Trim audio files to seamless loops (~2-5 min each)
+  - [ ] Build `useAmbientMixer` hook with WebAudioAPI
+    - AudioBufferSourceNode → GainNode → AudioContext.destination per track
+    - Independent on/off and volume control per track
+    - Mixable (multiple tracks simultaneously)
+    - Local-only playback (never sent to LiveKit)
+  - [ ] Add ambient mixer controls to session bottom bar (3 toggle buttons)
+  - [ ] Persist ambient preferences to localStorage per user
+- [ ] Full Character Animation States (8 states)
+  - [ ] Add typing, sound-reaction, flow-state, ghosting, phase-transition states
+  - [ ] Connect to activity detection signals
+- [ ] Activity & Presence Detection
+  - [ ] Implement Page Visibility API integration (`document.visibilityState` + `visibilitychange` event)
+  - [ ] Implement local audio level detection via WebAudioAPI
+    - Fork mic MediaStream: LiveKit path + local AnalyserNode path
+    - `getByteFrequencyData()` → compute RMS volume level
+    - 3-second baseline calibration on session start
+    - Works even when mic muted in LiveKit (Quiet Mode presence detection)
+  - [ ] Build activity state machine with grace periods
+    - ACTIVE: page visible OR audio above threshold
+    - Grace: <2 min since last signal → stay ACTIVE
+    - AWAY: 2-5 min since last signal ("in flow")
+    - GHOSTING: >5 min since last signal
+  - [ ] Broadcast activity state via LiveKit data channel to other participants
+  - [ ] Connect activity state to character sprite animations
+  - [ ] Replace current `useActivityTracking` hook (keyboard/mouse based) with new signal-based system
+
+### Phase 3C: Utility & Polish
+
+- [ ] Picture-in-Picture (PiP) mini view
+  - Canvas-rendered: timer + 4 avatar sprites with status borders
+  - PiP active = page considered "visible" for activity
+- [ ] Pixel-styled UI component variants (HUD bar, chat panel, control bar refinement)
+- [ ] Room ambient animations (flickering lamp, coffee steam, rain on window)
 
 ### Avatar & Profile
-- [ ] Create pixel art avatar selection (choose from character sprite styles)
 - [ ] Build user profile page with pixel art avatar display
 - [ ] Display session statistics and streaks
 - [ ] Show reliability badge and rating history
@@ -385,6 +401,8 @@
 - [ ] Implement streak bonuses (10 sessions = bonus essence)
 - [ ] Build item catalog display (pixel art collectibles)
 - [ ] Add item purchase flow
+- [ ] More room types as collectible/unlockable rewards
+- [ ] Character customization (accessories, color swaps, cosmetics via essence)
 
 ---
 
