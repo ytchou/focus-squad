@@ -71,7 +71,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         return error_response(404, "Credit record not found.", "CREDIT_NOT_FOUND")
 
     @app.exception_handler(InsufficientCreditsError)
-    async def _insufficient_credits(request: Request, exc: InsufficientCreditsError) -> JSONResponse:
+    async def _insufficient_credits(
+        request: Request, exc: InsufficientCreditsError
+    ) -> JSONResponse:
         return error_response(
             402,
             f"Insufficient credits. Available: {exc.available}, Required: {exc.required}",
@@ -121,7 +123,9 @@ def register_exception_handlers(app: FastAPI) -> None:
     # --- Session handlers ---
 
     @app.exception_handler(SessionServiceNotFoundError)
-    async def _session_not_found(request: Request, exc: SessionServiceNotFoundError) -> JSONResponse:
+    async def _session_not_found(
+        request: Request, exc: SessionServiceNotFoundError
+    ) -> JSONResponse:
         return error_response(404, "Session not found.", "SESSION_NOT_FOUND")
 
     @app.exception_handler(SessionFullError)
@@ -145,7 +149,9 @@ def register_exception_handlers(app: FastAPI) -> None:
     # --- Reflection handlers ---
 
     @app.exception_handler(ReflectionSessionNotFoundError)
-    async def _reflection_session_not_found(request: Request, exc: ReflectionSessionNotFoundError) -> JSONResponse:
+    async def _reflection_session_not_found(
+        request: Request, exc: ReflectionSessionNotFoundError
+    ) -> JSONResponse:
         return error_response(404, "Session not found.", "SESSION_NOT_FOUND")
 
     @app.exception_handler(NotSessionParticipantError)
@@ -165,7 +171,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         return error_response(403, "This session is not in a ratable state.", "SESSION_NOT_RATABLE")
 
     @app.exception_handler(InvalidRatingTargetError)
-    async def _invalid_rating_target(request: Request, exc: InvalidRatingTargetError) -> JSONResponse:
+    async def _invalid_rating_target(
+        request: Request, exc: InvalidRatingTargetError
+    ) -> JSONResponse:
         return error_response(400, "Invalid rating target.", "INVALID_RATING_TARGET")
 
     @app.exception_handler(RatingAlreadyExistsError)
