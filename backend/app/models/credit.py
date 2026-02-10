@@ -11,6 +11,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.constants import REFERRAL_CODE_MAX_LENGTH
+
 
 class UserTier(str, Enum):
     """User subscription tier."""
@@ -103,7 +105,7 @@ class GiftRequest(BaseModel):
 class ApplyReferralRequest(BaseModel):
     """Request to apply a referral code."""
 
-    referral_code: str = Field(min_length=1, max_length=20)
+    referral_code: str = Field(min_length=1, max_length=REFERRAL_CODE_MAX_LENGTH)
 
 
 # Response models

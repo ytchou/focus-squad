@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
 
+    # Rate limiting
+    rate_limit_enabled: bool = True
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

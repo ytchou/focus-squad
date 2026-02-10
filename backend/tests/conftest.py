@@ -286,6 +286,17 @@ def reset_jwks_cache():
     auth_module._jwks_cache = None
 
 
+@pytest.fixture(autouse=True)
+def disable_rate_limiter():
+    """Disable slowapi rate limiter during tests."""
+    from app.core.rate_limit import limiter
+
+    original = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = original
+
+
 # =============================================================================
 # Mock Supabase Client
 # =============================================================================

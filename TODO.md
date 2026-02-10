@@ -478,7 +478,63 @@
 
 ---
 
-### Phase 4: Gamification
+### Phase 4: Alpha-Ready (Gamification + Launch Essentials)
+
+#### Backend Hardening
+> **Design Doc:** [output/plan/2026-02-09-backend-hardening-design.md](output/plan/2026-02-09-backend-hardening-design.md)
+
+**Step 1: Constants Consolidation**
+- [x] Add `REFLECTION_MAX_LENGTH`, `REASON_TEXT_MAX_LENGTH`, `TOPIC_MAX_LENGTH`, `REFERRAL_CODE_MAX_LENGTH`, `MAX_RATINGS_PER_BATCH`, pagination defaults to `constants.py`
+- [x] Remove duplicated class attrs from `session_service.py` (MAX_PARTICIPANTS, AI_COMPANION_NAMES, etc.)
+- [x] Remove local `REFLECTION_MAX_LENGTH` from `reflection_service.py`
+- [x] Update Pydantic models to use constants for `max_length` (reflection, rating, session, credit models)
+
+**Step 2: Centralized Logging**
+- [x] Create `core/logging_config.py` with `JSONFormatter` + `setup_logging()` (JSON in prod, human-readable in dev)
+- [x] Wire `setup_logging()` into `main.py` lifespan
+- [x] Replace `print()` with `logger` in `main.py`, `analytics_service.py`, `middleware.py`
+
+**Step 3: Global Exception Handlers**
+- [x] Create `core/exceptions.py` with `register_exception_handlers(app)` — 21 exception → HTTP mappings
+- [x] Register in `main.py`, add catch-all 500 handler with logging
+- [x] Remove try/except boilerplate from `credits.py`, `sessions.py`, `users.py`, `reflections.py`
+- [x] Update router tests (assert domain errors instead of HTTPException)
+
+**Step 4: Rate Limiting**
+- [x] Add `slowapi>=0.1.9` to `requirements.txt`, `rate_limit_enabled` to config
+- [x] Create `core/rate_limit.py` with auth-keyed limiter + Redis backend
+- [x] Apply rate limit decorators: 5/min (quick-match), 10/min (gift, rate, cancel), 15/min (profile), 60/min (default)
+- [x] Rename `request` body params to avoid slowapi `Request` conflict (e.g., `gift_request: GiftRequest`)
+- [x] Write tests for rate limit key extraction and 429 handler
+
+#### Zero Credits UX
+- [ ] Show upgrade modal when credits hit 0 (tier comparison + pricing placeholder)
+- [ ] Display countdown to next credit refresh date
+- [ ] Add referral prompt ("Refer a friend, both earn 1 credit")
+
+#### Chat Safety & Moderation
+- [ ] Implement keyword blocklist filter for chat messages
+- [ ] Build report submission endpoint (`POST /api/v1/reports`)
+- [ ] Build report submission UI (button on participant seat + form with categories)
+
+#### Internationalization (i18n)
+- [ ] Configure next-intl with EN + zh-TW
+- [ ] Create translation files for all UI strings
+- [ ] Add language switcher component
+- [ ] Translate all static content
+
+#### Notifications (Basic)
+- [ ] Set up email service (Resend/SendGrid)
+- [ ] Implement browser push notifications
+- [ ] Create notification preferences settings
+- [ ] Send notifications for: session start, match found, credit refresh, Red rating
+
+#### Analytics (Basic)
+- [ ] Integrate PostHog
+- [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.)
+- [ ] Add user identification and properties
+
+#### Gamification
 - [x] Award essence on session completion (implemented in webhook room_finished handler)
 - [ ] Implement `EssenceService` for furniture essence (purchase, spend, history)
 - [ ] Implement streak bonuses (10 sessions = bonus essence)
@@ -489,7 +545,7 @@
 
 ---
 
-## Phase 5: Launch Prep (Week 7-8)
+## Phase 5: Public Launch Prep
 
 ### Friends & Private Study Groups
 - [ ] Friend request/accept flow
@@ -497,48 +553,38 @@
 - [ ] Recurring schedule management
 - [ ] Credit implications for private tables
 
-### Internationalization (i18n)
-- [ ] Configure next-intl with EN + zh-TW
-- [ ] Create translation files for all UI strings
-- [ ] Add language switcher component
-- [ ] Translate all static content
-
-### Notifications
-- [ ] Set up email service (Resend/SendGrid)
-- [ ] Implement browser push notifications
-- [ ] Create notification preferences settings
-- [ ] Send notifications for: session start, match found, credit refresh, Red rating
-
-### Testimonial / Science-based proof
-- [ ] Use this as marketing assets, or some built in prompts in the system, need to brainstorm more
-- [ ] Comments about attention span issues, how to regain focus
-
-### Analytics
-- [ ] Integrate PostHog
-- [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.). Need more design
-- [ ] Add user identification and properties
-
-### Moderation
-- [ ] Build report submission flow
-- [ ] Create admin moderation queue (basic)
-
-### Payment Research
-- [ ] Research Taiwan payment gateways (ECPay, LINE Pay, NewebPay), or some other international gateways (Stripe, LemonSqueezy, etc.)
+### Payment Integration
+- [ ] Research Taiwan payment gateways (ECPay, LINE Pay, NewebPay) or international (Stripe, LemonSqueezy)
 - [ ] Document integration requirements
 - [ ] Design subscription upgrade flow (UI mockups)
+- [ ] Implement payment processing
 
-### Pre-Launch Checklist
+### Production Hardening
 - [ ] Security audit (OWASP top 10, use [shannon](https://github.com/KeygraphHQ/shannon))
+- [ ] Add JWKS cache TTL (1-hour expiration with background refresh)
+- [ ] Convert JWKS fetch to async (`httpx.AsyncClient`)
 - [ ] Performance testing
 - [ ] Mobile responsiveness check
 - [ ] Accessibility audit (basic)
-- [ ] Error handling and user-friendly messages
-- [ ] Add rate limiting middleware (`slowapi`)
-- [ ] Implement structured logging (replace `print()` with `structlog`)
-- [ ] Add JWKS cache TTL (1-hour expiration with background refresh)
-- [ ] Convert JWKS fetch to async (`httpx.AsyncClient`)
-- [ ] Legal Audit (Any legality issues?)
-- [ ] End to End FLow Testing?
+
+
+### PWA
+- [ ] Service worker for offline shell
+- [ ] Web app manifest for installation
+- [ ] Push notification support (Web Push API)
+
+### Testimonial / Science-based proof
+- [ ] Use this as marketing assets, or some built in prompts in the system
+- [ ] Comments about attention span issues, how to regain focus
+
+### Admin Tools
+- [ ] Create admin moderation queue (basic)
+- [ ] Admin dashboard for user management
+
+### Legal & Compliance
+- [ ] Legal audit (any legality issues?)
+- [ ] Taiwan PDPA compliance review
+- [ ] End-to-end flow testing
 
 ---
 

@@ -13,6 +13,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.constants import DIARY_NOTE_MAX_LENGTH, REFLECTION_MAX_LENGTH
+
 # =============================================================================
 # Enums
 # =============================================================================
@@ -35,7 +37,7 @@ class SaveReflectionRequest(BaseModel):
     """Request to save a reflection for a session phase."""
 
     phase: ReflectionPhase
-    content: str = Field(..., min_length=1, max_length=500)
+    content: str = Field(..., min_length=1, max_length=REFLECTION_MAX_LENGTH)
 
 
 # =============================================================================
@@ -99,7 +101,7 @@ class DiaryResponse(BaseModel):
 class SaveDiaryNoteRequest(BaseModel):
     """Request to save/update a post-session diary note."""
 
-    note: Optional[str] = Field(None, max_length=2000)
+    note: Optional[str] = Field(None, max_length=DIARY_NOTE_MAX_LENGTH)
     tags: list[str] = Field(default_factory=list)
 
     @field_validator("tags")

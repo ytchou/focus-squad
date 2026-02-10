@@ -10,23 +10,17 @@ Handles:
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
+from app.core.rate_limit import limiter
 from app.models.credit import (
     ApplyReferralRequest,
     ApplyReferralResponse,
     CreditBalance,
-    CreditNotFoundError,
-    GiftLimitExceededError,
-    GiftNotAllowedError,
     GiftRequest,
     GiftResponse,
-    InsufficientCreditsError,
-    InvalidReferralCodeError,
-    ReferralAlreadyAppliedError,
     ReferralInfo,
-    SelfReferralError,
 )
 from app.services.credit_service import CreditService
 from app.services.user_service import UserService
@@ -60,18 +54,14 @@ async def get_credit_balance(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    try:
-        return credit_service.get_balance(profile.id)
-    except CreditNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Credit record not found. Please complete onboarding.",
-        )
+    return credit_service.get_balance(profile.id)
 
 
 @router.post("/gift", response_model=GiftResponse)
+@limiter.limit("10/minute")
 async def gift_credits(
-    request: GiftRequest,
+    request: Request,
+    gift_request: GiftRequest,
     user: AuthUser = Depends(require_auth_from_state),
     credit_service: CreditService = Depends(get_credit_service),
     user_service: UserService = Depends(get_user_service),
@@ -88,38 +78,12 @@ async def gift_credits(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    try:
-        return credit_service.gift_credit(
-            sender_id=profile.id,
-            recipient_id=request.recipient_user_id,
-            amount=request.amount,
-            idempotency_key=x_idempotency_key,
-        )
-    except GiftNotAllowedError as e:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Gifting not allowed for {e.tier.value} tier. Upgrade to Pro or Elite.",
-        )
-    except GiftLimitExceededError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Weekly gift limit reached ({e.sent}/{e.limit}). Resets on your refresh date.",
-        )
-    except InsufficientCreditsError as e:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Insufficient credits. Available: {e.available}, Required: {e.required}",
-        )
-    except CreditNotFoundError as e:
-        if "Recipient" in str(e):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Recipient user not found.",
-            )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Credit record not found.",
-        )
+    return credit_service.gift_credit(
+        sender_id=profile.id,
+        recipient_id=gift_request.recipient_user_id,
+        amount=gift_request.amount,
+        idempotency_key=x_idempotency_key,
+    )
 
 
 @router.get("/referral", response_model=ReferralInfo)
@@ -137,18 +101,14 @@ async def get_referral_info(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    try:
-        return credit_service.get_referral_info(profile.id)
-    except CreditNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Credit record not found.",
-        )
+    return credit_service.get_referral_info(profile.id)
 
 
 @router.post("/referral/apply", response_model=ApplyReferralResponse)
+@limiter.limit("5/minute")
 async def apply_referral_code(
-    request: ApplyReferralRequest,
+    request: Request,
+    referral_request: ApplyReferralRequest,
     user: AuthUser = Depends(require_auth_from_state),
     credit_service: CreditService = Depends(get_credit_service),
     user_service: UserService = Depends(get_user_service),
@@ -163,32 +123,11 @@ async def apply_referral_code(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    try:
-        referrer_username = credit_service.apply_referral_code(
-            user_id=profile.id,
-            referral_code=request.referral_code,
-        )
-        return ApplyReferralResponse(
-            success=True,
-            referred_by_username=referrer_username,
-        )
-    except ReferralAlreadyAppliedError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You have already used a referral code.",
-        )
-    except SelfReferralError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot use your own referral code.",
-        )
-    except InvalidReferralCodeError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid referral code.",
-        )
-    except CreditNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Credit record not found.",
-        )
+    referrer_username = credit_service.apply_referral_code(
+        user_id=profile.id,
+        referral_code=referral_request.referral_code,
+    )
+    return ApplyReferralResponse(
+        success=True,
+        referred_by_username=referrer_username,
+    )

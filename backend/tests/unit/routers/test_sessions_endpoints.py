@@ -458,7 +458,7 @@ class TestLeaveSession:
         """Returns LeaveSessionResponse with status='left' on success."""
         result = await leave_session(
             session_id="session-abc",
-            request=LeaveSessionRequest(),
+            leave_request=LeaveSessionRequest(),
             user=auth_user,
             session_service=mock_session_service,
             user_service=mock_user_service,
@@ -476,10 +476,10 @@ class TestLeaveSession:
     @pytest.mark.unit
     async def test_with_reason(self, auth_user, mock_user_service, mock_session_service) -> None:
         """Passes reason to remove_participant when provided."""
-        request = LeaveSessionRequest(reason="Need to go")
+        leave_req = LeaveSessionRequest(reason="Need to go")
         result = await leave_session(
             session_id="session-abc",
-            request=request,
+            leave_request=leave_req,
             user=auth_user,
             session_service=mock_session_service,
             user_service=mock_user_service,
@@ -501,7 +501,7 @@ class TestLeaveSession:
         with pytest.raises(HTTPException) as exc_info:
             await leave_session(
                 session_id="session-abc",
-                request=LeaveSessionRequest(),
+                leave_request=LeaveSessionRequest(),
                 user=auth_user,
                 session_service=mock_session_service,
                 user_service=mock_user_service_no_user,
@@ -518,7 +518,7 @@ class TestLeaveSession:
         with pytest.raises(HTTPException) as exc_info:
             await leave_session(
                 session_id="nonexistent",
-                request=LeaveSessionRequest(),
+                leave_request=LeaveSessionRequest(),
                 user=auth_user,
                 session_service=session_service,
                 user_service=mock_user_service,
@@ -538,7 +538,7 @@ class TestLeaveSession:
         with pytest.raises(HTTPException) as exc_info:
             await leave_session(
                 session_id="session-abc",
-                request=LeaveSessionRequest(),
+                leave_request=LeaveSessionRequest(),
                 user=auth_user,
                 session_service=session_service,
                 user_service=mock_user_service,
@@ -619,6 +619,7 @@ class TestCancelSession:
         credit_service.refund_credit.return_value = {"id": "txn-refund"}
 
         result = await cancel_session(
+            request=MagicMock(),
             session_id="session-future",
             user=auth_user,
             session_service=session_service,
@@ -654,6 +655,7 @@ class TestCancelSession:
         credit_service = MagicMock()
 
         result = await cancel_session(
+            request=MagicMock(),
             session_id="session-soon",
             user=auth_user,
             session_service=session_service,
@@ -680,6 +682,7 @@ class TestCancelSession:
 
         with pytest.raises(HTTPException) as exc_info:
             await cancel_session(
+                request=MagicMock(),
                 session_id="session-started",
                 user=auth_user,
                 session_service=session_service,
@@ -698,6 +701,7 @@ class TestCancelSession:
 
         with pytest.raises(HTTPException) as exc_info:
             await cancel_session(
+                request=MagicMock(),
                 session_id="session-abc",
                 user=auth_user,
                 session_service=session_service,
@@ -716,6 +720,7 @@ class TestCancelSession:
 
         with pytest.raises(HTTPException) as exc_info:
             await cancel_session(
+                request=MagicMock(),
                 session_id="nonexistent",
                 user=auth_user,
                 session_service=session_service,
@@ -738,6 +743,7 @@ class TestCancelSession:
 
         with pytest.raises(HTTPException) as exc_info:
             await cancel_session(
+                request=MagicMock(),
                 session_id="session-future",
                 user=auth_user,
                 session_service=session_service,
@@ -760,6 +766,7 @@ class TestCancelSession:
         credit_service.refund_credit.return_value = None
 
         result = await cancel_session(
+            request=MagicMock(),
             session_id="session-future",
             user=auth_user,
             session_service=session_service,
@@ -788,15 +795,16 @@ class TestRateParticipants:
 
         from app.models.rating import RatingValue, SingleRating, SubmitRatingsRequest
 
-        request = SubmitRatingsRequest(
+        ratings_req = SubmitRatingsRequest(
             ratings=[SingleRating(ratee_id="user-2", rating=RatingValue.GREEN)]
         )
         auth = AuthUser(auth_id="unknown", email="x@x.com")
 
         with pytest.raises(HTTPException) as exc_info:
             await rate_participants(
+                request=MagicMock(),
                 session_id="s-1",
-                request=request,
+                ratings_request=ratings_req,
                 user=auth,
                 rating_service=mock_rating_service,
                 user_service=mock_user_service,

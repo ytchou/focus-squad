@@ -163,7 +163,7 @@ class TestUpdateMyProfile:
         user_service.update_user_profile.return_value = updated_profile
 
         result = await update_my_profile(
-            update=update, current_user=current_user, user_service=user_service
+            request=MagicMock(), update=update, current_user=current_user, user_service=user_service
         )
 
         assert result == updated_profile
@@ -185,7 +185,7 @@ class TestUpdateMyProfile:
         user_service.update_user_profile.return_value = updated_profile
 
         result = await update_my_profile(
-            update=update, current_user=current_user, user_service=user_service
+            request=MagicMock(), update=update, current_user=current_user, user_service=user_service
         )
 
         assert result.username == "newname"
@@ -199,18 +199,18 @@ class TestUpdateMyProfile:
         user_service = MagicMock()
         user_service.update_user_profile.side_effect = UserNotFoundError("User not found")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(UserNotFoundError):
             await update_my_profile(
-                update=update, current_user=current_user, user_service=user_service
+                request=MagicMock(),
+                update=update,
+                current_user=current_user,
+                user_service=user_service,
             )
-
-        assert exc_info.value.status_code == 404
-        assert exc_info.value.detail == "User not found"
 
     @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_username_conflict_raises_400(self) -> None:
-        """Raises 400 when username is already taken."""
+        """Raises UsernameConflictError when username is already taken."""
         current_user = AuthUser(auth_id="auth-abc-123", email="test@example.com")
         update = UserProfileUpdate(username="taken_name")
         user_service = MagicMock()
@@ -218,30 +218,31 @@ class TestUpdateMyProfile:
             "Username 'taken_name' is already taken"
         )
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(UsernameConflictError):
             await update_my_profile(
-                update=update, current_user=current_user, user_service=user_service
+                request=MagicMock(),
+                update=update,
+                current_user=current_user,
+                user_service=user_service,
             )
-
-        assert exc_info.value.status_code == 400
-        assert "taken_name" in exc_info.value.detail
 
     @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_username_conflict_detail_contains_error_message(self) -> None:
-        """The 400 detail should include the original error message string."""
+        """The error message should include the original error message string."""
         current_user = AuthUser(auth_id="auth-abc-123", email="test@example.com")
         update = UserProfileUpdate(username="duplicate")
         error_msg = "Username 'duplicate' is already taken"
         user_service = MagicMock()
         user_service.update_user_profile.side_effect = UsernameConflictError(error_msg)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(UsernameConflictError, match=error_msg):
             await update_my_profile(
-                update=update, current_user=current_user, user_service=user_service
+                request=MagicMock(),
+                update=update,
+                current_user=current_user,
+                user_service=user_service,
             )
-
-        assert exc_info.value.detail == error_msg
 
 
 # =============================================================================
@@ -338,10 +339,8 @@ class TestDeleteMyAccount:
         user_service = MagicMock()
         user_service.soft_delete_user.side_effect = UserNotFoundError("User not found")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(UserNotFoundError):
             await delete_my_account(current_user=current_user, user_service=user_service)
-
-        assert exc_info.value.status_code == 404
 
 
 # =============================================================================
@@ -375,7 +374,5 @@ class TestCancelMyDeletion:
         user_service = MagicMock()
         user_service.cancel_account_deletion.side_effect = UserNotFoundError("User not found")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(UserNotFoundError):
             await cancel_my_deletion(current_user=current_user, user_service=user_service)
-
-        assert exc_info.value.status_code == 404

@@ -332,7 +332,8 @@ class TestQuickMatch:
         session_service.generate_livekit_token.return_value = "mock-token"
 
         return {
-            "request": QuickMatchRequest(filters=None),
+            "request": MagicMock(),
+            "match_request": QuickMatchRequest(filters=None),
             "user": _make_auth_user(),
             "session_service": session_service,
             "credit_service": credit_service,
@@ -403,14 +404,13 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_credit_check_exception_returns_402(self, mock_schedule) -> None:
-        """Exception during credit check raises 402."""
+    async def test_credit_check_exception_propagates(self, mock_schedule) -> None:
+        """Exception during credit check propagates to global handler."""
         mocks = self._setup_mocks()
         mocks["credit_service"].has_sufficient_credits.side_effect = Exception("DB error")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(Exception, match="DB error"):
             await quick_match(**mocks)
-        assert exc_info.value.status_code == 402
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -428,63 +428,57 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_already_in_session_error_returns_409(self, mock_schedule) -> None:
-        """AlreadyInSessionError from find_or_create raises 409."""
+    async def test_already_in_session_error_propagates(self, mock_schedule) -> None:
+        """AlreadyInSessionError from find_or_create propagates to global handler."""
         mocks = self._setup_mocks()
         mocks["session_service"].find_or_create_session.side_effect = AlreadyInSessionError(
             session_id="sess-1", user_id="user-123"
         )
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(AlreadyInSessionError):
             await quick_match(**mocks)
-        assert exc_info.value.status_code == 409
-        assert "already in a session" in str(exc_info.value.detail).lower()
 
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_session_full_error_returns_409(self, mock_schedule) -> None:
-        """SessionFullError from find_or_create raises 409."""
+    async def test_session_full_error_propagates(self, mock_schedule) -> None:
+        """SessionFullError from find_or_create propagates to global handler."""
         mocks = self._setup_mocks()
         mocks["session_service"].find_or_create_session.side_effect = SessionFullError(
             session_id="sess-1"
         )
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(SessionFullError):
             await quick_match(**mocks)
-        assert exc_info.value.status_code == 409
-        assert "No available sessions" in str(exc_info.value.detail)
 
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_session_phase_error_returns_409(self, mock_schedule) -> None:
-        """SessionPhaseError from find_or_create raises 409."""
+    async def test_session_phase_error_propagates(self, mock_schedule) -> None:
+        """SessionPhaseError from find_or_create propagates to global handler."""
         mocks = self._setup_mocks()
         mocks["session_service"].find_or_create_session.side_effect = SessionPhaseError(
             session_id="sess-1", current_phase="work_1"
         )
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(SessionPhaseError):
             await quick_match(**mocks)
-        assert exc_info.value.status_code == 409
-        assert "no longer accepting" in str(exc_info.value.detail).lower()
 
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_deduct_credit_fails_triggers_rollback_returns_402(self, mock_schedule) -> None:
-        """InsufficientCreditsError during deduct_credit triggers remove_participant and 402."""
+    async def test_deduct_credit_fails_triggers_rollback_and_propagates(
+        self, mock_schedule
+    ) -> None:
+        """InsufficientCreditsError during deduct_credit triggers remove_participant and re-raises."""
         mocks = self._setup_mocks()
         mocks["credit_service"].deduct_credit.side_effect = InsufficientCreditsError(
             user_id="user-123", required=1, available=0
         )
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(InsufficientCreditsError):
             await quick_match(**mocks)
 
-        assert exc_info.value.status_code == 402
-        assert "Insufficient credits" in str(exc_info.value.detail)
         mocks["session_service"].remove_participant.assert_called_once_with(
             "session-abc", "user-123"
         )

@@ -16,18 +16,15 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
+from app.core.rate_limit import limiter
 from app.models.rating import (
-    InvalidRatingTargetError,
     PendingRatingsResponse,
-    RatingAlreadyExistsError,
     RatingHistoryResponse,
     RatingSubmitResponse,
-    RedReasonRequiredError,
-    SessionNotRatableError,
     SubmitRatingsRequest,
 )
 from app.models.session import (
@@ -49,16 +46,10 @@ from app.models.session import (
 from app.services.analytics_service import AnalyticsService
 from app.services.credit_service import (
     CreditService,
-    InsufficientCreditsError,
     TransactionType,
 )
 from app.services.rating_service import RatingService
-from app.services.session_service import (
-    AlreadyInSessionError,
-    SessionFullError,
-    SessionPhaseError,
-    SessionService,
-)
+from app.services.session_service import SessionService
 from app.services.user_service import UserService
 
 logger = logging.getLogger(__name__)
@@ -158,8 +149,10 @@ def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
 
 
 @router.post("/quick-match", response_model=QuickMatchResponse)
+@limiter.limit("5/minute")
 async def quick_match(
-    request: QuickMatchRequest,
+    request: Request,
+    match_request: QuickMatchRequest,
     user: AuthUser = Depends(require_auth_from_state),
     session_service: SessionService = Depends(get_session_service),
     credit_service: CreditService = Depends(get_credit_service),
@@ -203,13 +196,7 @@ async def quick_match(
         )
 
     # Check credit balance
-    try:
-        if not credit_service.has_sufficient_credits(profile.id, amount=1):
-            raise HTTPException(
-                status_code=402,
-                detail="Insufficient credits. You need at least 1 credit to join a session.",
-            )
-    except Exception:
+    if not credit_service.has_sufficient_credits(profile.id, amount=1):
         raise HTTPException(
             status_code=402,
             detail="Insufficient credits. You need at least 1 credit to join a session.",
@@ -231,39 +218,19 @@ async def quick_match(
         )
 
     # Get filters (default if not provided)
-    filters = request.filters or SessionFilters()
+    filters = match_request.filters or SessionFilters()
 
     # Find or create session and add participant
-    try:
-        session_data, seat_number = session_service.find_or_create_session(
-            filters=filters,
-            start_time=next_slot,
-            user_id=profile.id,
-        )
+    session_data, seat_number = session_service.find_or_create_session(
+        filters=filters,
+        start_time=next_slot,
+        user_id=profile.id,
+    )
 
-        # Schedule LiveKit room creation and cleanup tasks
-        _schedule_livekit_tasks(session_data, next_slot)
+    # Schedule LiveKit room creation and cleanup tasks
+    _schedule_livekit_tasks(session_data, next_slot)
 
-    except AlreadyInSessionError as e:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "You are already in a session at this time slot",
-                "existing_session_id": e.session_id,
-            },
-        )
-    except SessionFullError:
-        raise HTTPException(
-            status_code=409,
-            detail="No available sessions found. Please try again.",
-        )
-    except SessionPhaseError as e:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Session is no longer accepting participants ({e.current_phase} phase).",
-        )
-
-    # Deduct credit
+    # Deduct credit (rollback participant on failure)
     try:
         credit_service.deduct_credit(
             user_id=profile.id,
@@ -271,13 +238,10 @@ async def quick_match(
             transaction_type=TransactionType.SESSION_JOIN,
             description=f"Joined session {session_data['id']}",
         )
-    except InsufficientCreditsError:
+    except Exception:
         # Rollback: remove participant if credit deduction fails
         session_service.remove_participant(session_data["id"], profile.id)
-        raise HTTPException(
-            status_code=402,
-            detail="Insufficient credits",
-        )
+        raise
 
     # Generate LiveKit token
     livekit_token = session_service.generate_livekit_token(
@@ -520,7 +484,7 @@ async def get_session_summary(
 @router.post("/{session_id}/leave", response_model=LeaveSessionResponse)
 async def leave_session(
     session_id: str,
-    request: LeaveSessionRequest = LeaveSessionRequest(),
+    leave_request: LeaveSessionRequest = LeaveSessionRequest(),
     user: AuthUser = Depends(require_auth_from_state),
     session_service: SessionService = Depends(get_session_service),
     user_service: UserService = Depends(get_user_service),
@@ -552,14 +516,16 @@ async def leave_session(
     session_service.remove_participant(
         session_id=session_id,
         user_id=profile.id,
-        reason=request.reason,
+        reason=leave_request.reason,
     )
 
     return LeaveSessionResponse(status="left", session_id=session_id)
 
 
 @router.post("/{session_id}/cancel", response_model=CancelSessionResponse)
+@limiter.limit("10/minute")
 async def cancel_session(
+    request: Request,
     session_id: str,
     user: AuthUser = Depends(require_auth_from_state),
     session_service: SessionService = Depends(get_session_service),
@@ -641,9 +607,11 @@ async def cancel_session(
 
 
 @router.post("/{session_id}/rate", response_model=RatingSubmitResponse)
+@limiter.limit("10/minute")
 async def rate_participants(
+    request: Request,
     session_id: str,
-    request: SubmitRatingsRequest,
+    ratings_request: SubmitRatingsRequest,
     user: AuthUser = Depends(require_auth_from_state),
     rating_service: RatingService = Depends(get_rating_service),
     user_service: UserService = Depends(get_user_service),
@@ -653,33 +621,17 @@ async def rate_participants(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    try:
-        return rating_service.submit_ratings(
-            session_id=session_id,
-            rater_id=profile.id,
-            ratings=request.ratings,
-        )
-    except RedReasonRequiredError:
-        raise HTTPException(
-            status_code=422,
-            detail="Red ratings require at least one reason.",
-        )
-    except SessionNotRatableError:
-        raise HTTPException(
-            status_code=409,
-            detail="This session is not in a ratable state.",
-        )
-    except InvalidRatingTargetError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except RatingAlreadyExistsError:
-        raise HTTPException(
-            status_code=409,
-            detail="You have already rated participants in this session.",
-        )
+    return rating_service.submit_ratings(
+        session_id=session_id,
+        rater_id=profile.id,
+        ratings=ratings_request.ratings,
+    )
 
 
 @router.post("/{session_id}/rate/skip")
+@limiter.limit("10/minute")
 async def skip_ratings(
+    request: Request,
     session_id: str,
     user: AuthUser = Depends(require_auth_from_state),
     rating_service: RatingService = Depends(get_rating_service),
