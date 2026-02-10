@@ -52,7 +52,7 @@ class TestCreditExceptionHandlers:
         resp = client.get("/test")
         assert resp.status_code == 404
         assert resp.json()["code"] == "CREDIT_NOT_FOUND"
-        assert "Record missing" in resp.json()["detail"]
+        assert resp.json()["detail"] == "Credit record not found."
 
     def test_insufficient_credits(self):
         client = _make_app_with_route(
