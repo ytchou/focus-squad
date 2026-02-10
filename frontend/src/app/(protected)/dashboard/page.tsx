@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCreditsStore, useUserStore, useRatingStore } from "@/stores";
+import { useCreditsStore, useUserStore, useRatingStore, useUIStore } from "@/stores";
 import { useSessionStore } from "@/stores/session-store";
 import { api, ApiError } from "@/lib/api/client";
 import { AppShell } from "@/components/layout";
 import { StatCard } from "@/components/ui/stat-card";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
+import { ZeroCreditCard } from "@/components/credits/zero-credit-card";
 import { Clock, BookOpen, Flame, Coins, Loader2, Bug, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { VoiceModeModal } from "@/components/session/voice-mode-modal";
@@ -28,6 +29,7 @@ export default function DashboardPage() {
     setQuietMode,
   } = useSessionStore();
   const { hasPendingRatings, pendingSessionId, checkPendingRatings } = useRatingStore();
+  const openModal = useUIStore((state) => state.openModal);
   const [isMatching, setIsMatching] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   const [showModeModal, setShowModeModal] = useState(false);
@@ -140,7 +142,13 @@ export default function DashboardPage() {
         }
       }
 
-      // Log non-409 errors
+      // Handle 402 - insufficient credits (stale frontend state)
+      if (error instanceof ApiError && error.status === 402) {
+        openModal("upgrade");
+        return;
+      }
+
+      // Log non-409/non-402 errors
       console.error("Quick match failed:", error);
 
       const errorMessage =
@@ -192,6 +200,9 @@ export default function DashboardPage() {
             </div>
           </button>
         )}
+
+        {/* Zero credits alert */}
+        {credits === 0 && <ZeroCreditCard onUpgradeClick={() => openModal("upgrade")} />}
 
         {/* Stats grid */}
         <div className="grid gap-4 md:grid-cols-3">
@@ -247,7 +258,10 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground">Growth journal & history</p>
               </div>
             </button>
-            <button className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted">
+            <button
+              onClick={() => openModal("upgrade")}
+              className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted"
+            >
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 text-primary">
                 <Coins className="h-5 w-5" />
               </div>

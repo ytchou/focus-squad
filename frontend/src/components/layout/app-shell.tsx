@@ -3,6 +3,7 @@
 import { useUIStore } from "@/stores";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
+import { UpgradeModal } from "@/components/credits/upgrade-modal";
 import { cn } from "@/lib/utils";
 
 interface AppShellProps {
@@ -11,6 +12,8 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const isSidebarCollapsed = useUIStore((state) => state.isSidebarCollapsed);
+  const activeModal = useUIStore((state) => state.activeModal);
+  const closeModal = useUIStore((state) => state.closeModal);
 
   return (
     <div className="min-h-screen bg-background">
@@ -27,6 +30,7 @@ export function AppShell({ children }: AppShellProps) {
       >
         <div className="p-4 md:p-6">{children}</div>
       </main>
+      <UpgradeModal isOpen={activeModal === "upgrade"} onClose={closeModal} />
     </div>
   );
 }
