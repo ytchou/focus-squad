@@ -538,7 +538,7 @@
 - [ ] Add user identification and properties
 
 #### Gamification
-- [ ] Award essence on session completion (implemented in webhook room_finished handler)
+- [x] Award essence on session completion (implemented in webhook room_finished handler)
 - [ ] Implement `EssenceService` for furniture essence (purchase, spend, history)
 - [ ] Implement streak bonuses (10 sessions = bonus essence)
 - [ ] Build item catalog display (pixel art collectibles)

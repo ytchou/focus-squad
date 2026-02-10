@@ -144,6 +144,7 @@ export default function DashboardPage() {
 
       // Handle 402 - insufficient credits (stale frontend state)
       if (error instanceof ApiError && error.status === 402) {
+        useCreditsStore.setState({ balance: 0 });
         openModal("upgrade");
         return;
       }

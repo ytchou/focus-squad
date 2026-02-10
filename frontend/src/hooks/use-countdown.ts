@@ -42,7 +42,12 @@ export function useCountdown(targetDate: string | null): UseCountdownReturn {
     return { countdown: "--", isExpired: false };
   }
 
-  const diffMs = new Date(targetDate).getTime() - now;
+  const targetMs = new Date(targetDate).getTime();
+  if (Number.isNaN(targetMs)) {
+    return { countdown: "--", isExpired: false };
+  }
+
+  const diffMs = targetMs - now;
   return {
     countdown: formatCountdown(diffMs),
     isExpired: diffMs <= 0,

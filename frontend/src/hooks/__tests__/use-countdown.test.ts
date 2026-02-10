@@ -82,6 +82,13 @@ describe("useCountdown", () => {
     expect(result.current.isExpired).toBe(true);
   });
 
+  it("returns fallback for invalid date strings", () => {
+    const { result } = renderHook(() => useCountdown("not-a-date"));
+
+    expect(result.current.countdown).toBe("--");
+    expect(result.current.isExpired).toBe(false);
+  });
+
   it("shows 0m boundary correctly", () => {
     const target = new Date(Date.now() + 30_000);
 

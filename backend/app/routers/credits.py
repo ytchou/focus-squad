@@ -156,11 +156,15 @@ async def register_upgrade_interest(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    supabase = get_supabase()
-    supabase.table("upgrade_interest").upsert(
-        {"user_id": profile.id, "email": profile.email},
-        on_conflict="user_id",
-    ).execute()
+    try:
+        supabase = get_supabase()
+        supabase.table("upgrade_interest").upsert(
+            {"user_id": profile.id, "email": profile.email},
+            on_conflict="user_id",
+        ).execute()
+    except Exception:
+        logger.exception("Failed to register upgrade interest for user %s", profile.id)
+        raise HTTPException(status_code=500, detail="Failed to register interest")
 
     logger.info("Upgrade interest registered for user %s", profile.id)
     return NotifyInterestResponse(success=True)

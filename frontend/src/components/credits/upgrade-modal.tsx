@@ -55,7 +55,9 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
     api
       .get<ReferralInfo>("/api/v1/credits/referral")
       .then(setReferral)
-      .catch(() => {})
+      .catch((err: unknown) => {
+        console.error("Failed to load referral info:", err);
+      })
       .finally(() => setReferralLoading(false));
   }, [isOpen]);
 
