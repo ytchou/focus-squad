@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { MessageSquare, ChevronRight, ChevronLeft } from "lucide-react";
 import { SessionBoard } from "@/components/session/board/session-board";
 import { useBoardStore, type BoardMessage, type ReflectionPhase } from "@/stores/board-store";
@@ -25,6 +26,7 @@ export function ChatPanel({
   isExpanded,
   onBroadcastMessage,
 }: ChatPanelProps) {
+  const t = useTranslations("session");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { unreadCount } = useBoardStore();
 
@@ -59,7 +61,7 @@ export function ChatPanel({
       {/* Header with collapse button */}
       <div className="flex items-center justify-between px-3 py-2 border-b-2 border-border">
         <span className="font-pixel text-[0.55rem] text-foreground">
-          {reflectionPhase ? "Reflections" : "Chat"}
+          {reflectionPhase ? t("reflections") : t("chatLabel")}
         </span>
         <button
           onClick={() => setIsCollapsed(true)}

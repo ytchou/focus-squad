@@ -1,15 +1,8 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-
-const PRESET_REASONS = [
-  { value: "absent_no_show", label: "Was absent / no-show" },
-  { value: "disruptive_behavior", label: "Disruptive behavior" },
-  { value: "left_early_no_notice", label: "Left early without notice" },
-  { value: "not_actually_working", label: "Not actually working" },
-  { value: "other", label: "Other" },
-] as const;
 
 interface RatingReasonsPickerProps {
   reasons: string[];
@@ -24,8 +17,17 @@ export function RatingReasonsPicker({
   onReasonsChange,
   onOtherTextChange,
 }: RatingReasonsPickerProps) {
+  const t = useTranslations("rating");
   const contentRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number>(0);
+
+  const presetReasons = [
+    { value: "absent_no_show", label: t("absentNoShow") },
+    { value: "disruptive_behavior", label: t("disruptiveBehaviorReason") },
+    { value: "left_early_no_notice", label: t("leftEarlyNoNotice") },
+    { value: "not_actually_working", label: t("notActuallyWorking") },
+    { value: "other", label: t("other") },
+  ];
 
   useEffect(() => {
     if (contentRef.current) {
@@ -49,11 +51,9 @@ export function RatingReasonsPicker({
       style={{ height: height > 0 ? `${height}px` : "auto" }}
     >
       <div ref={contentRef} className="pt-3 space-y-2">
-        <p className="text-xs text-muted-foreground font-medium">
-          What happened? (select all that apply)
-        </p>
+        <p className="text-xs text-muted-foreground font-medium">{t("whatHappened")}</p>
         <div className="space-y-1.5">
-          {PRESET_REASONS.map((reason) => (
+          {presetReasons.map((reason) => (
             <label
               key={reason.value}
               className={cn(
@@ -100,7 +100,7 @@ export function RatingReasonsPicker({
             <textarea
               value={otherText}
               onChange={(e) => onOtherTextChange(e.target.value)}
-              placeholder="Please describe what happened..."
+              placeholder={t("describePlaceholder")}
               maxLength={500}
               rows={3}
               className={cn(

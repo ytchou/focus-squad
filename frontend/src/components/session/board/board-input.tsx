@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, type KeyboardEvent } from "react";
+import { useTranslations } from "next-intl";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isBlocked, getMatchedCategory } from "@/lib/moderation/blocklist";
@@ -16,12 +17,6 @@ interface BoardInputProps {
   onSendReflection: (phase: ReflectionPhase, content: string) => void;
 }
 
-const REFLECTION_PROMPTS: Record<ReflectionPhase, string> = {
-  setup: "What do you hope to accomplish this session?",
-  break: "Quick check-in: how's it going?",
-  social: "Any afterthoughts or reflections?",
-};
-
 export function BoardInput({
   sessionId,
   currentPhase,
@@ -29,17 +24,24 @@ export function BoardInput({
   onSendChat,
   onSendReflection,
 }: BoardInputProps) {
+  const t = useTranslations("chat");
   const [text, setText] = useState("");
 
+  const REFLECTION_PROMPTS: Record<ReflectionPhase, string> = {
+    setup: t("setupPrompt"),
+    break: t("breakPrompt"),
+    social: t("socialPrompt"),
+  };
+
   const isReflectionPhase = currentPhase !== null;
-  const placeholder = isReflectionPhase ? REFLECTION_PROMPTS[currentPhase] : "Type a message...";
+  const placeholder = isReflectionPhase ? REFLECTION_PROMPTS[currentPhase] : t("placeholder");
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
     if (isBlocked(trimmed)) {
-      toast.error("Message not sent - please rephrase.");
+      toast.error(t("messageNotSent"));
       if (sessionId) {
         const category = getMatchedCategory(trimmed);
         api
@@ -59,7 +61,7 @@ export function BoardInput({
       onSendChat(trimmed);
     }
     setText("");
-  }, [text, sessionId, isReflectionPhase, currentPhase, onSendChat, onSendReflection]);
+  }, [text, sessionId, isReflectionPhase, currentPhase, onSendChat, onSendReflection, t]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

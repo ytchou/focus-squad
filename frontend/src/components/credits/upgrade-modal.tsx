@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -16,12 +17,6 @@ import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const TIER_FEATURES = [
-  { feature: "Credits / week", free: "2", pro: "8", elite: "12" },
-  { feature: "Gift credits", free: "--", pro: "4 / week", elite: "4 / week" },
-  { feature: "Priority matching", free: "--", pro: "Yes", elite: "Yes" },
-] as const;
-
 const NOTIFY_STORAGE_KEY = "focus-squad-upgrade-notified";
 
 interface ReferralInfo {
@@ -36,6 +31,8 @@ interface UpgradeModalProps {
 }
 
 export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
+  const t = useTranslations("credits");
+  const tc = useTranslations("common");
   const refreshDate = useCreditsStore((s) => s.refreshDate);
   const tier = useCreditsStore((s) => s.tier);
   const { countdown } = useCountdown(refreshDate);
@@ -48,6 +45,19 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
     return localStorage.getItem(NOTIFY_STORAGE_KEY) === "true";
   });
   const [notifyLoading, setNotifyLoading] = useState(false);
+
+  const tierCredits = tier === "free" ? "2" : tier === "pro" ? "8" : "12";
+
+  const tierFeatures = [
+    { feature: t("creditsPerWeekFeature"), free: "2", pro: "8", elite: "12" },
+    {
+      feature: t("giftCreditsFeature"),
+      free: t("none"),
+      pro: t("perWeekValue", { count: 4 }),
+      elite: t("perWeekValue", { count: 4 }),
+    },
+    { feature: t("priorityMatchingFeature"), free: t("none"), pro: t("yes"), elite: t("yes") },
+  ];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -65,7 +75,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
     if (!referral?.shareable_link) return;
     await navigator.clipboard.writeText(referral.shareable_link);
     setCopied(true);
-    toast.success("Referral link copied!");
+    toast.success(t("referralLinkCopied"));
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -75,9 +85,9 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
       await api.post("/api/v1/credits/notify-interest", {});
       setNotified(true);
       localStorage.setItem(NOTIFY_STORAGE_KEY, "true");
-      toast.success("We'll notify you when pricing is available!");
+      toast.success(t("notifySuccess"));
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      toast.error(t("somethingWentWrong"));
     } finally {
       setNotifyLoading(false);
     }
@@ -89,9 +99,9 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-accent" />
-            Get More Credits
+            {t("upgradeTitle")}
           </DialogTitle>
-          <DialogDescription>Here are your options to get back to focusing.</DialogDescription>
+          <DialogDescription>{t("upgradeSubtitle")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-2">
@@ -101,10 +111,10 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               <Clock className="h-5 w-5 text-warning" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Your credits refresh in</p>
+              <p className="text-sm text-muted-foreground">{t("creditsRefreshIn")}</p>
               <p className="text-lg font-semibold text-foreground">{countdown}</p>
               <p className="text-xs text-muted-foreground capitalize">
-                {tier} plan: {tier === "free" ? "2" : tier === "pro" ? "8" : "12"} credits / week
+                {t("planCredits", { tier, count: tierCredits })}
               </p>
             </div>
           </div>
@@ -113,7 +123,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Crown className="h-4 w-4 text-accent" />
-              <h3 className="text-sm font-medium text-foreground">Upgrade Your Plan</h3>
+              <h3 className="text-sm font-medium text-foreground">{t("upgradeYourPlan")}</h3>
             </div>
             <div className="rounded-xl border border-border overflow-hidden">
               <table className="w-full text-sm">
@@ -126,7 +136,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                         tier === "free" ? "text-foreground bg-accent/10" : "text-muted-foreground"
                       )}
                     >
-                      Free
+                      {t("free")}
                     </th>
                     <th
                       className={cn(
@@ -134,7 +144,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                         tier === "pro" ? "text-foreground bg-accent/10" : "text-muted-foreground"
                       )}
                     >
-                      Pro
+                      {t("pro")}
                     </th>
                     <th
                       className={cn(
@@ -142,12 +152,12 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                         tier === "elite" ? "text-foreground bg-accent/10" : "text-muted-foreground"
                       )}
                     >
-                      Elite
+                      {t("elite")}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {TIER_FEATURES.map((row) => (
+                  {tierFeatures.map((row) => (
                     <tr key={row.feature} className="border-t border-border">
                       <td className="px-3 py-2 text-muted-foreground">{row.feature}</td>
                       <td className={cn("px-3 py-2 text-center", tier === "free" && "bg-accent/5")}>
@@ -164,16 +174,16 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                     </tr>
                   ))}
                   <tr className="border-t border-border">
-                    <td className="px-3 py-2 text-muted-foreground">Price</td>
-                    <td className="px-3 py-2 text-center text-muted-foreground">Current</td>
+                    <td className="px-3 py-2 text-muted-foreground">{t("price")}</td>
+                    <td className="px-3 py-2 text-center text-muted-foreground">{t("current")}</td>
                     <td className="px-3 py-2 text-center">
                       <span className="inline-block rounded-full bg-accent/10 text-accent text-xs px-2 py-0.5">
-                        Coming Soon
+                        {tc("comingSoon")}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">
                       <span className="inline-block rounded-full bg-accent/10 text-accent text-xs px-2 py-0.5">
-                        Coming Soon
+                        {tc("comingSoon")}
                       </span>
                     </td>
                   </tr>
@@ -188,7 +198,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               disabled={notified || notifyLoading}
             >
               <Bell className="h-4 w-4" />
-              {notified ? "We'll notify you!" : "Notify me when available"}
+              {notified ? t("notifiedMessage") : t("notifyMeAvailable")}
             </Button>
           </div>
 
@@ -196,11 +206,9 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
           <div className="rounded-xl bg-success/5 border border-success/30 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Gift className="h-4 w-4 text-success" />
-              <h3 className="text-sm font-medium text-foreground">Earn a free credit</h3>
+              <h3 className="text-sm font-medium text-foreground">{t("earnFreeCredit")}</h3>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Refer a friend — you both earn 1 credit when they complete their first session.
-            </p>
+            <p className="text-sm text-muted-foreground">{t("referralExplain")}</p>
             {referralLoading ? (
               <div className="h-9 rounded-lg bg-muted animate-pulse" />
             ) : referral ? (
@@ -208,12 +216,12 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                 {copied ? (
                   <>
                     <Check className="h-4 w-4 text-success" />
-                    Copied!
+                    {t("copied")}
                   </>
                 ) : (
                   <>
                     <Copy className="h-4 w-4" />
-                    Copy referral link
+                    {t("copyReferralLink")}
                   </>
                 )}
               </Button>

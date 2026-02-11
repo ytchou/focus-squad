@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Wifi, WifiOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ interface ConnectionStatusProps {
 }
 
 export function ConnectionStatus({ state, onReconnect, disconnectedAt }: ConnectionStatusProps) {
+  const t = useTranslations("session");
   const [tick, setTick] = useState(0);
 
   // Trigger re-render every second when disconnected
@@ -60,17 +62,17 @@ export function ConnectionStatus({ state, onReconnect, disconnectedAt }: Connect
       {state === "connecting" && (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Connecting to session...</span>
+          <span>{t("connectingToSession")}</span>
         </>
       )}
 
       {state === "reconnecting" && (
         <>
           <Wifi className="h-4 w-4" />
-          <span>Reconnecting...</span>
+          <span>{t("reconnecting")}</span>
           {graceTimeRemaining !== null && graceTimeRemaining > 0 && (
             <span className="text-xs opacity-75">
-              ({Math.ceil(graceTimeRemaining / 1000)}s grace period)
+              {t("reconnectingGrace", { seconds: Math.ceil(graceTimeRemaining / 1000) })}
             </span>
           )}
         </>
@@ -79,10 +81,10 @@ export function ConnectionStatus({ state, onReconnect, disconnectedAt }: Connect
       {state === "disconnected" && (
         <>
           <WifiOff className="h-4 w-4" />
-          <span>Connection lost</span>
+          <span>{t("connectionLost")}</span>
           {onReconnect && (
             <Button variant="outline" size="sm" onClick={onReconnect} className="ml-2 h-7">
-              Reconnect
+              {t("reconnect")}
             </Button>
           )}
         </>

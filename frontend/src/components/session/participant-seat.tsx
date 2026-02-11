@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff, Bot, MoreHorizontal, Flag } from "lucide-react";
@@ -24,7 +25,7 @@ export interface ParticipantSeatProps {
 }
 
 export function ParticipantSeat({
-  id,
+  id: _id,
   userId,
   seatNumber: _seatNumber,
   username,
@@ -37,6 +38,8 @@ export function ParticipantSeat({
   isEmpty = false,
   sessionId,
 }: ParticipantSeatProps) {
+  const t = useTranslations("session");
+  const tModeration = useTranslations("moderation");
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -61,12 +64,12 @@ export function ParticipantSeat({
         <div className="size-16 rounded-full bg-muted flex items-center justify-center">
           <span className="text-2xl text-muted-foreground">?</span>
         </div>
-        <span className="text-sm text-muted-foreground">Empty Seat</span>
+        <span className="text-sm text-muted-foreground">{t("emptySeat")}</span>
       </div>
     );
   }
 
-  const name = displayName || username || (isAI ? "AI Companion" : "User");
+  const name = displayName || username || (isAI ? t("aiCompanion") : "User");
   const initials = getInitials(name);
   const showMenu = !isAI && !isCurrentUser && !!userId;
 
@@ -84,7 +87,7 @@ export function ParticipantSeat({
           <button
             onClick={() => setMenuOpen((prev) => !prev)}
             className="p-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            aria-label="More options"
+            aria-label={t("moreOptions")}
           >
             <MoreHorizontal className="size-4" />
           </button>
@@ -99,7 +102,7 @@ export function ParticipantSeat({
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors"
               >
                 <Flag className="size-3.5" />
-                Report User
+                {tModeration("reportUser")}
               </button>
             </div>
           )}
@@ -141,7 +144,7 @@ export function ParticipantSeat({
 
       {/* Name */}
       <span className="text-sm font-medium truncate max-w-full text-center">
-        {isCurrentUser ? `${name} (You)` : name}
+        {isCurrentUser ? `${name} (${t("you")})` : name}
       </span>
 
       {/* Status badges */}
@@ -164,10 +167,10 @@ export function ParticipantSeat({
             )}
           >
             {presenceState === "active" || presenceState === "grace"
-              ? "Focused"
+              ? t("focusedMode")
               : presenceState === "away"
-                ? "Away"
-                : "Gone"}
+                ? t("awayMode")
+                : t("goneMode")}
           </Badge>
         )}
       </div>

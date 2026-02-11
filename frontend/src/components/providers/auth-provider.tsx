@@ -33,6 +33,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // Onboarding gate: redirect un-onboarded users to the wizard
           if (!profile.is_onboarded) {
+            if (profile.preferred_language) {
+              document.cookie = `NEXT_LOCALE=${profile.preferred_language};path=/;max-age=31536000;SameSite=Lax`;
+            }
             useUserStore.getState().setUser(profile);
             useUserStore.getState().setLoading(false);
             if (
@@ -52,6 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } catch {
               // Non-critical: proceed with stale profile
             }
+          }
+
+          // Set locale cookie for next-intl SSR
+          if (activeProfile.preferred_language) {
+            document.cookie = `NEXT_LOCALE=${activeProfile.preferred_language};path=/;max-age=31536000;SameSite=Lax`;
           }
 
           useUserStore.getState().setUser(activeProfile);

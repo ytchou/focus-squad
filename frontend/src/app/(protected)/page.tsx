@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCreditsStore, useUserStore } from "@/stores";
 import { AppShell } from "@/components/layout";
 import { StatCard } from "@/components/ui/stat-card";
@@ -7,6 +8,7 @@ import { ReliabilityBadge } from "@/components/ui/reliability-badge";
 import { Clock, Flame, Coins } from "lucide-react";
 
 export default function DashboardPage() {
+  const t = useTranslations("dashboard");
   // User and credits are loaded by useAuth's onAuthStateChange listener
   // which fires on INITIAL_SESSION (page load) and SIGNED_IN (login)
   const user = useUserStore((state) => state.user);
@@ -20,9 +22,11 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-foreground">
-                Welcome back, {user?.display_name ?? user?.username ?? "Friend"}!
+                {t("welcomeBack", {
+                  name: user?.display_name ?? user?.username ?? "Friend",
+                })}
               </h1>
-              <p className="mt-1 text-muted-foreground">Ready for your next focus session?</p>
+              <p className="mt-1 text-muted-foreground">{t("welcomeSubtitle")}</p>
             </div>
             {user && <ReliabilityBadge score={user.reliability_score} />}
           </div>
@@ -31,31 +35,36 @@ export default function DashboardPage() {
         {/* Stats grid */}
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard
-            title="Sessions"
+            title={t("sessions")}
             value={user?.session_count ?? 0}
-            subtitle="completed this week"
+            subtitle={t("completedThisWeek")}
             icon={Clock}
           />
           <StatCard
-            title="Focus Time"
-            value={`${user?.total_focus_minutes ?? 0} min`}
-            subtitle="total focus time"
+            title={t("focusTime")}
+            value={t("focusMinutes", { minutes: user?.total_focus_minutes ?? 0 })}
+            subtitle={t("totalFocusTime")}
             icon={Flame}
           />
-          <StatCard title="Credits" value={credits} subtitle="available this week" icon={Coins} />
+          <StatCard
+            title={t("credits")}
+            value={credits}
+            subtitle={t("availableThisWeek")}
+            icon={Coins}
+          />
         </div>
 
         {/* Quick actions */}
         <div className="rounded-2xl bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Quick Actions</h2>
+          <h2 className="mb-4 text-lg font-semibold text-foreground">{t("quickActions")}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <button className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20 text-accent">
                 <Clock className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium text-foreground">Find a Table</p>
-                <p className="text-sm text-muted-foreground">Join a study session</p>
+                <p className="font-medium text-foreground">{t("joinTable")}</p>
+                <p className="text-sm text-muted-foreground">{t("joinStudySession")}</p>
               </div>
             </button>
             <button className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted">
@@ -63,8 +72,8 @@ export default function DashboardPage() {
                 <Flame className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium text-foreground">View History</p>
-                <p className="text-sm text-muted-foreground">Past sessions & stats</p>
+                <p className="font-medium text-foreground">{t("viewDiary")}</p>
+                <p className="text-sm text-muted-foreground">{t("growthJournal")}</p>
               </div>
             </button>
             <button className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted">
@@ -72,8 +81,8 @@ export default function DashboardPage() {
                 <Coins className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium text-foreground">Get More Credits</p>
-                <p className="text-sm text-muted-foreground">Upgrade your plan</p>
+                <p className="font-medium text-foreground">{t("getMoreCredits")}</p>
+                <p className="text-sm text-muted-foreground">{t("upgradePlan")}</p>
               </div>
             </button>
           </div>

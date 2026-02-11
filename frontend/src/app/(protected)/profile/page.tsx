@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Flame, Users, Pencil, Check, X, LogOut, Trash2, Mic, MicOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/layout";
 import { StatCard } from "@/components/ui/stat-card";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
 import { CharacterPicker } from "@/components/character-picker";
+import { LanguageToggle } from "@/components/language-toggle";
 import { PIXEL_CHARACTERS } from "@/config/pixel-rooms";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,8 @@ import { cn } from "@/lib/utils";
 // ─── Identity Section ───────────────────────────────────────────────────────
 
 function IdentitySection({ user }: { user: UserProfile }) {
+  const t = useTranslations("profile");
+  const tCommon = useTranslations("common");
   const [isEditing, setIsEditing] = useState(false);
   const [showCharPicker, setShowCharPicker] = useState(false);
   const [username, setUsername] = useState(user.username);
@@ -41,9 +45,9 @@ function IdentitySection({ user }: { user: UserProfile }) {
       setIsEditing(false);
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
-        setError("Username is already taken");
+        setError(t("usernameTaken"));
       } else {
-        setError("Failed to save changes");
+        setError(t("saveFailed"));
       }
     } finally {
       setIsSaving(false);
@@ -98,7 +102,7 @@ function IdentitySection({ user }: { user: UserProfile }) {
             onClick={() => setShowCharPicker(true)}
             className="text-xs text-primary hover:text-foreground transition-colors"
           >
-            Change Character
+            {t("changeCharacter")}
           </button>
         </div>
 
@@ -108,7 +112,7 @@ function IdentitySection({ user }: { user: UserProfile }) {
             <div className="space-y-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Username
+                  {t("username")}
                 </label>
                 <input
                   value={username}
@@ -122,7 +126,7 @@ function IdentitySection({ user }: { user: UserProfile }) {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Display Name
+                  {t("displayName")}
                 </label>
                 <input
                   value={displayName}
@@ -132,14 +136,16 @@ function IdentitySection({ user }: { user: UserProfile }) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Bio</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  {t("bio")}
+                </label>
                 <textarea
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   className="w-full rounded-lg border border-accent bg-input px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none resize-none"
                   rows={2}
                   maxLength={160}
-                  placeholder="What brings you here?"
+                  placeholder={t("bioPlaceholder")}
                 />
                 <p className="mt-0.5 text-xs text-muted-foreground">{bio.length}/160</p>
               </div>
@@ -147,11 +153,11 @@ function IdentitySection({ user }: { user: UserProfile }) {
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleSave} disabled={isSaving || username.length < 3}>
                   <Check className="mr-1 h-3.5 w-3.5" />
-                  {isSaving ? "Saving..." : "Save"}
+                  {isSaving ? t("saving") : tCommon("save")}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={handleCancel}>
                   <X className="mr-1 h-3.5 w-3.5" />
-                  Cancel
+                  {tCommon("cancel")}
                 </Button>
               </div>
             </div>
@@ -179,7 +185,7 @@ function IdentitySection({ user }: { user: UserProfile }) {
       <Dialog open={showCharPicker} onOpenChange={setShowCharPicker}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Change Character</DialogTitle>
+            <DialogTitle>{t("changeCharacter")}</DialogTitle>
           </DialogHeader>
           <CharacterPicker selectedId={user.pixel_avatar_id} onSelect={handleCharacterChange} />
         </DialogContent>
@@ -191,20 +197,23 @@ function IdentitySection({ user }: { user: UserProfile }) {
 // ─── Stats Section ──────────────────────────────────────────────────────────
 
 function StatsSection({ user }: { user: UserProfile }) {
+  const t = useTranslations("profile");
   return (
     <section>
-      <h2 className="mb-3 text-lg font-semibold text-foreground">Your Stats</h2>
+      <h2 className="mb-3 text-lg font-semibold text-foreground">{t("stats")}</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard title="Sessions" value={user.session_count} icon={Users} />
-        <StatCard title="Focus Minutes" value={user.total_focus_minutes} icon={Clock} />
+        <StatCard title={t("sessions")} value={user.session_count} icon={Users} />
+        <StatCard title={t("focusMinutes")} value={user.total_focus_minutes} icon={Clock} />
         <StatCard
-          title="Current Streak"
+          title={t("currentStreak")}
           value={user.current_streak}
           icon={Flame}
-          subtitle={user.longest_streak > 0 ? `Best: ${user.longest_streak}` : undefined}
+          subtitle={
+            user.longest_streak > 0 ? t("bestStreak", { count: user.longest_streak }) : undefined
+          }
         />
         <div className="flex flex-col items-center justify-center rounded-xl bg-card p-4 shadow-sm">
-          <p className="mb-2 text-sm font-medium text-muted-foreground">Reliability</p>
+          <p className="mb-2 text-sm font-medium text-muted-foreground">{t("reliability")}</p>
           <ReliabilityBadge score={Number(user.reliability_score)} size="lg" />
         </div>
       </div>
@@ -215,6 +224,8 @@ function StatsSection({ user }: { user: UserProfile }) {
 // ─── Preferences Section ────────────────────────────────────────────────────
 
 function PreferencesSection({ user }: { user: UserProfile }) {
+  const t = useTranslations("profile");
+  const tCommon = useTranslations("common");
   const [tableMode, setTableMode] = useState(user.default_table_mode);
   const [pushEnabled, setPushEnabled] = useState(user.push_notifications_enabled);
 
@@ -245,14 +256,18 @@ function PreferencesSection({ user }: { user: UserProfile }) {
 
   return (
     <section className="rounded-2xl bg-card p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold text-foreground">Preferences</h2>
+      <h2 className="mb-4 text-lg font-semibold text-foreground">{t("preferences")}</h2>
 
       <div className="space-y-4">
+        {/* Language */}
+        <div>
+          <label className="mb-2 block text-sm font-medium text-foreground">{t("language")}</label>
+          <LanguageToggle variant="dropdown" />
+        </div>
+
         {/* Default Table Mode */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-foreground">
-            Default Table Mode
-          </label>
+          <label className="mb-2 block text-sm font-medium text-foreground">{t("tableMode")}</label>
           <div className="flex gap-3">
             <button
               onClick={() => handleTableModeChange("forced_audio")}
@@ -264,7 +279,7 @@ function PreferencesSection({ user }: { user: UserProfile }) {
               )}
             >
               <Mic className="h-4 w-4" />
-              Forced Audio
+              {t("forcedAudio")}
             </button>
             <button
               onClick={() => handleTableModeChange("quiet")}
@@ -276,29 +291,29 @@ function PreferencesSection({ user }: { user: UserProfile }) {
               )}
             >
               <MicOff className="h-4 w-4" />
-              Quiet Mode
+              {t("quietMode")}
             </button>
           </div>
         </div>
 
         {/* Ambient Mix */}
         <div>
-          <label className="block text-sm font-medium text-foreground">Ambient Sound Mix</label>
-          <p className="text-sm text-muted-foreground">
-            Managed per-session from the session controls.
-          </p>
+          <label className="block text-sm font-medium text-foreground">
+            {t("ambientSoundMix")}
+          </label>
+          <p className="text-sm text-muted-foreground">{t("ambientSoundMixDesc")}</p>
         </div>
 
         {/* Notifications */}
         <div>
-          <label className="block text-sm font-medium text-foreground">Notifications</label>
+          <label className="block text-sm font-medium text-foreground">{t("notifications")}</label>
           <div className="mt-2 space-y-2">
             <label className="flex items-center justify-between">
-              <span className="text-sm text-foreground">Email Notifications</span>
-              <span className="text-xs text-muted-foreground">Coming Soon</span>
+              <span className="text-sm text-foreground">{t("emailNotifications")}</span>
+              <span className="text-xs text-muted-foreground">{tCommon("comingSoon")}</span>
             </label>
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-sm text-foreground">Push Notifications</span>
+              <span className="text-sm text-foreground">{t("pushNotifications")}</span>
               <button
                 onClick={handlePushToggle}
                 className={cn(
@@ -324,6 +339,8 @@ function PreferencesSection({ user }: { user: UserProfile }) {
 // ─── Account Section (Danger Zone) ──────────────────────────────────────────
 
 function AccountSection({ user }: { user: UserProfile }) {
+  const t = useTranslations("profile");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -350,28 +367,29 @@ function AccountSection({ user }: { user: UserProfile }) {
 
   return (
     <section className="rounded-2xl bg-card p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold text-foreground">Account</h2>
+      <h2 className="mb-4 text-lg font-semibold text-foreground">{t("account")}</h2>
 
       <div className="space-y-4">
         {/* Connected Account */}
         <div>
-          <label className="block text-sm font-medium text-foreground">Connected Account</label>
-          <p className="text-sm text-muted-foreground">{user.email} (Google)</p>
+          <label className="block text-sm font-medium text-foreground">
+            {t("connectedAccount")}
+          </label>
+          <p className="text-sm text-muted-foreground">
+            {t("connectedWith", { email: user.email, provider: "Google" })}
+          </p>
         </div>
 
         {/* Sign Out */}
         <Button variant="outline" onClick={handleSignOut} className="gap-2">
           <LogOut className="h-4 w-4" />
-          Sign Out
+          {t("signOut")}
         </Button>
 
         {/* Danger Zone */}
         <div className="mt-4 rounded-xl border-2 border-destructive/30 p-4">
-          <h3 className="text-sm font-medium text-destructive">Danger Zone</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Deleting your account is scheduled with a 30-day grace period. You can sign back in to
-            cancel.
-          </p>
+          <h3 className="text-sm font-medium text-destructive">{t("dangerZone")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("deleteDesc")}</p>
           <Button
             variant="destructive"
             size="sm"
@@ -379,7 +397,7 @@ function AccountSection({ user }: { user: UserProfile }) {
             onClick={() => setShowDeleteConfirm(true)}
           >
             <Trash2 className="h-4 w-4" />
-            Delete My Account
+            {t("deleteAccount")}
           </Button>
         </div>
       </div>
@@ -388,19 +406,15 @@ function AccountSection({ user }: { user: UserProfile }) {
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Account</DialogTitle>
+            <DialogTitle>{t("deleteConfirmTitle")}</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Your account will be scheduled for deletion in 30 days. During this period, you can sign
-            back in to cancel the deletion. After 30 days, all your data will be permanently
-            removed.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("deleteConfirm")}</p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleDeleteAccount} disabled={isDeleting}>
-              {isDeleting ? "Deleting..." : "Yes, Delete My Account"}
+              {isDeleting ? t("deleting") : t("deleteConfirmAction")}
             </Button>
           </div>
         </DialogContent>
@@ -412,13 +426,14 @@ function AccountSection({ user }: { user: UserProfile }) {
 // ─── Profile Page ───────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
+  const t = useTranslations("profile");
   const user = useUserStore((state) => state.user);
 
   if (!user) {
     return (
       <AppShell>
         <div className="flex h-64 items-center justify-center">
-          <p className="text-muted-foreground">Loading profile...</p>
+          <p className="text-muted-foreground">{t("loadingProfile")}</p>
         </div>
       </AppShell>
     );
@@ -427,7 +442,7 @@ export default function ProfilePage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl space-y-6">
-        <h1 className="text-2xl font-semibold text-foreground">Profile</h1>
+        <h1 className="text-2xl font-semibold text-foreground">{t("title")}</h1>
         <IdentitySection user={user} />
         <StatsSection user={user} />
         <PreferencesSection user={user} />

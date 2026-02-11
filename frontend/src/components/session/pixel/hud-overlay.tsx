@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { LogOut, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ export function HudOverlay({
   onLeave,
 }: HudOverlayProps) {
   const router = useRouter();
+  const t = useTranslations("session");
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
@@ -84,11 +86,8 @@ export function HudOverlay({
       <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Leave Session?</DialogTitle>
-            <DialogDescription>
-              If you leave now, you won&apos;t be able to rejoin this session and your credit will
-              not be refunded. Your tablemates will continue without you.
-            </DialogDescription>
+            <DialogTitle>{t("leaveConfirmTitle")}</DialogTitle>
+            <DialogDescription>{t("leaveConfirmDesc")}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
@@ -96,10 +95,10 @@ export function HudOverlay({
               onClick={() => setShowLeaveDialog(false)}
               disabled={isLeaving}
             >
-              Stay
+              {t("stay")}
             </Button>
             <Button variant="destructive" onClick={handleLeave} disabled={isLeaving}>
-              {isLeaving ? "Leaving..." : "Leave Session"}
+              {isLeaving ? t("leaving") : t("leaveSession")}
             </Button>
           </DialogFooter>
         </DialogContent>

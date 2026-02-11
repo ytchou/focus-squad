@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { SessionPhase } from "@/stores/session-store";
 import { formatTime, PHASE_LABELS, isWorkPhase } from "@/lib/session/phase-utils";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,8 @@ export function TimerDisplay({
   progress,
   compact = false,
 }: TimerDisplayProps) {
+  const t = useTranslations("session");
+
   if (compact) {
     return (
       <div className="inline-flex items-center gap-2 px-3 py-1 bg-muted rounded-full">
@@ -88,7 +91,7 @@ export function TimerDisplay({
       {/* Total session time remaining (smaller, secondary) */}
       {phase !== "completed" && phase !== "idle" && (
         <p className="text-xs text-muted-foreground">
-          {formatTime(totalTimeRemaining)} total remaining
+          {t("totalRemaining", { time: formatTime(totalTimeRemaining) })}
         </p>
       )}
     </div>
@@ -96,18 +99,20 @@ export function TimerDisplay({
 }
 
 function PhaseGuidance({ phase }: { phase: SessionPhase }) {
-  const messages: Record<SessionPhase, string | null> = {
-    idle: "Waiting to start...",
-    setup: "Get settled and prepare to focus",
-    work1: "Deep work time - stay focused!",
-    break: "Take a short break",
-    work2: "Final work block - finish strong!",
-    social: "Chat with your tablemates",
-    completed: "Great session!",
+  const t = useTranslations("session");
+
+  const messageKeys: Record<SessionPhase, string> = {
+    idle: "guidanceIdle",
+    setup: "guidanceSetup",
+    work1: "guidanceWork1",
+    break: "guidanceBreak",
+    work2: "guidanceWork2",
+    social: "guidanceSocial",
+    completed: "guidanceCompleted",
   };
 
-  const message = messages[phase];
-  if (!message) return null;
+  const key = messageKeys[phase];
+  if (!key) return null;
 
-  return <p className="text-sm text-muted-foreground text-center">{message}</p>;
+  return <p className="text-sm text-muted-foreground text-center">{t(key)}</p>;
 }

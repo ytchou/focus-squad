@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,9 @@ interface SessionSummary {
 export default function SessionEndPage() {
   const params = useParams();
   const router = useRouter();
+  const t = useTranslations("sessionEnd");
+  const tRating = useTranslations("rating");
+  const tModeration = useTranslations("moderation");
   const sessionId = params.sessionId as string;
   const { leaveSession } = useSessionStore();
   const {
@@ -130,7 +134,7 @@ export default function SessionEndPage() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Loading session summary...</p>
+          <p className="text-sm text-muted-foreground">{t("loadingSummary")}</p>
         </div>
       </div>
     );
@@ -142,7 +146,7 @@ export default function SessionEndPage() {
   const phasesCompleted = summary?.phases_completed ?? 0;
   const totalPhases = summary?.total_phases ?? 5;
   const mode = summary?.mode ?? "forced_audio";
-  const modeLabel = mode === "forced_audio" ? "Forced Audio" : "Quiet Mode";
+  const modeLabel = mode === "forced_audio" ? t("forcedAudio") : t("quietMode");
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -153,8 +157,8 @@ export default function SessionEndPage() {
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-success/20">
               <CheckCircle className="h-10 w-10 text-success" />
             </div>
-            <CardTitle className="text-2xl font-bold">Session Complete!</CardTitle>
-            <CardDescription>Great focus session. Here&apos;s your summary.</CardDescription>
+            <CardTitle className="text-2xl font-bold">{t("title")}</CardTitle>
+            <CardDescription>{t("summaryDesc")}</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
@@ -162,45 +166,45 @@ export default function SessionEndPage() {
             <div className="grid grid-cols-2 gap-4">
               <StatCard
                 icon={<Clock className="h-5 w-5 text-primary" />}
-                label="Focus Time"
-                value={`${focusMinutes} min`}
+                label={t("focusTime")}
+                value={t("minutes", { minutes: focusMinutes })}
               />
               <StatCard
                 icon={<Sparkles className="h-5 w-5 text-accent" />}
-                label="Essence Earned"
+                label={t("essenceEarned")}
                 value={essenceEarned ? "+1" : "--"}
               />
               <StatCard
                 icon={<Users className="h-5 w-5 text-muted-foreground" />}
-                label="Tablemates"
+                label={t("tablemates")}
                 value={String(tablemateCount)}
               />
               <StatCard
                 icon={<CheckCircle className="h-5 w-5 text-success" />}
-                label="Phases"
-                value={`${phasesCompleted}/${totalPhases}`}
+                label={t("phases")}
+                value={t("phasesValue", { completed: phasesCompleted, total: totalPhases })}
               />
             </div>
 
             {/* Session Details */}
             <div className="bg-muted rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Session ID</span>
+                <span className="text-muted-foreground">{t("sessionId")}</span>
                 <code className="text-xs bg-background px-2 py-1 rounded">
                   {sessionId.slice(0, 8)}...
                 </code>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Duration</span>
-                <span className="font-medium">55 minutes</span>
+                <span className="text-muted-foreground">{t("duration")}</span>
+                <span className="font-medium">{t("durationValue")}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Mode</span>
+                <span className="text-muted-foreground">{t("mode")}</span>
                 <Badge variant="outline">{modeLabel}</Badge>
               </div>
               {summary?.topic && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Topic</span>
+                  <span className="text-muted-foreground">{t("topic")}</span>
                   <span className="font-medium">{summary.topic}</span>
                 </div>
               )}
@@ -217,10 +221,8 @@ export default function SessionEndPage() {
                   <CheckCircle className="h-5 w-5 text-success" />
                 </div>
                 <div>
-                  <h3 className="font-medium">Thanks for your feedback!</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Your ratings help build a trusted community.
-                  </p>
+                  <h3 className="font-medium">{t("thanksFeedback")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("feedbackHelps")}</p>
                 </div>
               </div>
             </CardContent>
@@ -233,8 +235,8 @@ export default function SessionEndPage() {
                   <Star className="h-5 w-5 text-accent" />
                 </div>
                 <div>
-                  <CardTitle className="text-base">Rate your tablemates</CardTitle>
-                  <CardDescription>Were your tablemates focused and present?</CardDescription>
+                  <CardTitle className="text-base">{t("rateTablemates")}</CardTitle>
+                  <CardDescription>{t("rateTablematesQuestion")}</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -263,18 +265,16 @@ export default function SessionEndPage() {
               )}
 
               {hasInvalidRed && (
-                <p className="text-xs text-muted-foreground text-center">
-                  Please select at least one reason for each &ldquo;Had issues&rdquo; rating.
-                </p>
+                <p className="text-xs text-muted-foreground text-center">{t("redReasonHint")}</p>
               )}
 
               <div className="flex gap-3 pt-2">
                 <Button className="flex-1" onClick={handleSubmitRatings} disabled={!canSubmit}>
                   {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                  Submit Ratings
+                  {tRating("submit")}
                 </Button>
                 <Button variant="ghost" onClick={handleSkipAll} disabled={isSubmitting}>
-                  Skip All
+                  {t("skipAll")}
                 </Button>
               </div>
             </CardContent>
@@ -288,7 +288,7 @@ export default function SessionEndPage() {
               onClick={() => setReportPickerOpen(true)}
               className="text-sm text-muted-foreground hover:text-destructive transition-colors underline underline-offset-4"
             >
-              Report a concern
+              {tModeration("reportConcern")}
             </button>
           </div>
         )}
@@ -299,11 +299,9 @@ export default function SessionEndPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Flag className="size-5 text-destructive" />
-                Who would you like to report?
+                {t("reportPickerTitle")}
               </DialogTitle>
-              <DialogDescription>
-                Select a participant to file a report about their behavior.
-              </DialogDescription>
+              <DialogDescription>{t("reportPickerDesc")}</DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
               {rateableUsers.map((user) => (
@@ -344,7 +342,7 @@ export default function SessionEndPage() {
         {/* Return Home Button */}
         <Button size="lg" className="w-full" onClick={handleReturnHome}>
           <Home className="h-4 w-4 mr-2" />
-          Return to Dashboard
+          {t("returnHome")}
         </Button>
       </div>
     </div>

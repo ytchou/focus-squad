@@ -1,16 +1,17 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 const PREDEFINED_TAGS = [
-  "productive",
-  "distracted",
-  "breakthrough",
-  "tired",
-  "energized",
-  "social",
-  "deep-focus",
-  "struggled",
+  { value: "productive", labelKey: "productiveTag" },
+  { value: "distracted", labelKey: "distractedTag" },
+  { value: "breakthrough", labelKey: "breakthroughTag" },
+  { value: "tired", labelKey: "tiredTag" },
+  { value: "energized", labelKey: "energizedTag" },
+  { value: "social", labelKey: "socialTag" },
+  { value: "deep-focus", labelKey: "deepFocusTag" },
+  { value: "struggled", labelKey: "struggledTag" },
 ] as const;
 
 interface DiaryTagPickerProps {
@@ -19,9 +20,11 @@ interface DiaryTagPickerProps {
 }
 
 export function DiaryTagPicker({ selectedTags, onChange }: DiaryTagPickerProps) {
+  const t = useTranslations("diary");
+
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
-      onChange(selectedTags.filter((t) => t !== tag));
+      onChange(selectedTags.filter((tg) => tg !== tag));
     } else {
       onChange([...selectedTags, tag]);
     }
@@ -29,15 +32,15 @@ export function DiaryTagPicker({ selectedTags, onChange }: DiaryTagPickerProps) 
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-foreground">Session tags</p>
+      <p className="text-sm font-medium text-foreground">{t("sessionTags")}</p>
       <div className="flex flex-wrap gap-2">
         {PREDEFINED_TAGS.map((tag) => {
-          const isSelected = selectedTags.includes(tag);
+          const isSelected = selectedTags.includes(tag.value);
           return (
             <button
-              key={tag}
+              key={tag.value}
               type="button"
-              onClick={() => toggleTag(tag)}
+              onClick={() => toggleTag(tag.value)}
               className={cn(
                 "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                 isSelected
@@ -45,7 +48,7 @@ export function DiaryTagPicker({ selectedTags, onChange }: DiaryTagPickerProps) 
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
             >
-              {tag}
+              {t(tag.labelKey)}
             </button>
           );
         })}

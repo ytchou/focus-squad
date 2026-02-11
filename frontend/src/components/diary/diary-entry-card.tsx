@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Target,
   Coffee,
@@ -22,23 +23,24 @@ interface DiaryEntryCardProps {
 
 const PHASE_CONFIG = {
   setup: {
-    label: "Goal",
+    labelKey: "goalTag" as const,
     icon: Target,
     className: "bg-primary/10 border-primary/20 text-primary",
   },
   break: {
-    label: "Check-in",
+    labelKey: "checkInLabel" as const,
     icon: Coffee,
     className: "bg-success/10 border-success/20 text-success",
   },
   social: {
-    label: "Afterthoughts",
+    labelKey: "afterthoughtsLabel" as const,
     icon: MessageCircle,
     className: "bg-accent/10 border-accent/20 text-accent",
   },
 } as const;
 
 export function DiaryEntryCard({ entry, onSaveNote }: DiaryEntryCardProps) {
+  const t = useTranslations("diary");
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -69,7 +71,7 @@ export function DiaryEntryCard({ entry, onSaveNote }: DiaryEntryCardProps) {
       <div className="mb-4 flex items-start justify-between">
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-foreground">
-            {entry.session_topic || "Focus Session"}
+            {entry.session_topic || t("focusSession")}
           </h3>
           <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
             <span>{formattedDate}</span>
@@ -80,12 +82,14 @@ export function DiaryEntryCard({ entry, onSaveNote }: DiaryEntryCardProps) {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-primary" />
-            <span className="font-medium text-foreground">{entry.focus_minutes} min</span>
+            <span className="font-medium text-foreground">
+              {t("min", { minutes: entry.focus_minutes })}
+            </span>
           </div>
           {entry.focus_minutes >= 20 && (
             <div className="flex items-center gap-2 text-sm">
               <Sparkles className="h-4 w-4 text-accent" />
-              <span className="font-medium text-foreground">+1 Essence</span>
+              <span className="font-medium text-foreground">{t("essence")}</span>
             </div>
           )}
         </div>
@@ -111,8 +115,9 @@ export function DiaryEntryCard({ entry, onSaveNote }: DiaryEntryCardProps) {
             className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            {entry.reflections.length} Reflection
-            {entry.reflections.length > 1 ? "s" : ""}
+            {entry.reflections.length > 1
+              ? t("reflectionCountPlural", { count: entry.reflections.length })
+              : t("reflectionCount", { count: entry.reflections.length })}
           </button>
 
           {isExpanded && (
@@ -127,7 +132,7 @@ export function DiaryEntryCard({ entry, onSaveNote }: DiaryEntryCardProps) {
                   >
                     <div className="mb-1 flex items-center gap-2">
                       <Icon className="h-3.5 w-3.5" />
-                      <span className="text-xs font-medium">{config.label}</span>
+                      <span className="text-xs font-medium">{t(config.labelKey)}</span>
                     </div>
                     <p className="pl-5 text-sm leading-relaxed text-foreground/90">
                       {reflection.content}
@@ -142,7 +147,7 @@ export function DiaryEntryCard({ entry, onSaveNote }: DiaryEntryCardProps) {
 
       {/* No reflections placeholder */}
       {entry.reflections.length === 0 && (
-        <p className="mb-4 text-sm text-muted-foreground/60">No reflections this session</p>
+        <p className="mb-4 text-sm text-muted-foreground/60">{t("noReflections")}</p>
       )}
 
       {/* Journal note display */}

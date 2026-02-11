@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Bot, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,8 @@ function getInitials(name: string): string {
 }
 
 export function CompactTableView({ participants, speakingParticipantIds }: CompactTableViewProps) {
+  const t = useTranslations("session");
+
   return (
     <div className="flex items-center justify-center gap-3 py-2">
       {[1, 2, 3, 4].map((seatNum) => {
@@ -42,7 +45,7 @@ export function CompactTableView({ participants, speakingParticipantIds }: Compa
           );
         }
 
-        const name = p.displayName || p.username || (p.isAI ? "AI" : "User");
+        const name = p.displayName || p.username || (p.isAI ? t("aiCompanion") : "User");
         const isSpeaking = p.livekitIdentity
           ? speakingParticipantIds.has(p.livekitIdentity)
           : false;
@@ -80,7 +83,7 @@ export function CompactTableView({ participants, speakingParticipantIds }: Compa
               </div>
             </div>
             <span className="text-[10px] text-muted-foreground truncate max-w-[48px]">
-              {p.isCurrentUser ? "You" : name.split(" ")[0]}
+              {p.isCurrentUser ? t("you") : name.split(" ")[0]}
             </span>
           </div>
         );

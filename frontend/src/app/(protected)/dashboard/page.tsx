@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCreditsStore, useUserStore, useRatingStore, useUIStore } from "@/stores";
 import { useSessionStore } from "@/stores/session-store";
 import { api, ApiError } from "@/lib/api/client";
@@ -18,6 +19,8 @@ const DEBUG_WAIT_MINUTES = 1;
 
 export default function DashboardPage() {
   const router = useRouter();
+  const t = useTranslations("dashboard");
+  const tRating = useTranslations("rating");
   const user = useUserStore((state) => state.user);
   const credits = useCreditsStore((state) => state.balance);
   const {
@@ -94,12 +97,12 @@ export default function DashboardPage() {
       }
 
       // Show success toast
-      toast.success(debugMode ? "🐛 Debug Match!" : "Match found!", {
+      toast.success(debugMode ? "Debug Match!" : t("matchFound"), {
         description: debugMode
           ? `Debug mode: Session starts in ${DEBUG_WAIT_MINUTES} minutes`
           : data.is_immediate
-            ? "Session starting now!"
-            : `Session starts in ${data.wait_minutes} minutes`,
+            ? t("sessionStartingNow")
+            : t("sessionStartsIn", { minutes: data.wait_minutes }),
       });
 
       // Redirect to waiting room
@@ -123,14 +126,14 @@ export default function DashboardPage() {
 
               if (sessionStart <= now) {
                 // Session already started - go directly to session
-                toast.info("Rejoining your session!", {
-                  description: "Your session has already started.",
+                toast.info(t("rejoiningSession"), {
+                  description: t("sessionAlreadyStarted"),
                 });
                 router.push(`/session/${existingSessionId}`);
               } else {
                 // Session hasn't started - go to waiting room
-                toast.info("You already have a session!", {
-                  description: "Redirecting to your waiting room...",
+                toast.info(t("alreadyHaveSession"), {
+                  description: t("redirectingToWaiting"),
                 });
                 router.push(`/session/${existingSessionId}/waiting`);
               }
@@ -157,8 +160,8 @@ export default function DashboardPage() {
           ? error.message
           : typeof error === "object" && error !== null && "detail" in error
             ? String((error as { detail: unknown }).detail)
-            : "Please try again";
-      toast.error("Failed to join table", {
+            : t("pleaseTryAgain");
+      toast.error(t("failedToJoinTable"), {
         description: errorMessage,
       });
     } finally {
@@ -174,9 +177,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-foreground">
-                Welcome back, {user?.display_name ?? user?.username ?? "Friend"}!
+                {t("welcomeBack", { name: user?.display_name ?? user?.username ?? "Friend" })}
               </h1>
-              <p className="mt-1 text-muted-foreground">Ready for your next focus session?</p>
+              <p className="mt-1 text-muted-foreground">{t("welcomeSubtitle")}</p>
             </div>
             {user && <ReliabilityBadge score={user.reliability_score} />}
           </div>
@@ -193,10 +196,8 @@ export default function DashboardPage() {
                 <AlertTriangle className="h-5 w-5 text-warning" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-foreground">You have pending ratings</p>
-                <p className="text-sm text-muted-foreground">
-                  Please rate your tablemates from your last session before joining a new one.
-                </p>
+                <p className="font-medium text-foreground">{t("pendingRatingsTitle")}</p>
+                <p className="text-sm text-muted-foreground">{tRating("pendingDesc")}</p>
               </div>
             </div>
           </button>
@@ -208,23 +209,28 @@ export default function DashboardPage() {
         {/* Stats grid */}
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard
-            title="Sessions"
+            title={t("sessions")}
             value={user?.session_count ?? 0}
-            subtitle="completed this week"
+            subtitle={t("completedThisWeek")}
             icon={Clock}
           />
           <StatCard
-            title="Focus Time"
-            value={`${user?.total_focus_minutes ?? 0} min`}
-            subtitle="total focus time"
+            title={t("focusTime")}
+            value={t("focusMinutes", { minutes: user?.total_focus_minutes ?? 0 })}
+            subtitle={t("totalFocusTime")}
             icon={Flame}
           />
-          <StatCard title="Credits" value={credits} subtitle="available this week" icon={Coins} />
+          <StatCard
+            title={t("credits")}
+            value={credits}
+            subtitle={t("availableThisWeek")}
+            icon={Coins}
+          />
         </div>
 
         {/* Quick actions */}
         <div className="rounded-2xl bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Quick Actions</h2>
+          <h2 className="mb-4 text-lg font-semibold text-foreground">{t("quickActions")}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <button
               onClick={() => setShowModeModal(true)}
@@ -240,10 +246,10 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="font-medium text-foreground">
-                  {isMatching ? "Matching..." : "Join a Table"}
+                  {isMatching ? t("matching") : t("joinTable")}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {credits === 0 ? "No credits available" : "Join a study session"}
+                  {credits === 0 ? t("noCreditsAvailable") : t("joinStudySession")}
                 </p>
               </div>
             </button>
@@ -255,8 +261,8 @@ export default function DashboardPage() {
                 <BookOpen className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium text-foreground">Diary</p>
-                <p className="text-sm text-muted-foreground">Growth journal & history</p>
+                <p className="font-medium text-foreground">{t("viewDiary")}</p>
+                <p className="text-sm text-muted-foreground">{t("growthJournal")}</p>
               </div>
             </button>
             <button
@@ -267,8 +273,8 @@ export default function DashboardPage() {
                 <Coins className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium text-foreground">Get More Credits</p>
-                <p className="text-sm text-muted-foreground">Upgrade your plan</p>
+                <p className="font-medium text-foreground">{t("getMoreCredits")}</p>
+                <p className="text-sm text-muted-foreground">{t("upgradePlan")}</p>
               </div>
             </button>
           </div>

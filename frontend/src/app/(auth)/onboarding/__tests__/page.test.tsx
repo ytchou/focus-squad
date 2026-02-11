@@ -109,7 +109,7 @@ describe("OnboardingPage", () => {
       render(<OnboardingPage />);
 
       expect(screen.getByText("Welcome to Focus Squad")).toBeInTheDocument();
-      expect(screen.getByText("Your cozy corner for getting things done.")).toBeInTheDocument();
+      expect(screen.getByText("Your cozy corner for getting things done")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /let's get started/i })).toBeInTheDocument();
     });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { DayPicker } from "react-day-picker";
 import { DiaryEntryCard } from "./diary-entry-card";
 import type { DiaryEntry } from "@/lib/api/client";
@@ -11,6 +12,7 @@ interface DiaryCalendarProps {
 }
 
 export function DiaryCalendar({ entries, onSaveNote }: DiaryCalendarProps) {
+  const t = useTranslations("diary");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
 
   // Build set of dates that have sessions
@@ -42,10 +44,10 @@ export function DiaryCalendar({ entries, onSaveNote }: DiaryCalendarProps) {
           className="diary-calendar"
         />
         <div className="mt-4 text-sm text-muted-foreground">
-          <p className="mb-1 font-medium text-foreground">Legend</p>
+          <p className="mb-1 font-medium text-foreground">{t("legend")}</p>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded bg-primary/20" />
-            <span>Session completed</span>
+            <span>{t("sessionCompleted")}</span>
           </div>
         </div>
       </div>
@@ -54,13 +56,13 @@ export function DiaryCalendar({ entries, onSaveNote }: DiaryCalendarProps) {
       <div>
         {!selectedDate && (
           <div className="rounded-2xl border border-border bg-card p-12 text-center">
-            <p className="text-foreground">Select a date to view sessions</p>
+            <p className="text-foreground">{t("selectDateToView")}</p>
           </div>
         )}
 
         {selectedDate && selectedEntries.length === 0 && (
           <div className="rounded-2xl border border-border bg-card p-12 text-center">
-            <p className="mb-2 text-foreground">No sessions on this date</p>
+            <p className="mb-2 text-foreground">{t("noSessionsOnDate")}</p>
             <p className="text-sm text-muted-foreground">
               {selectedDate.toLocaleDateString(undefined, {
                 weekday: "long",

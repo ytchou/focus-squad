@@ -65,7 +65,7 @@ describe("DiaryEntryCard", () => {
   it("shows no-reflections placeholder when empty", () => {
     const empty = { ...baseEntry, reflections: [] };
     render(<DiaryEntryCard entry={empty} onSaveNote={mockSaveNote} />);
-    expect(screen.getByText("No reflections this session")).toBeInTheDocument();
+    expect(screen.getByText("No reflections for this session")).toBeInTheDocument();
   });
 
   it("renders tags as badges", () => {
@@ -100,7 +100,7 @@ describe("DiaryEntryCard", () => {
     fireEvent.click(screen.getByText("Add journal note"));
 
     // Type in the textarea
-    const textarea = screen.getByPlaceholderText(/reflect on your session/i);
+    const textarea = screen.getByPlaceholderText(/add a personal note about this session/i);
     fireEvent.change(textarea, { target: { value: "My note" } });
 
     // Save
