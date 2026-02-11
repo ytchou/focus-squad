@@ -14,10 +14,19 @@ import {
   Loader2,
   AlertCircle,
   Star,
+  Flag,
 } from "lucide-react";
 import { useSessionStore } from "@/stores/session-store";
 import { useRatingStore } from "@/stores/rating-store";
 import { RatingCard } from "@/components/session/rating-card";
+import { ReportModal } from "@/components/moderation/report-modal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { api } from "@/lib/api/client";
 
 interface SessionSummary {
@@ -53,6 +62,11 @@ export default function SessionEndPage() {
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [ratingsCompleted, setRatingsCompleted] = useState(false);
+  const [reportPickerOpen, setReportPickerOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{
+    user_id: string;
+    display_name: string;
+  } | null>(null);
 
   // Fetch session summary and pending ratings
   useEffect(() => {
@@ -267,6 +281,66 @@ export default function SessionEndPage() {
           </Card>
         ) : null}
 
+        {/* Report a concern */}
+        {rateableUsers.length > 0 && (
+          <div className="text-center">
+            <button
+              onClick={() => setReportPickerOpen(true)}
+              className="text-sm text-muted-foreground hover:text-destructive transition-colors underline underline-offset-4"
+            >
+              Report a concern
+            </button>
+          </div>
+        )}
+
+        {/* Report Picker Dialog */}
+        <Dialog open={reportPickerOpen} onOpenChange={setReportPickerOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Flag className="size-5 text-destructive" />
+                Who would you like to report?
+              </DialogTitle>
+              <DialogDescription>
+                Select a participant to file a report about their behavior.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              {rateableUsers.map((user) => (
+                <button
+                  key={user.user_id}
+                  onClick={() => {
+                    setReportTarget({
+                      user_id: user.user_id,
+                      display_name: user.display_name || user.username || "User",
+                    });
+                    setReportPickerOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 rounded-lg border border-border p-3 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-medium text-primary">
+                    {getInitials(user.display_name || user.username || "U")}
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    {user.display_name || user.username || "User"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Report Modal */}
+        {reportTarget && (
+          <ReportModal
+            isOpen={!!reportTarget}
+            onClose={() => setReportTarget(null)}
+            reportedUserId={reportTarget.user_id}
+            reportedDisplayName={reportTarget.display_name}
+            sessionId={sessionId}
+          />
+        )}
+
         {/* Return Home Button */}
         <Button size="lg" className="w-full" onClick={handleReturnHome}>
           <Home className="h-4 w-4 mr-2" />
@@ -287,4 +361,12 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
       <p className="text-xl font-bold">{value}</p>
     </div>
   );
+}
+
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
 }

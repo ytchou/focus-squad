@@ -94,6 +94,7 @@ export function SessionBoard({
 
       {/* Input */}
       <BoardInput
+        sessionId={sessionId}
         currentPhase={reflectionPhase}
         isSaving={isSaving}
         onSendChat={handleSendChat}

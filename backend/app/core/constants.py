@@ -91,3 +91,8 @@ PIXEL_ROOMS = [
     "coffee-shop",
     "library",
 ]
+
+# Moderation
+REPORT_DESCRIPTION_MAX_LENGTH = 2000
+FLAG_WINDOW_DAYS = 7  # Rolling window for pattern detection
+MAX_REPORTS_PER_SESSION = 3  # Prevent report spam per user per session

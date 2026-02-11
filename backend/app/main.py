@@ -11,7 +11,16 @@ from app.core.logging_config import setup_logging
 from app.core.middleware import JWTValidationMiddleware
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.redis import close_redis, init_redis
-from app.routers import analytics, credits, health, reflections, sessions, users, webhooks
+from app.routers import (
+    analytics,
+    credits,
+    health,
+    moderation,
+    reflections,
+    sessions,
+    users,
+    webhooks,
+)
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -66,4 +75,7 @@ app.include_router(
 app.include_router(sessions.router, prefix=f"{settings.api_prefix}/sessions", tags=["Sessions"])
 app.include_router(credits.router, prefix=f"{settings.api_prefix}/credits", tags=["Credits"])
 app.include_router(analytics.router, prefix=f"{settings.api_prefix}/analytics", tags=["Analytics"])
+app.include_router(
+    moderation.router, prefix=f"{settings.api_prefix}/moderation", tags=["Moderation"]
+)
 app.include_router(webhooks.router, prefix=f"{settings.api_prefix}/webhooks", tags=["Webhooks"])
