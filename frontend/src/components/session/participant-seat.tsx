@@ -10,6 +10,7 @@ import type { PresenceState } from "@/types/activity";
 
 export interface ParticipantSeatProps {
   id: string;
+  userId: string | null;
   seatNumber: number;
   username: string | null;
   displayName: string | null;
@@ -24,6 +25,7 @@ export interface ParticipantSeatProps {
 
 export function ParticipantSeat({
   id,
+  userId,
   seatNumber: _seatNumber,
   username,
   displayName,
@@ -66,7 +68,7 @@ export function ParticipantSeat({
 
   const name = displayName || username || (isAI ? "AI Companion" : "User");
   const initials = getInitials(name);
-  const showMenu = !isAI && !isCurrentUser;
+  const showMenu = !isAI && !isCurrentUser && !!userId;
 
   return (
     <div
@@ -175,7 +177,7 @@ export function ParticipantSeat({
         <ReportModal
           isOpen={reportOpen}
           onClose={() => setReportOpen(false)}
-          reportedUserId={id}
+          reportedUserId={userId!}
           reportedDisplayName={name}
           sessionId={sessionId}
         />

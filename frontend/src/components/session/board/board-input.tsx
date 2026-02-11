@@ -40,14 +40,16 @@ export function BoardInput({
 
     if (isBlocked(trimmed)) {
       toast.error("Message not sent - please rephrase.");
-      const category = getMatchedCategory(trimmed);
-      api
-        .post("/moderation/flag", {
-          session_id: sessionId,
-          content: trimmed,
-          matched_pattern: category,
-        })
-        .catch(() => {});
+      if (sessionId) {
+        const category = getMatchedCategory(trimmed);
+        api
+          .post("/moderation/flag", {
+            session_id: sessionId,
+            content: trimmed,
+            matched_pattern: category,
+          })
+          .catch(() => {});
+      }
       return;
     }
 

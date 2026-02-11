@@ -38,6 +38,7 @@ export function TableView({
         <ParticipantSeat
           key={seatNumber}
           id={`empty-${seatNumber}`}
+          userId={null}
           seatNumber={seatNumber}
           username={null}
           displayName={null}
@@ -62,7 +63,7 @@ export function TableView({
         key={participant.id}
         {...participant}
         isSpeaking={isSpeaking}
-        isCurrentUser={participant.id === currentUserId}
+        isCurrentUser={participant.userId === currentUserId}
         sessionId={sessionId}
       />
     );

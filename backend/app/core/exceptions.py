@@ -208,7 +208,9 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ReportLimitExceededError)
     async def _report_limit(request: Request, exc: ReportLimitExceededError) -> JSONResponse:
-        return error_response(429, str(exc), "REPORT_LIMIT_EXCEEDED")
+        return error_response(
+            429, "Report limit reached for this session.", "REPORT_LIMIT_EXCEEDED"
+        )
 
     # --- Infrastructure handlers ---
 

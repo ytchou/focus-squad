@@ -95,6 +95,7 @@ export default function SessionPage() {
   const [participants, setParticipants] = useState<
     Array<{
       id: string;
+      userId: string | null;
       livekitIdentity: string | null; // LiveKit identity (user_id for humans, null for AI)
       seatNumber: number;
       username: string | null;
@@ -139,6 +140,7 @@ export default function SessionPage() {
         // Note: LiveKit identity is the user_id, used for speaking detection
         const mappedParticipants = session.participants.map((p) => ({
           id: p.id,
+          userId: p.user_id,
           livekitIdentity: p.user_id, // LiveKit uses user_id as participant identity
           seatNumber: p.seat_number,
           username: p.username,
@@ -172,6 +174,7 @@ export default function SessionPage() {
         const session = await api.get<SessionApiResponse>(`/sessions/${sessionId}`);
         const mappedParticipants = session.participants.map((p) => ({
           id: p.id,
+          userId: p.user_id,
           livekitIdentity: p.user_id,
           seatNumber: p.seat_number,
           username: p.username,
@@ -503,6 +506,7 @@ interface SessionPageContentProps {
   progress: number;
   participants: Array<{
     id: string;
+    userId: string | null;
     livekitIdentity: string | null;
     seatNumber: number;
     username: string | null;

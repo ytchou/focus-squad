@@ -112,7 +112,7 @@ class ModerationService:
             reported_user_id,
             category.value,
         )
-        return dict(result.data[0]) if result.data else row  # type: ignore[arg-type]
+        return dict(result.data[0]) if len(result.data) > 0 else row  # type: ignore[arg-type]
 
     def get_user_flag_count(self, user_id: str, window_days: int = FLAG_WINDOW_DAYS) -> int:
         """Count flagged messages for a user in the rolling window."""
