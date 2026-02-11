@@ -508,9 +508,12 @@
 - [x] Write tests for rate limit key extraction and 429 handler
 
 #### Zero Credits UX
-- [ ] Show upgrade modal when credits hit 0 (tier comparison + pricing placeholder)
-- [ ] Display countdown to next credit refresh date
-- [ ] Add referral prompt ("Refer a friend, both earn 1 credit")
+- [x] Create `useCountdown` hook (`frontend/src/hooks/use-countdown.ts`) + tests
+- [x] Add backend "Notify Me" endpoint (`POST /credits/notify-interest`) + migration
+- [x] Build `UpgradeModal` component (tier comparison + countdown + referral + "Coming Soon" pricing)
+- [x] Build `ZeroCreditCard` dashboard info card (countdown-focused, between ratings alert and stats)
+- [x] Modify `CreditBadge` — zero-state tooltip with countdown + click opens modal
+- [x] Wire up: dashboard (render card + handle 402), app shell (render modal), header (pass props)
 
 #### Chat Safety & Moderation
 - [ ] Implement keyword blocklist filter for chat messages
@@ -545,7 +548,7 @@
 
 ---
 
-## Phase 5: Public Launch Prep
+## Phase 5: Launch Prep
 
 ### Friends & Private Study Groups
 - [ ] Friend request/accept flow
@@ -566,7 +569,6 @@
 - [ ] Performance testing
 - [ ] Mobile responsiveness check
 - [ ] Accessibility audit (basic)
-
 
 ### PWA
 - [ ] Service worker for offline shell

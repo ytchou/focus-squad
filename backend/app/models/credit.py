@@ -138,6 +138,13 @@ class ApplyReferralResponse(BaseModel):
     )
 
 
+class NotifyInterestResponse(BaseModel):
+    """Response after registering upgrade interest."""
+
+    success: bool
+    message: str = "We'll notify you when pricing is available!"
+
+
 # Exception classes
 
 

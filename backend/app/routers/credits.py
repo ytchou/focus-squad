@@ -6,13 +6,16 @@ Handles:
 - POST /gift - Gift credits to another user
 - GET /referral - Get referral code and stats
 - POST /referral/apply - Apply a referral code
+- POST /notify-interest - Register upgrade pricing interest
 """
 
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
+from app.core.database import get_supabase
 from app.core.rate_limit import limiter
 from app.models.credit import (
     ApplyReferralRequest,
@@ -20,10 +23,13 @@ from app.models.credit import (
     CreditBalance,
     GiftRequest,
     GiftResponse,
+    NotifyInterestResponse,
     ReferralInfo,
 )
 from app.services.credit_service import CreditService
 from app.services.user_service import UserService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -131,3 +137,34 @@ async def apply_referral_code(
         success=True,
         referred_by_username=referrer_username,
     )
+
+
+@router.post("/notify-interest", response_model=NotifyInterestResponse)
+@limiter.limit("5/minute")
+async def register_upgrade_interest(
+    request: Request,
+    user: AuthUser = Depends(require_auth_from_state),
+    user_service: UserService = Depends(get_user_service),
+) -> NotifyInterestResponse:
+    """
+    Register user's interest in paid tier upgrades.
+
+    Idempotent: duplicate calls are silently ignored.
+    Uses the user's existing email from their profile.
+    """
+    profile = user_service.get_user_by_auth_id(user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        supabase = get_supabase()
+        supabase.table("upgrade_interest").upsert(
+            {"user_id": profile.id, "email": profile.email},
+            on_conflict="user_id",
+        ).execute()
+    except Exception:
+        logger.exception("Failed to register upgrade interest for user %s", profile.id)
+        raise HTTPException(status_code=500, detail="Failed to register interest")
+
+    logger.info("Upgrade interest registered for user %s", profile.id)
+    return NotifyInterestResponse(success=True)

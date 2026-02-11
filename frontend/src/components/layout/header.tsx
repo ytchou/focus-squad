@@ -18,8 +18,10 @@ import { useDebugBanner } from "@/hooks/use-debug-banner";
 export function Header() {
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const user = useUserStore((state) => state.user);
+  const openModal = useUIStore((state) => state.openModal);
   const credits = useCreditsStore((state) => state.balance);
   const tier = useCreditsStore((state) => state.tier);
+  const refreshDate = useCreditsStore((state) => state.refreshDate);
   const weeklyLimit = useCreditsStore((state) =>
     state.tier === "infinite" || state.tier === "admin" ? undefined : state.weeklyLimit
   );
@@ -61,6 +63,8 @@ export function Header() {
           <CreditBadge
             credits={credits}
             maxCredits={weeklyLimit}
+            refreshDate={refreshDate}
+            onClick={() => openModal("upgrade")}
             size="sm"
             className="hidden sm:flex"
           />
