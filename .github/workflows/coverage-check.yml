@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["Backend CI", "Frontend CI"]
     types: [completed]
-    branches: [main, 'ytchou/**']
+    branches: ['**']
 
 # Need write permissions to create check runs and post comments
 permissions:
