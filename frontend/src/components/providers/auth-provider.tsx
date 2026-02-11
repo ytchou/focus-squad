@@ -81,7 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } else if (event === "SIGNED_OUT") {
         clearAuthToken();
-        document.cookie = "NEXT_LOCALE=;path=/;max-age=0";
         useUserStore.getState().clearUser();
       }
     });
