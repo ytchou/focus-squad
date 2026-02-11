@@ -92,6 +92,12 @@ PIXEL_ROOMS = [
     "library",
 ]
 
+# Find Table — Social proof estimates (Taiwan market, UTC+8)
+UPCOMING_SLOTS_COUNT = 6
+PEAK_HOUR_ESTIMATE = 25  # 19:00-23:00 local
+MODERATE_HOUR_ESTIMATE = 12  # 09:00-18:00 local
+OFF_PEAK_HOUR_ESTIMATE = 5  # Other hours
+
 # Moderation
 REPORT_DESCRIPTION_MAX_LENGTH = 2000
 FLAG_WINDOW_DAYS = 7  # Rolling window for pattern detection

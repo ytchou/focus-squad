@@ -4,7 +4,8 @@ Pydantic models for session-related operations.
 Models:
 - Enums: TableMode, SessionPhase, ParticipantType
 - Request models: SessionFilters, QuickMatchRequest, LeaveSessionRequest
-- Response models: ParticipantInfo, SessionInfo, QuickMatchResponse, UpcomingSession
+- Response models: ParticipantInfo, SessionInfo, QuickMatchResponse, UpcomingSession,
+                   TimeSlotInfo, UpcomingSlotsResponse
 - Database models: SessionDB, ParticipantDB
 """
 
@@ -66,6 +67,9 @@ class QuickMatchRequest(BaseModel):
     """Request to quick-match into a session."""
 
     filters: Optional[SessionFilters] = None
+    target_slot_time: Optional[datetime] = Field(
+        None, description="Specific :00/:30 slot to join (if omitted, uses next available)"
+    )
 
 
 class LeaveSessionRequest(BaseModel):
@@ -147,6 +151,21 @@ class UpcomingSessionsResponse(BaseModel):
     """Response for upcoming sessions list."""
 
     sessions: list[UpcomingSession] = Field(default_factory=list)
+
+
+class TimeSlotInfo(BaseModel):
+    """Information about an upcoming time slot for the Find Table hero."""
+
+    start_time: datetime
+    queue_count: int = Field(0, ge=0, description="Actual human signups for this slot")
+    estimated_count: int = Field(0, ge=0, description="Historical estimate for this time of day")
+    has_user_session: bool = Field(False, description="True if user already joined this slot")
+
+
+class UpcomingSlotsResponse(BaseModel):
+    """Response for upcoming time slots endpoint."""
+
+    slots: list[TimeSlotInfo] = Field(default_factory=list)
 
 
 class LeaveSessionResponse(BaseModel):

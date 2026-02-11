@@ -21,9 +21,13 @@ from app.core.config import get_settings
 from app.core.constants import (
     AI_COMPANION_NAMES,
     MAX_PARTICIPANTS,
+    MODERATE_HOUR_ESTIMATE,
+    OFF_PEAK_HOUR_ESTIMATE,
+    PEAK_HOUR_ESTIMATE,
     PIXEL_ROOMS,
     SESSION_DURATION_MINUTES,
     SLOT_SKIP_THRESHOLD_MINUTES,
+    UPCOMING_SLOTS_COUNT,
 )
 from app.core.database import get_supabase
 from app.models.session import (
@@ -143,6 +147,111 @@ class SessionService:
             next_slot = next_slot + timedelta(minutes=30)
 
         return next_slot
+
+    def calculate_upcoming_slots(self, count: int = UPCOMING_SLOTS_COUNT) -> list[datetime]:
+        """
+        Return the next `count` upcoming :00/:30 slot times.
+
+        Extends calculate_next_slot() forward by 30-minute increments.
+        """
+        first_slot = self.calculate_next_slot()
+        return [first_slot + timedelta(minutes=30 * i) for i in range(count)]
+
+    def get_slot_queue_counts(
+        self,
+        slot_times: list[datetime],
+        mode: Optional[str] = None,
+    ) -> dict[str, int]:
+        """
+        Get total human participants queued for each slot across all tables.
+
+        Args:
+            slot_times: List of slot datetimes to check
+            mode: Optional table mode filter ("forced_audio" or "quiet")
+
+        Returns:
+            Dict mapping ISO time string to participant count
+        """
+        if not slot_times:
+            return {}
+
+        iso_times = [t.isoformat() for t in slot_times]
+
+        # Query sessions at these start times that haven't ended
+        query = (
+            self.supabase.table("sessions")
+            .select("id, start_time, session_participants(count)")
+            .in_("start_time", iso_times)
+            .neq("current_phase", "ended")
+        )
+        if mode:
+            query = query.eq("mode", mode)
+
+        result = query.execute()
+
+        # Aggregate counts by start_time
+        counts: dict[str, int] = dict.fromkeys(iso_times, 0)
+        for session in result.data or []:
+            start = session.get("start_time")
+            # Normalize Z suffix for matching
+            if start and start.endswith("+00:00"):
+                start_key = start
+            elif start and start.endswith("Z"):
+                start_key = start[:-1] + "+00:00"
+            else:
+                start_key = start
+            participant_count = (session.get("session_participants") or [{}])[0].get("count", 0)
+            if start_key in counts:
+                counts[start_key] += participant_count
+        return counts
+
+    def get_slot_estimates(self, slot_times: list[datetime]) -> dict[str, int]:
+        """
+        Return estimated popularity for each time slot based on hour-of-day.
+
+        MVP: Static estimates using Taiwan peak hours (UTC+8).
+        Future: Replace with rolling 30-day averages from analytics.
+        """
+        estimates: dict[str, int] = {}
+        for slot_time in slot_times:
+            # Rough UTC+8 conversion for Taiwan market
+            local_hour = (slot_time.hour + 8) % 24
+            if 19 <= local_hour <= 23:
+                estimates[slot_time.isoformat()] = PEAK_HOUR_ESTIMATE
+            elif 9 <= local_hour <= 18:
+                estimates[slot_time.isoformat()] = MODERATE_HOUR_ESTIMATE
+            else:
+                estimates[slot_time.isoformat()] = OFF_PEAK_HOUR_ESTIMATE
+        return estimates
+
+    def get_user_sessions_at_slots(self, user_id: str, slot_times: list[datetime]) -> set[str]:
+        """
+        Return set of ISO time strings where user already has an active session.
+        """
+        if not slot_times:
+            return set()
+
+        iso_times = [t.isoformat() for t in slot_times]
+
+        result = (
+            self.supabase.table("session_participants")
+            .select("sessions(start_time)")
+            .eq("user_id", user_id)
+            .is_("left_at", "null")
+            .execute()
+        )
+
+        user_slot_times: set[str] = set()
+        for row in result.data or []:
+            session = row.get("sessions")
+            if session:
+                start = session.get("start_time", "")
+                # Normalize
+                if start.endswith("Z"):
+                    start = start[:-1] + "+00:00"
+                if start in iso_times:
+                    user_slot_times.add(start)
+        return user_slot_times
 
     # =========================================================================
     # Session Retrieval

@@ -542,5 +542,22 @@
     "sessionNotFound": "找不到學習",
     "banned": "你的帳號已被暫時停權",
     "networkError": "網路錯誤，請檢查你的連線。"
+  },
+  "findTable": {
+    "title": "尋找你的桌位",
+    "subtitle": "選擇時段，和夥伴一起專注",
+    "modeLabel": "桌位模式",
+    "forcedAudio": "語音",
+    "quietMode": "安靜",
+    "topicPlaceholder": "你在做什麼？（選填）",
+    "topicLabel": "主題",
+    "joinSlot": "加入",
+    "joining": "加入中...",
+    "joined": "已加入",
+    "studyBuddies": "{count} 位學習夥伴",
+    "usuallyAtThisTime": "通常約 {count} 人在此時段",
+    "beTheFirst": "成為第一個！",
+    "noCreditsHint": "需要點數才能加入桌位",
+    "pendingRatingsHint": "請先完成桌友評分"
   }
 }

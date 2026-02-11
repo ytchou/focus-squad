@@ -576,14 +576,25 @@
 - [x] All existing tests pass
 - [x] No missing translation key warnings in console
 
-#### Find Table Page (Frontend)
-- [ ] Build `/find-table` page with quick-match flow
-  - [ ] Table mode selector (Forced Audio / Quiet)
-  - [ ] Topic/tag optional input
-  - [ ] "Find Me a Table" CTA button (calls `POST /sessions/quick-match`)
-  - [ ] Loading/matching animation state
-  - [ ] Error handling: zero credits (402), pending ratings (403), already in session
-  - [ ] Redirect to waiting room on successful match
+#### Find Table — Dashboard Hero Section
+> **Design Doc:** [output/plan/2026-02-11-find-table-dashboard-hero.md](output/plan/2026-02-11-find-table-dashboard-hero.md)
+
+**Backend:**
+- [x] Add `TimeSlotInfo`, `UpcomingSlotsResponse` models + update `QuickMatchRequest` with `target_slot_time`
+- [x] Add service methods: `calculate_upcoming_slots`, `get_slot_queue_counts`, `get_slot_estimates`, `get_user_sessions_at_slots`
+- [x] Add `GET /upcoming-slots` endpoint + modify quick-match for `target_slot_time`
+- [x] Add estimate constants to `constants.py`
+
+**Frontend:**
+- [x] Build `ModeToggle`, `TimeSlotCard`, `FindTableHero` components
+- [x] Refactor dashboard: replace Quick Actions with `FindTableHero`
+- [x] Remove "Find Table" from sidebar nav items
+- [x] Add `findTable` i18n namespace (EN + zh-TW)
+
+**Testing:**
+- [x] Backend tests: upcoming-slots endpoint, service methods, target_slot_time validation
+- [x] Frontend tests: FindTableHero, TimeSlotCard, ModeToggle components
+- [x] Verification: all tests pass (491 backend, 354 frontend), lint clean, build succeeds
 
 #### Notifications (Basic)
 - [ ] Set up email service (Resend/SendGrid)

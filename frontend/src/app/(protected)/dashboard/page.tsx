@@ -10,9 +10,9 @@ import { AppShell } from "@/components/layout";
 import { StatCard } from "@/components/ui/stat-card";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
 import { ZeroCreditCard } from "@/components/credits/zero-credit-card";
-import { Clock, BookOpen, Flame, Coins, Loader2, Bug, AlertTriangle } from "lucide-react";
+import { FindTableHero } from "@/components/session/find-table-hero";
+import { Clock, BookOpen, Flame, Coins, Bug, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { VoiceModeModal } from "@/components/session/voice-mode-modal";
 
 // Debug mode: session starts in 1 minute instead of next :00/:30 slot
 const DEBUG_WAIT_MINUTES = 1;
@@ -34,8 +34,8 @@ export default function DashboardPage() {
   const { hasPendingRatings, pendingSessionId, checkPendingRatings } = useRatingStore();
   const openModal = useUIStore((state) => state.openModal);
   const [isMatching, setIsMatching] = useState(false);
+  const [matchingSlot, setMatchingSlot] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
-  const [showModeModal, setShowModeModal] = useState(false);
 
   // Check for pending ratings on mount
   useEffect(() => {
@@ -49,54 +49,47 @@ export default function DashboardPage() {
       const startTime = new Date(sessionStartTime);
 
       if (startTime > now) {
-        // Session hasn't started, go to waiting room
         router.push(`/session/${sessionId}/waiting`);
       } else {
-        // Session already started, go to active session
         router.push(`/session/${sessionId}`);
       }
     }
   }, [isWaiting, sessionId, sessionStartTime, router]);
 
-  // NOTE: Profile is loaded by AuthProvider on INITIAL_SESSION
-  // No need to call refreshProfile here
-
-  const handleQuickMatch = async (mode: "forced_audio" | "quiet") => {
+  const handleJoinSlot = async (
+    slotTime: string,
+    mode: "forced_audio" | "quiet",
+    topic?: string
+  ) => {
     try {
       setIsMatching(true);
+      setMatchingSlot(slotTime);
 
-      // Use api client to call FastAPI backend (not Next.js /api route)
       const data = await api.post<{
         session: { id: string; start_time: string; mode: string };
         livekit_token: string;
         wait_minutes: number;
         is_immediate: boolean;
       }>("/sessions/quick-match", {
-        filters: { mode },
+        filters: { mode, topic: topic || undefined },
+        target_slot_time: slotTime,
       });
 
-      // Update session store with waiting room state
-      // In debug mode, override start time to 3 minutes from now
+      // In debug mode, override start time
       const startTime = debugMode
         ? new Date(Date.now() + DEBUG_WAIT_MINUTES * 60 * 1000)
         : new Date(data.session.start_time);
       const waitMinutes = debugMode ? DEBUG_WAIT_MINUTES : data.wait_minutes;
 
       setWaitingRoom(startTime, waitMinutes, data.is_immediate);
-
-      // Store quiet mode preference
       setQuietMode(mode === "quiet");
-
-      // Store sessionId for redirect
       useSessionStore.setState({ sessionId: data.session.id });
 
-      // Store LiveKit connection info for session page
       const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
       if (livekitUrl && data.livekit_token) {
         setLiveKitConnection(data.livekit_token, livekitUrl);
       }
 
-      // Show success toast
       toast.success(debugMode ? "Debug Match!" : t("matchFound"), {
         description: debugMode
           ? `Debug mode: Session starts in ${DEBUG_WAIT_MINUTES} minutes`
@@ -105,10 +98,9 @@ export default function DashboardPage() {
             : t("sessionStartsIn", { minutes: data.wait_minutes }),
       });
 
-      // Redirect to waiting room
       router.push(`/session/${data.session.id}/waiting`);
     } catch (error: unknown) {
-      // Handle 409 Conflict - user already has a session (expected condition)
+      // Handle 409 Conflict - user already has a session
       if (error instanceof ApiError && error.status === 409) {
         try {
           const detail = JSON.parse(error.message);
@@ -120,18 +112,15 @@ export default function DashboardPage() {
               const sessionStart = new Date(startTimeStr);
               const now = new Date();
 
-              // Update session store
               setWaitingRoom(sessionStart, 0, false);
               useSessionStore.setState({ sessionId: existingSessionId });
 
               if (sessionStart <= now) {
-                // Session already started - go directly to session
                 toast.info(t("rejoiningSession"), {
                   description: t("sessionAlreadyStarted"),
                 });
                 router.push(`/session/${existingSessionId}`);
               } else {
-                // Session hasn't started - go to waiting room
                 toast.info(t("alreadyHaveSession"), {
                   description: t("redirectingToWaiting"),
                 });
@@ -141,31 +130,28 @@ export default function DashboardPage() {
             }
           }
         } catch {
-          // JSON parse failed, fall through to generic error
+          // JSON parse failed, fall through
         }
       }
 
-      // Handle 402 - insufficient credits (stale frontend state)
+      // Handle 402 - insufficient credits
       if (error instanceof ApiError && error.status === 402) {
         useCreditsStore.setState({ balance: 0 });
         openModal("upgrade");
         return;
       }
 
-      // Log non-409/non-402 errors
       console.error("Quick match failed:", error);
-
       const errorMessage =
         error instanceof Error
           ? error.message
           : typeof error === "object" && error !== null && "detail" in error
             ? String((error as { detail: unknown }).detail)
             : t("pleaseTryAgain");
-      toast.error(t("failedToJoinTable"), {
-        description: errorMessage,
-      });
+      toast.error(t("failedToJoinTable"), { description: errorMessage });
     } finally {
       setIsMatching(false);
+      setMatchingSlot(null);
     }
   };
 
@@ -206,6 +192,15 @@ export default function DashboardPage() {
         {/* Zero credits alert */}
         {credits === 0 && <ZeroCreditCard onUpgradeClick={() => openModal("upgrade")} />}
 
+        {/* Find Table Hero — primary action */}
+        <FindTableHero
+          onJoinSlot={handleJoinSlot}
+          isMatching={isMatching}
+          matchingSlot={matchingSlot}
+          credits={credits}
+          hasPendingRatings={hasPendingRatings}
+        />
+
         {/* Stats grid */}
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard
@@ -228,69 +223,25 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Quick actions */}
-        <div className="rounded-2xl bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">{t("quickActions")}</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <button
-              onClick={() => setShowModeModal(true)}
-              disabled={isMatching || credits === 0}
-              className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20 text-accent">
-                {isMatching ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Clock className="h-5 w-5" />
-                )}
-              </div>
-              <div>
-                <p className="font-medium text-foreground">
-                  {isMatching ? t("matching") : t("joinTable")}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {credits === 0 ? t("noCreditsAvailable") : t("joinStudySession")}
-                </p>
-              </div>
-            </button>
-            <button
-              onClick={() => router.push("/diary")}
-              className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/20 text-success">
-                <BookOpen className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">{t("viewDiary")}</p>
-                <p className="text-sm text-muted-foreground">{t("growthJournal")}</p>
-              </div>
-            </button>
-            <button
-              onClick={() => openModal("upgrade")}
-              className="flex items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 text-primary">
-                <Coins className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">{t("getMoreCredits")}</p>
-                <p className="text-sm text-muted-foreground">{t("upgradePlan")}</p>
-              </div>
-            </button>
-          </div>
+        {/* Quick links */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push("/diary")}
+            className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <BookOpen className="h-4 w-4" />
+            {t("viewDiary")}
+          </button>
+          <span className="text-border">|</span>
+          <button
+            onClick={() => openModal("upgrade")}
+            className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Coins className="h-4 w-4" />
+            {t("getMoreCredits")}
+          </button>
         </div>
       </div>
-
-      {/* Voice Mode Selection Modal */}
-      <VoiceModeModal
-        isOpen={showModeModal}
-        onClose={() => setShowModeModal(false)}
-        onSelect={(mode) => {
-          setShowModeModal(false);
-          handleQuickMatch(mode);
-        }}
-        isLoading={isMatching}
-      />
 
       {/* Debug Panel - only in development */}
       {process.env.NODE_ENV === "development" && (
@@ -315,14 +266,14 @@ export default function DashboardPage() {
                 of the next :00/:30 slot.
               </p>
               <p className="text-xs text-muted-foreground">
-                Click &quot;Join a Table&quot; to test the flow.
+                Click &quot;Join&quot; on any time slot to test the flow.
               </p>
             </div>
           ) : (
             <button
               onClick={() => setDebugMode(true)}
               className="p-2 bg-muted hover:bg-warning text-muted-foreground hover:text-warning-foreground rounded-full shadow-lg transition-colors"
-              title="Enable Debug Mode (3-min sessions)"
+              title="Enable Debug Mode (1-min sessions)"
             >
               <Bug className="h-5 w-5" />
             </button>

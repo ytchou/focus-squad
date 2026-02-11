@@ -4,6 +4,7 @@ Session router for table management and matching endpoints.
 Endpoints:
 - POST /quick-match: Quick match into next available session
 - GET /upcoming: List upcoming sessions for user
+- GET /upcoming-slots: Get next 6 time slots with queue counts and estimates
 - GET /{session_id}: Get session details
 - POST /{session_id}/leave: Leave a session early (no refund)
 - POST /{session_id}/cancel: Cancel before start (refund if >=1hr before)
@@ -40,8 +41,10 @@ from app.models.session import (
     SessionPhase,
     SessionSummaryResponse,
     TableMode,
+    TimeSlotInfo,
     UpcomingSession,
     UpcomingSessionsResponse,
+    UpcomingSlotsResponse,
 )
 from app.services.analytics_service import AnalyticsService
 from app.services.credit_service import (
@@ -202,8 +205,16 @@ async def quick_match(
             detail="Insufficient credits. You need at least 1 credit to join a session.",
         )
 
-    # Calculate next time slot
-    next_slot = session_service.calculate_next_slot()
+    # Use target slot time if provided, otherwise calculate next slot
+    if match_request.target_slot_time:
+        next_slot = match_request.target_slot_time
+        now = datetime.now(timezone.utc)
+        if next_slot <= now:
+            raise HTTPException(status_code=400, detail="Target slot time must be in the future")
+        if next_slot.minute not in (0, 30) or next_slot.second != 0:
+            raise HTTPException(status_code=400, detail="Target slot must be at :00 or :30")
+    else:
+        next_slot = session_service.calculate_next_slot()
 
     # Check if user already has a session at this time slot
     existing_session = session_service.get_user_session_at_time(profile.id, next_slot)
@@ -359,6 +370,43 @@ async def get_rating_history(
         page=page,
         per_page=per_page,
     )
+
+
+@router.get("/upcoming-slots", response_model=UpcomingSlotsResponse)
+async def get_upcoming_slots(
+    mode: Optional[str] = Query(None, description="Filter by mode: forced_audio or quiet"),
+    user: AuthUser = Depends(require_auth_from_state),
+    session_service: SessionService = Depends(get_session_service),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Get next 6 upcoming time slots with queue counts and estimates.
+
+    Returns slot times, actual signup counts, and historical estimates
+    for social proof display on the dashboard Find Table hero.
+    """
+    profile = user_service.get_user_by_auth_id(user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    slot_times = session_service.calculate_upcoming_slots()
+    queue_counts = session_service.get_slot_queue_counts(slot_times, mode=mode)
+    estimates = session_service.get_slot_estimates(slot_times)
+    user_slots = session_service.get_user_sessions_at_slots(profile.id, slot_times)
+
+    slots = []
+    for slot_time in slot_times:
+        iso = slot_time.isoformat()
+        slots.append(
+            TimeSlotInfo(
+                start_time=slot_time,
+                queue_count=queue_counts.get(iso, 0),
+                estimated_count=estimates.get(iso, 0),
+                has_user_session=iso in user_slots,
+            )
+        )
+
+    return UpcomingSlotsResponse(slots=slots)
 
 
 @router.get("/{session_id}", response_model=SessionInfo)

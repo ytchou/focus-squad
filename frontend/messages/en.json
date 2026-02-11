@@ -542,5 +542,22 @@
     "sessionNotFound": "Session not found",
     "banned": "Your account is temporarily suspended",
     "networkError": "Network error. Check your connection."
+  },
+  "findTable": {
+    "title": "Find Your Table",
+    "subtitle": "Pick a time slot and start focusing with others",
+    "modeLabel": "Table Mode",
+    "forcedAudio": "Voice",
+    "quietMode": "Quiet",
+    "topicPlaceholder": "What are you working on? (optional)",
+    "topicLabel": "Topic",
+    "joinSlot": "Join",
+    "joining": "Joining...",
+    "joined": "Joined",
+    "studyBuddies": "{count} study buddies",
+    "usuallyAtThisTime": "Usually ~{count} at this time",
+    "beTheFirst": "Be the first!",
+    "noCreditsHint": "You need credits to join a table",
+    "pendingRatingsHint": "Rate your tablemates first"
   }
 }
