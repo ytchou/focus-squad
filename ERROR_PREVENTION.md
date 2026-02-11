@@ -239,5 +239,30 @@ def add_participant(self, session_id: str, user_id: str):
 
 ---
 
-*Last updated: 2026-02-06*
-*Errors documented: 6*
+### Error: Multiple Commands in Prepared Statement (PL/pgSQL Functions)
+**Symptom:** `ERROR: cannot insert multiple commands into a prepared statement (SQLSTATE 42601)`
+
+**Root Cause:** Supabase's `db push` sends each migration file through PostgreSQL's prepared statement interface. A prepared statement only supports **one command**. When a migration file contains a `CREATE FUNCTION...$$...$$;` followed by additional statements (e.g., `COMMENT ON FUNCTION`, another `CREATE FUNCTION`), PostgreSQL rejects it.
+
+**Prevention:**
+```
+-- ❌ DON'T: Multiple functions + comments in one migration file
+CREATE OR REPLACE FUNCTION foo() ... $$ ... $$;
+COMMENT ON FUNCTION foo IS '...';
+CREATE OR REPLACE FUNCTION bar() ... $$ ... $$;
+
+-- ✅ DO: One function per migration file
+-- 017_foo.sql: CREATE OR REPLACE FUNCTION foo() ... $$ ... $$;
+-- 018_bar.sql: CREATE OR REPLACE FUNCTION bar() ... $$ ... $$;
+```
+
+**Additional gotcha:** Migration filenames must start with a **numeric-only** prefix. `009a_name.sql` gets **silently skipped** — use `017_name.sql` instead.
+
+**When this happens:**
+- Any migration with PL/pgSQL function definitions mixed with other statements
+- Trying to use non-numeric filename prefixes (e.g., `009a_`, `009b_`)
+
+---
+
+*Last updated: 2026-02-11*
+*Errors documented: 7*

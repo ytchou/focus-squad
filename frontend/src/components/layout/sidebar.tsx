@@ -10,7 +10,6 @@ import {
   Clock,
   Trophy,
   User,
-  Settings,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -26,7 +25,6 @@ const navItems = [
   { href: "/find-table", icon: Users, labelKey: "findTable" as const },
   { href: "/collection", icon: Trophy, labelKey: "collection" as const },
   { href: "/profile", icon: User, labelKey: "profile" as const },
-  { href: "/settings", icon: Settings, labelKey: "settings" as const },
 ];
 
 export function Sidebar() {

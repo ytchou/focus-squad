@@ -137,16 +137,19 @@ vi.mock("@/components/ui/stat-card", () => ({
     title,
     value,
     subtitle,
+    children,
   }: {
     title: string;
-    value: number;
-    icon: unknown;
+    value?: number;
+    icon?: unknown;
     subtitle?: string;
+    children?: React.ReactNode;
   }) => (
     <div data-testid={`stat-${title.toLowerCase().replace(/\s/g, "-")}`}>
       <span>{title}</span>
-      <span data-testid="stat-value">{value}</span>
+      {value !== undefined && <span data-testid="stat-value">{value}</span>}
       {subtitle && <span>{subtitle}</span>}
+      {children}
     </div>
   ),
 }));

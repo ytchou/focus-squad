@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, act } from "@testing-library/react";
 import SessionPage from "../page";
 import { useSessionStore } from "@/stores/session-store";
 
@@ -277,7 +277,27 @@ vi.mock("@/hooks/use-activity-tracking", () => ({
   }),
 }));
 
-// Helper session API response
+vi.mock("@/hooks/use-presence-detection", () => ({
+  usePresenceDetection: () => ({
+    presenceState: "active",
+    isTyping: false,
+  }),
+}));
+
+vi.mock("@/hooks/use-picture-in-picture", () => ({
+  usePictureInPicture: () => ({
+    isPiPActive: false,
+    isPiPSupported: false,
+    togglePiP: vi.fn(),
+  }),
+}));
+
+vi.mock("@/components/session/activity-consent-prompt", () => ({
+  ActivityConsentPrompt: () => null,
+  getStoredConsent: () => "granted",
+}));
+
+// Helper session API response — 4 participants to prevent polling interval
 const mockSessionResponse = {
   id: "test-session-123",
   start_time: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
@@ -314,6 +334,32 @@ const mockSessionResponse = {
       is_active: true,
       ai_companion_name: null,
     },
+    {
+      id: "p3",
+      user_id: "ai-1",
+      participant_type: "ai_companion",
+      seat_number: 3,
+      username: null,
+      display_name: null,
+      avatar_config: {},
+      pixel_avatar_id: null,
+      joined_at: new Date().toISOString(),
+      is_active: true,
+      ai_companion_name: "Study Buddy",
+    },
+    {
+      id: "p4",
+      user_id: "ai-2",
+      participant_type: "ai_companion",
+      seat_number: 4,
+      username: null,
+      display_name: null,
+      avatar_config: {},
+      pixel_avatar_id: null,
+      joined_at: new Date().toISOString(),
+      is_active: true,
+      ai_companion_name: "Focus Friend",
+    },
   ],
   room_type: "cozy-study",
   available_seats: 2,
@@ -324,6 +370,23 @@ const mockUserProfile = {
   id: "user-1",
   credit_tier: "free",
 };
+
+// Setup mock that resolves both API calls for a successful session render
+function setupSuccessfulApiMocks() {
+  mockApiGet.mockImplementation((path: string) => {
+    if (path.includes("/sessions/")) return Promise.resolve(mockSessionResponse);
+    if (path.includes("/users/me")) return Promise.resolve(mockUserProfile);
+    return Promise.resolve({});
+  });
+}
+
+// Render SessionPage and flush all async work (API calls, state updates, effects)
+// by wrapping in act(). Since API mocks resolve via microtasks, this flushes everything.
+async function renderAndSettle() {
+  await act(async () => {
+    render(<SessionPage />);
+  });
+}
 
 describe("SessionPage", () => {
   beforeEach(() => {
@@ -347,183 +410,119 @@ describe("SessionPage", () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    cleanup();
   });
 
-  it("shows loading state initially", () => {
-    // API call stays pending so component stays in loading state
-    mockApiGet.mockReturnValue(new Promise(() => {}));
+  it("shows loading state initially", async () => {
+    // API call stays pending so component stays in loading state.
+    // Use a promise we can settle to avoid leaked async work.
+    let resolvePending: (value: unknown) => void;
+    mockApiGet.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePending = resolve;
+      })
+    );
 
     render(<SessionPage />);
 
     expect(screen.getByText("Loading session...")).toBeInTheDocument();
     expect(screen.getByTestId("loader")).toBeInTheDocument();
+
+    // Settle the pending promise before cleanup to prevent leaked work.
+    await act(async () => {
+      resolvePending(mockSessionResponse);
+    });
   });
 
   it("renders session layout with timer and participants after loading", async () => {
-    mockApiGet.mockImplementation((path: string) => {
-      if (path.includes("/sessions/")) return Promise.resolve(mockSessionResponse);
-      if (path.includes("/users/me")) return Promise.resolve(mockUserProfile);
-      return Promise.resolve({});
-    });
+    setupSuccessfulApiMocks();
+    await renderAndSettle();
 
-    render(<SessionPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("session-layout")).toBeInTheDocument();
-    });
-
+    expect(screen.getByTestId("session-layout")).toBeInTheDocument();
     expect(screen.getByTestId("timer-display")).toBeInTheDocument();
     expect(screen.getByTestId("table-view")).toBeInTheDocument();
     expect(screen.getByTestId("control-bar")).toBeInTheDocument();
   });
 
   it("shows end modal when showEndModal state is true", async () => {
-    mockApiGet.mockImplementation((path: string) => {
-      if (path.includes("/sessions/")) return Promise.resolve(mockSessionResponse);
-      if (path.includes("/users/me")) return Promise.resolve(mockUserProfile);
-      return Promise.resolve({});
-    });
-
+    setupSuccessfulApiMocks();
     useSessionStore.setState({ showEndModal: true });
+    await renderAndSettle();
 
-    render(<SessionPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("session-end-modal")).toBeInTheDocument();
-    });
+    expect(screen.getByTestId("session-end-modal")).toBeInTheDocument();
   });
 
   it("does not show end modal when showEndModal state is false", async () => {
-    mockApiGet.mockImplementation((path: string) => {
-      if (path.includes("/sessions/")) return Promise.resolve(mockSessionResponse);
-      if (path.includes("/users/me")) return Promise.resolve(mockUserProfile);
-      return Promise.resolve({});
-    });
-
+    setupSuccessfulApiMocks();
     useSessionStore.setState({ showEndModal: false });
+    await renderAndSettle();
 
-    render(<SessionPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("session-layout")).toBeInTheDocument();
-    });
-
+    expect(screen.getByTestId("session-layout")).toBeInTheDocument();
     expect(screen.queryByTestId("session-end-modal")).not.toBeInTheDocument();
   });
 
   it("leave button exists and is clickable", async () => {
-    mockApiGet.mockImplementation((path: string) => {
-      if (path.includes("/sessions/")) return Promise.resolve(mockSessionResponse);
-      if (path.includes("/users/me")) return Promise.resolve(mockUserProfile);
-      return Promise.resolve({});
-    });
-
-    render(<SessionPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("leave-button")).toBeInTheDocument();
-    });
+    setupSuccessfulApiMocks();
+    await renderAndSettle();
 
     const leaveButton = screen.getByTestId("leave-button");
+    expect(leaveButton).toBeInTheDocument();
     expect(leaveButton).not.toBeDisabled();
   });
 
   it("calls leaveSession and API on leave", async () => {
-    mockApiGet.mockImplementation((path: string) => {
-      if (path.includes("/sessions/")) return Promise.resolve(mockSessionResponse);
-      if (path.includes("/users/me")) return Promise.resolve(mockUserProfile);
-      return Promise.resolve({});
+    setupSuccessfulApiMocks();
+    await renderAndSettle();
+
+    await act(async () => {
+      screen.getByTestId("leave-button").click();
     });
 
-    render(<SessionPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("leave-button")).toBeInTheDocument();
-    });
-
-    const leaveButton = screen.getByTestId("leave-button");
-    leaveButton.click();
-
-    await waitFor(() => {
-      expect(mockApiPost).toHaveBeenCalledWith("/sessions/test-session-123/leave");
-    });
+    expect(mockApiPost).toHaveBeenCalledWith("/sessions/test-session-123/leave");
   });
 
   it("renders timer display with phase info", async () => {
-    mockApiGet.mockImplementation((path: string) => {
-      if (path.includes("/sessions/")) return Promise.resolve(mockSessionResponse);
-      if (path.includes("/users/me")) return Promise.resolve(mockUserProfile);
-      return Promise.resolve({});
-    });
+    setupSuccessfulApiMocks();
+    await renderAndSettle();
 
-    render(<SessionPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("timer-display")).toBeInTheDocument();
-    });
-
-    // Timer shows phase from the mock useSessionTimer (work1)
+    expect(screen.getByTestId("timer-display")).toBeInTheDocument();
     expect(screen.getByTestId("timer-phase")).toHaveTextContent("work1");
-    // Timer shows countdown
     expect(screen.getByTestId("timer-remaining")).toHaveTextContent("1200");
   });
 
   it("shows error state when API fails", async () => {
     mockApiGet.mockRejectedValue(new Error("Network error"));
+    await renderAndSettle();
 
-    render(<SessionPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Failed to load session. Please try again.")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Failed to load session. Please try again.")).toBeInTheDocument();
   });
 
   it("shows 'Return to Dashboard' link on error", async () => {
     mockApiGet.mockRejectedValue(new Error("Network error"));
+    await renderAndSettle();
 
-    render(<SessionPage />);
+    expect(screen.getByText("Return to Dashboard")).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByText("Return to Dashboard")).toBeInTheDocument();
+    await act(async () => {
+      screen.getByText("Return to Dashboard").click();
     });
-
-    // Click Return to Dashboard
-    screen.getByText("Return to Dashboard").click();
     expect(mockPush).toHaveBeenCalledWith("/dashboard");
   });
 
   it("displays participant usernames", async () => {
-    mockApiGet.mockImplementation((path: string) => {
-      if (path.includes("/sessions/")) return Promise.resolve(mockSessionResponse);
-      if (path.includes("/users/me")) return Promise.resolve(mockUserProfile);
-      return Promise.resolve({});
-    });
+    setupSuccessfulApiMocks();
+    await renderAndSettle();
 
-    render(<SessionPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("table-view")).toBeInTheDocument();
-    });
-
+    expect(screen.getByTestId("table-view")).toBeInTheDocument();
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("Bob")).toBeInTheDocument();
   });
 
   it("renders phase label in session header", async () => {
-    mockApiGet.mockImplementation((path: string) => {
-      if (path.includes("/sessions/")) return Promise.resolve(mockSessionResponse);
-      if (path.includes("/users/me")) return Promise.resolve(mockUserProfile);
-      return Promise.resolve({});
-    });
+    setupSuccessfulApiMocks();
+    await renderAndSettle();
 
-    render(<SessionPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("phase-label")).toBeInTheDocument();
-    });
-
-    // Phase label should show 'work1' from the mocked useSessionTimer
+    expect(screen.getByTestId("phase-label")).toBeInTheDocument();
     expect(screen.getByTestId("phase-label")).toHaveTextContent("work1");
   });
 });

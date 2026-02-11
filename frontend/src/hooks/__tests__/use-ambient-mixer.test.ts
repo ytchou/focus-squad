@@ -221,10 +221,8 @@ describe("useAmbientMixer", () => {
       // Enable a track so it has active audio nodes
       await act(async () => {
         result.current.toggleTrack("lofi");
-        await vi.waitFor(() => {
-          expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
-        });
       });
+      expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
 
       const gainNode = mockAudioContext.createGain.mock.results[0]?.value;
 
@@ -391,18 +389,11 @@ describe("useAmbientMixer", () => {
       expect(result.current.isReady).toBe(false);
 
       // toggleTrack triggers async startPlayback -> ensureAudioContext -> setIsReady(true)
-      // We need to let the full async chain settle
       await act(async () => {
         result.current.toggleTrack("lofi");
       });
 
-      // Wait for the async audio loading promise chain to resolve
-      await act(async () => {
-        await vi.waitFor(() => {
-          expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
-        });
-      });
-
+      expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
       expect(result.current.isReady).toBe(true);
     });
 
@@ -413,10 +404,8 @@ describe("useAmbientMixer", () => {
 
       await act(async () => {
         result.current.toggleTrack("lofi");
-        await vi.waitFor(() => {
-          expect(mockAudioContext.resume).toHaveBeenCalled();
-        });
       });
+      expect(mockAudioContext.resume).toHaveBeenCalled();
     });
 
     it("fetches audio file and decodes it on track enable", async () => {
@@ -425,11 +414,9 @@ describe("useAmbientMixer", () => {
 
       await act(async () => {
         result.current.toggleTrack("lofi");
-        await vi.waitFor(() => {
-          expect(fetch).toHaveBeenCalledWith("/assets/audio/lofi-beats.mp3");
-        });
       });
 
+      expect(fetch).toHaveBeenCalledWith("/assets/audio/lofi-beats.mp3");
       expect(mockAudioContext.decodeAudioData).toHaveBeenCalled();
     });
 
@@ -439,10 +426,8 @@ describe("useAmbientMixer", () => {
 
       await act(async () => {
         result.current.toggleTrack("coffee");
-        await vi.waitFor(() => {
-          expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
-        });
       });
+      expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
 
       const sourceNode = mockAudioContext.createBufferSource.mock.results[0]?.value;
       const gainNode = mockAudioContext.createGain.mock.results[0]?.value;
@@ -461,10 +446,8 @@ describe("useAmbientMixer", () => {
       // Enable track
       await act(async () => {
         result.current.toggleTrack("lofi");
-        await vi.waitFor(() => {
-          expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
-        });
       });
+      expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
 
       const sourceNode = mockAudioContext.createBufferSource.mock.results[0]?.value;
       const gainNode = mockAudioContext.createGain.mock.results[0]?.value;
@@ -487,11 +470,7 @@ describe("useAmbientMixer", () => {
       await act(async () => {
         result.current.toggleTrack("rain");
       });
-      await act(async () => {
-        await vi.waitFor(() => {
-          expect(mockAudioContext.decodeAudioData).toHaveBeenCalledTimes(1);
-        });
-      });
+      expect(mockAudioContext.decodeAudioData).toHaveBeenCalledTimes(1);
 
       // Disable
       act(() => {
@@ -502,11 +481,7 @@ describe("useAmbientMixer", () => {
       await act(async () => {
         result.current.toggleTrack("rain");
       });
-      await act(async () => {
-        await vi.waitFor(() => {
-          expect(mockAudioContext.createBufferSource).toHaveBeenCalledTimes(2);
-        });
-      });
+      expect(mockAudioContext.createBufferSource).toHaveBeenCalledTimes(2);
 
       // decodeAudioData should still only have been called once (cached)
       expect(mockAudioContext.decodeAudioData).toHaveBeenCalledTimes(1);
@@ -520,10 +495,8 @@ describe("useAmbientMixer", () => {
       // Enable a track so nodes exist
       await act(async () => {
         result.current.toggleTrack("lofi");
-        await vi.waitFor(() => {
-          expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
-        });
       });
+      expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
 
       const sourceNode = mockAudioContext.createBufferSource.mock.results[0]?.value;
 
