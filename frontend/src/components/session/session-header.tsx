@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ interface SessionHeaderProps {
 
 export function SessionHeader({ sessionId: _sessionId, phase, onLeave }: SessionHeaderProps) {
   const router = useRouter();
+  const t = useTranslations("session");
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
@@ -58,7 +60,7 @@ export function SessionHeader({ sessionId: _sessionId, phase, onLeave }: Session
             className="text-muted-foreground hover:text-destructive"
           >
             <LogOut className="h-4 w-4 mr-2" />
-            Leave
+            {t("leave")}
           </Button>
         </div>
       </header>
@@ -67,11 +69,8 @@ export function SessionHeader({ sessionId: _sessionId, phase, onLeave }: Session
       <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Leave Session?</DialogTitle>
-            <DialogDescription>
-              If you leave now, you won&apos;t be able to rejoin this session and your credit will
-              not be refunded. Your tablemates will continue without you.
-            </DialogDescription>
+            <DialogTitle>{t("leaveConfirmTitle")}</DialogTitle>
+            <DialogDescription>{t("leaveConfirmDesc")}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
@@ -79,10 +78,10 @@ export function SessionHeader({ sessionId: _sessionId, phase, onLeave }: Session
               onClick={() => setShowLeaveDialog(false)}
               disabled={isLeaving}
             >
-              Stay
+              {t("stay")}
             </Button>
             <Button variant="destructive" onClick={handleLeave} disabled={isLeaving}>
-              {isLeaving ? "Leaving..." : "Leave Session"}
+              {isLeaving ? t("leaving") : t("leaveSession")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { PictureInPicture2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,8 @@ export function PiPToggleButton({
   onToggle,
   isPixelMode,
 }: PiPToggleButtonProps) {
+  const t = useTranslations("session");
+
   if (!isPiPSupported) return null;
 
   return (
@@ -29,7 +32,7 @@ export function PiPToggleButton({
             ? "bg-accent text-accent-foreground"
             : "bg-muted/60 text-muted-foreground hover:bg-muted"
         )}
-        title={isPiPActive ? "Close Mini View" : "Open Mini View"}
+        title={isPiPActive ? t("pipClose") : t("pipOpen")}
       >
         <PictureInPicture2 className="h-4 w-4" />
       </button>
@@ -39,7 +42,7 @@ export function PiPToggleButton({
           isPixelMode && "font-pixel text-[0.4rem]"
         )}
       >
-        Mini
+        {t("pipMini")}
       </span>
     </div>
   );

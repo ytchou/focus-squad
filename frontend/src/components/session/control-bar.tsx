@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -18,13 +19,6 @@ interface ControlBarProps {
   isPixelMode?: boolean;
 }
 
-const PRESENCE_CONFIG: Record<PresenceState, { color: string; label: string }> = {
-  active: { color: "bg-success", label: "Active" },
-  grace: { color: "bg-success", label: "Active" },
-  away: { color: "bg-warning", label: "Away" },
-  ghosting: { color: "bg-destructive", label: "Away" },
-};
-
 export function ControlBar({
   isMuted,
   isQuietMode,
@@ -35,6 +29,15 @@ export function ControlBar({
   onTogglePiP,
   isPixelMode,
 }: ControlBarProps) {
+  const t = useTranslations("session");
+
+  const PRESENCE_CONFIG: Record<PresenceState, { color: string; labelKey: string }> = {
+    active: { color: "bg-success", labelKey: "activeLabel" },
+    grace: { color: "bg-success", labelKey: "activeLabel" },
+    away: { color: "bg-warning", labelKey: "awayMode" },
+    ghosting: { color: "bg-destructive", labelKey: "awayMode" },
+  };
+
   const presence = presenceState ? PRESENCE_CONFIG[presenceState] : null;
 
   return (
@@ -51,7 +54,7 @@ export function ControlBar({
             isPixelMode ? "rounded-pixel shadow-pixel" : "rounded-full",
             !isMuted && "bg-success hover:bg-success/90"
           )}
-          title={isQuietMode ? "Audio disabled in Quiet Mode" : isMuted ? "Unmute" : "Mute"}
+          title={isQuietMode ? t("quietModeDisabled") : isMuted ? t("unmute") : t("mute")}
         >
           {isMuted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
         </Button>
@@ -61,7 +64,7 @@ export function ControlBar({
             isPixelMode && "font-pixel text-[0.45rem]"
           )}
         >
-          {isQuietMode ? "Quiet Mode" : isMuted ? "Unmute" : "Mute"}
+          {isQuietMode ? t("quietModeLabel") : isMuted ? t("unmute") : t("mute")}
         </span>
       </div>
 
@@ -88,7 +91,7 @@ export function ControlBar({
               isPixelMode && "font-pixel text-[0.4rem]"
             )}
           >
-            {presence.label}
+            {t(presence.labelKey)}
           </span>
         </div>
       )}
@@ -121,7 +124,7 @@ export function ControlBar({
               isPixelMode ? "rounded-pixel font-pixel text-[0.45rem]" : "rounded-full"
             )}
           >
-            Quiet Mode - Audio Disabled
+            {t("quietModeDisabled")}
           </span>
         </div>
       )}

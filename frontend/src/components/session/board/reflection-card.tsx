@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Target, Coffee, MessageCircle } from "lucide-react";
@@ -12,20 +13,20 @@ interface ReflectionCardProps {
 
 const PHASE_CONFIG: Record<
   ReflectionPhase,
-  { label: string; icon: typeof Target; className: string }
+  { labelKey: string; icon: typeof Target; className: string }
 > = {
   setup: {
-    label: "Session Goal",
+    labelKey: "sessionGoal",
     icon: Target,
     className: "bg-primary/10 border-primary/20",
   },
   break: {
-    label: "Check-in",
+    labelKey: "checkIn",
     icon: Coffee,
     className: "bg-success/10 border-success/20",
   },
   social: {
-    label: "Afterthoughts",
+    labelKey: "afterthoughts",
     icon: MessageCircle,
     className: "bg-accent/10 border-accent/20",
   },
@@ -46,6 +47,8 @@ function formatTime(timestamp: number): string {
 }
 
 export function ReflectionCard({ message, isOwnMessage }: ReflectionCardProps) {
+  const t = useTranslations("chat");
+  const tSession = useTranslations("session");
   const phase = message.phase || "setup";
   const config = PHASE_CONFIG[phase];
   const Icon = config.icon;
@@ -59,11 +62,11 @@ export function ReflectionCard({ message, isOwnMessage }: ReflectionCardProps) {
           </AvatarFallback>
         </Avatar>
         <span className="text-xs font-medium text-foreground">
-          {isOwnMessage ? "You" : message.displayName}
+          {isOwnMessage ? tSession("you") : message.displayName}
         </span>
         <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
           <Icon className="size-2.5" />
-          {config.label}
+          {t(config.labelKey)}
         </Badge>
         <span className="text-[10px] text-muted-foreground ml-auto">
           {formatTime(message.timestamp)}

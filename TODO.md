@@ -521,32 +521,60 @@
 **Three-layer moderation: client blocklist (enhanced) + server-side flag logging + user reports (escalation)**
 
 **Backend:**
-- [ ] Add moderation constants to `constants.py` (report limits, flag window, description max length)
-- [ ] Create `models/moderation.py` (ReportCategory enum, request/response models, exceptions)
-- [ ] Create `services/moderation_service.py` (flag logging, report submission, duplicate/self-report prevention)
-- [ ] Create `routers/moderation.py` (POST /flag, POST /reports, GET /reports/mine)
-- [ ] Wire router into `main.py` + register exception handlers in `exceptions.py`
-- [ ] Write TDD tests: 7 service tests + 7 router tests
+- [x] Add moderation constants to `constants.py` (report limits, flag window, description max length)
+- [x] Create `models/moderation.py` (ReportCategory enum, request/response models, exceptions)
+- [x] Create `services/moderation_service.py` (flag logging, report submission, duplicate/self-report prevention)
+- [x] Create `routers/moderation.py` (POST /flag, POST /reports, GET /reports/mine)
+- [x] Wire router into `main.py` + register exception handlers in `exceptions.py`
+- [x] Write TDD tests: 7 service tests + 7 router tests
 
 **Frontend — Blocklist Enhancement:**
-- [ ] Restructure `blocklist.ts` with categorized patterns + `getMatchedCategory()` function
-- [ ] Update `board-input.tsx` to POST flagged messages to backend (fire-and-forget)
+- [x] Restructure `blocklist.ts` with categorized patterns + `getMatchedCategory()` function
+- [x] Update `board-input.tsx` to POST flagged messages to backend (fire-and-forget)
 
 **Frontend — Report Modal:**
-- [ ] Build `ReportModal` component (5 categories, description textarea, submit flow)
-- [ ] Add three-dot menu to `ParticipantSeat` with "Report User" option (non-AI, non-self only)
-- [ ] Add "Report a concern" link on session end page (always visible, participant picker)
-- [ ] Thread `sessionId` through TableView → ParticipantSeat → BoardInput
+- [x] Build `ReportModal` component (5 categories, description textarea, submit flow)
+- [x] Add three-dot menu to `ParticipantSeat` with "Report User" option (non-AI, non-self only)
+- [x] Add "Report a concern" link on session end page (always visible, participant picker)
+- [x] Thread `sessionId` through TableView → ParticipantSeat → BoardInput
 
 **Frontend Tests:**
-- [ ] ReportModal tests (category selection, submission, toasts)
-- [ ] Blocklist tests (`getMatchedCategory()` categorization, backward compat)
+- [x] ReportModal tests (category selection, submission, toasts)
+- [x] Blocklist tests (`getMatchedCategory()` categorization, backward compat)
 
 #### Internationalization (i18n)
-- [ ] Configure next-intl with EN + zh-TW
-- [ ] Create translation files for all UI strings
-- [ ] Add language switcher component
-- [ ] Translate all static content
+> **Design Doc:** [.claude/plans/zany-herding-horizon.md](.claude/plans/zany-herding-horizon.md)
+
+**Infrastructure:**
+- [x] Configure next-intl plugin in `next.config.ts`
+- [x] Create `src/i18n/request.ts` locale resolver (cookie-based)
+- [x] Wrap root layout with `NextIntlClientProvider`
+- [x] Integrate locale cookie with AuthProvider
+
+**Components:**
+- [x] Build `LanguageToggle` component (segmented + dropdown variants)
+- [x] Add language toggle to onboarding Welcome step
+- [x] Add bilingual language hint (opposite-language) on Welcome step
+- [x] Add language preference dropdown to Profile/Settings page
+
+**Translations (full extraction — all pages):**
+- [x] Create `messages/en.json` with all namespaced strings
+- [x] Create `messages/zh-TW.json` with Taiwan Traditional Chinese translations
+- [x] Extract strings: auth + onboarding pages
+- [x] Extract strings: dashboard + navigation/sidebar
+- [x] Extract strings: session board + timer + seat cards
+- [x] Extract strings: chat + moderation/report components
+- [x] Extract strings: diary + reflection components
+- [x] Extract strings: credits + upgrade modal
+- [x] Extract strings: rating/peer review components
+- [x] Extract strings: profile + settings + collection
+- [x] Extract strings: shared components (modals, badges, placeholders, errors)
+
+**Verification:**
+- [x] Build passes with no errors
+- [x] Lint passes
+- [x] All existing tests pass
+- [x] No missing translation key warnings in console
 
 #### Notifications (Basic)
 - [ ] Set up email service (Resend/SendGrid)
@@ -597,18 +625,21 @@
 - [ ] Web app manifest for installation
 - [ ] Push notification support (Web Push API)
 
-### Testimonial / Science-based proof
-- [ ] Use this as marketing assets, or some built in prompts in the system
-- [ ] Comments about attention span issues, how to regain focus
-
-### Admin Tools
+### Admin Tools & Operations
 - [ ] Create admin moderation queue (basic)
 - [ ] Admin dashboard for user management
+- [ ] Set up operation tools, such as add/deduct credits, etc. Need to brainstorm a bit more (this is for the operation team)
 
 ### Legal & Compliance
 - [ ] Legal audit (any legality issues?)
 - [ ] Taiwan PDPA compliance review
 - [ ] End-to-end flow testing
+
+### Marketing
+- [ ] Landing page (need to be SEO-friendly)
+- [ ] Content marketing (for SEO)
+  - [ ] "Body doubling" research as marketing assets, or some built in prompts in the system
+  - [ ] Comments about attention span issues, how to regain focus, etc.
 
 ---
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/layout";
 import { DiaryHeader } from "@/components/diary/diary-header";
 import { DiaryTimeline } from "@/components/diary/diary-timeline";
@@ -13,6 +14,7 @@ import { toast } from "sonner";
 type ViewMode = "timeline" | "calendar";
 
 export default function DiaryPage() {
+  const t = useTranslations("diary");
   const searchParams = useSearchParams();
 
   const initialSearch = searchParams.get("search") || "";
@@ -49,12 +51,12 @@ export default function DiaryPage() {
         setTotal(response.total);
       } catch (error) {
         console.error("Failed to fetch diary entries:", error);
-        toast.error("Failed to load diary entries");
+        toast.error(t("failedToLoadEntries"));
       } finally {
         setIsLoading(false);
       }
     },
-    [debouncedSearch, dateRange.from, dateRange.to]
+    [debouncedSearch, dateRange.from, dateRange.to, t]
   );
 
   // Initial load + refetch on filter change
@@ -78,10 +80,10 @@ export default function DiaryPage() {
       setEntries((prev) =>
         prev.map((entry) => (entry.session_id === sessionId ? { ...entry, note, tags } : entry))
       );
-      toast.success("Note saved");
+      toast.success(t("noteSaved"));
     } catch (error) {
       console.error("Failed to save note:", error);
-      toast.error("Failed to save note");
+      toast.error(t("failedToSaveNote"));
       throw error;
     }
   };

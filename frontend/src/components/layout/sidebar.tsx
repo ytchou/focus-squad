@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Home,
   BookOpen,
@@ -19,17 +20,18 @@ import { useDebugBanner } from "@/hooks/use-debug-banner";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", icon: Home, label: "Home" },
-  { href: "/diary", icon: BookOpen, label: "Diary" },
-  { href: "/sessions", icon: Clock, label: "Sessions" },
-  { href: "/find-table", icon: Users, label: "Find Table" },
-  { href: "/collection", icon: Trophy, label: "Collection" },
-  { href: "/profile", icon: User, label: "Profile" },
-  { href: "/settings", icon: Settings, label: "Settings" },
+  { href: "/dashboard", icon: Home, labelKey: "home" as const },
+  { href: "/diary", icon: BookOpen, labelKey: "diary" as const },
+  { href: "/sessions", icon: Clock, labelKey: "sessions" as const },
+  { href: "/find-table", icon: Users, labelKey: "findTable" as const },
+  { href: "/collection", icon: Trophy, labelKey: "collection" as const },
+  { href: "/profile", icon: User, labelKey: "profile" as const },
+  { href: "/settings", icon: Settings, labelKey: "settings" as const },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const t = useTranslations("nav");
   const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
   const isSidebarCollapsed = useUIStore((state) => state.isSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((state) => state.setSidebarCollapsed);
@@ -83,10 +85,10 @@ export function Sidebar() {
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
-                    title={isCollapsed ? item.label : undefined}
+                    title={isCollapsed ? t(item.labelKey) : undefined}
                   >
                     <item.icon className="h-5 w-5 shrink-0" />
-                    {!isCollapsed && <span>{item.label}</span>}
+                    {!isCollapsed && <span>{t(item.labelKey)}</span>}
                   </Link>
                 </li>
               );
@@ -106,7 +108,7 @@ export function Sidebar() {
               ) : (
                 <>
                   <ChevronLeft className="h-4 w-4" />
-                  <span className="ml-2">Collapse</span>
+                  <span className="ml-2">{t("collapse")}</span>
                 </>
               )}
             </Button>

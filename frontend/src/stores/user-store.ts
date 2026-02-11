@@ -20,7 +20,7 @@ export interface UserProfile {
   current_streak: number;
   longest_streak: number;
   last_session_date: string | null;
-  language: string;
+  preferred_language: string;
   // Settings
   activity_tracking_enabled: boolean;
   email_notifications_enabled: boolean;

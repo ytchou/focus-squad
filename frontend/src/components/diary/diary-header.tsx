@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Search, Calendar, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,12 +22,13 @@ export function DiaryHeader({
   dateRange,
   onDateRangeChange,
 }: DiaryHeaderProps) {
+  const t = useTranslations("diary");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const hasDateFilter = dateRange.from || dateRange.to;
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-foreground">Session Diary</h1>
+      <h1 className="text-2xl font-semibold text-foreground">{t("title")}</h1>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Search bar */}
@@ -34,7 +36,7 @@ export function DiaryHeader({
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search reflections and notes..."
+            placeholder={t("searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full rounded-lg border border-border bg-surface py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -55,7 +57,7 @@ export function DiaryHeader({
             )}
           >
             <Calendar className="h-4 w-4" />
-            Date Range
+            {t("dateRange")}
           </button>
 
           {/* View toggle */}
@@ -71,7 +73,7 @@ export function DiaryHeader({
               )}
             >
               <List className="h-4 w-4" />
-              Timeline
+              {t("timeline")}
             </button>
             <button
               type="button"
@@ -84,7 +86,7 @@ export function DiaryHeader({
               )}
             >
               <Calendar className="h-4 w-4" />
-              Calendar
+              {t("calendar")}
             </button>
           </div>
         </div>
@@ -95,7 +97,7 @@ export function DiaryHeader({
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-foreground">From</label>
+              <label className="text-sm font-medium text-foreground">{t("dateFrom")}</label>
               <input
                 type="date"
                 value={dateRange.from || ""}
@@ -106,7 +108,7 @@ export function DiaryHeader({
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">To</label>
+              <label className="text-sm font-medium text-foreground">{t("dateTo")}</label>
               <input
                 type="date"
                 value={dateRange.to || ""}
@@ -123,7 +125,7 @@ export function DiaryHeader({
               onClick={() => onDateRangeChange({ from: undefined, to: undefined })}
               className="mt-3 text-sm text-muted-foreground hover:text-foreground"
             >
-              Clear dates
+              {t("clearDates")}
             </button>
           )}
         </div>

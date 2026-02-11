@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { ThumbsUp, ThumbsDown, Minus } from "lucide-react";
 import { RatingReasonsPicker } from "./rating-reasons-picker";
@@ -51,6 +52,7 @@ export function RatingCard({
   onReasonsChange,
   onOtherTextChange,
 }: RatingCardProps) {
+  const t = useTranslations("ratingCard");
   const initials = getInitials(displayName, username);
   const avatarColor =
     typeof avatarConfig.color === "string" ? avatarConfig.color : getAvatarColor(username);
@@ -64,7 +66,7 @@ export function RatingCard({
   }[] = [
     {
       value: "green",
-      label: "Good partner",
+      label: t("goodPartner"),
       icon: ThumbsUp,
       selectedClass: "bg-success text-success-foreground border-success",
       unselectedClass:
@@ -72,7 +74,7 @@ export function RatingCard({
     },
     {
       value: "red",
-      label: "Had issues",
+      label: t("hadIssues"),
       icon: ThumbsDown,
       selectedClass: "bg-destructive text-destructive-foreground border-destructive",
       unselectedClass:
@@ -80,7 +82,7 @@ export function RatingCard({
     },
     {
       value: "skip",
-      label: "Can't say",
+      label: t("cantSay"),
       icon: Minus,
       selectedClass: "bg-muted text-foreground border-muted-foreground/30",
       unselectedClass:

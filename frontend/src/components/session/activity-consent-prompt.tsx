@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Activity } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 const CONSENT_STORAGE_KEY = "focus-squad-input-tracking-consent";
@@ -24,6 +25,7 @@ interface ActivityConsentPromptProps {
 }
 
 export function ActivityConsentPrompt({ onConsent }: ActivityConsentPromptProps) {
+  const t = useTranslations("presence");
   const [visible, setVisible] = useState(() => getStoredConsent() === null);
 
   if (!visible) return null;
@@ -41,10 +43,7 @@ export function ActivityConsentPrompt({ onConsent }: ActivityConsentPromptProps)
           <div className="rounded-full bg-accent/20 p-2 shrink-0">
             <Activity className="h-4 w-4 text-accent" />
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Show your tablemates that you&apos;re working? We only track activity timestamps &mdash;
-            never actual keystrokes or mouse positions.
-          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{t("activityPrompt")}</p>
         </div>
         <div className="flex gap-2 justify-end">
           <Button
@@ -53,10 +52,10 @@ export function ActivityConsentPrompt({ onConsent }: ActivityConsentPromptProps)
             onClick={() => handleChoice(false)}
             className="text-muted-foreground"
           >
-            No thanks
+            {t("noThanks")}
           </Button>
           <Button variant="default" size="sm" onClick={() => handleChoice(true)}>
-            Enable
+            {t("enable")}
           </Button>
         </div>
       </div>

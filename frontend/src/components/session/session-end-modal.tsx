@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ export function SessionEndModal({
   essenceEarned,
 }: SessionEndModalProps) {
   const router = useRouter();
+  const t = useTranslations("sessionEnd");
 
   const isCompleted = phase === "completed";
   const isSocialPhase = phase === "social";
@@ -44,7 +46,6 @@ export function SessionEndModal({
   };
 
   const handleRateTablemates = () => {
-    // Rating UI is Phase 3 - for now just show a message or link to summary
     onClose();
     router.push(`/session/${sessionId}/end`);
   };
@@ -61,29 +62,29 @@ export function SessionEndModal({
             )}
           </div>
           <DialogTitle className="text-center text-xl">
-            {isCompleted ? "Session Complete!" : "Social Time"}
+            {isCompleted ? t("sessionComplete") : t("socialTime")}
           </DialogTitle>
           <DialogDescription className="text-center">
-            {isCompleted
-              ? "Great work! You've completed your focus session."
-              : "The work blocks are done. Take a moment to chat with your tablemates."}
+            {isCompleted ? t("sessionCompleteDesc") : t("socialTimeDesc")}
           </DialogDescription>
         </DialogHeader>
 
         {/* Stats Summary */}
         <div className="bg-muted rounded-lg p-4 space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Session Duration</span>
-            <span className="font-medium">55 minutes</span>
+            <span className="text-muted-foreground">{t("sessionDuration")}</span>
+            <span className="font-medium">{t("durationValue")}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Focus Time</span>
-            <span className="font-medium">{displayFocusMinutes} minutes</span>
+            <span className="text-muted-foreground">{t("focusTime")}</span>
+            <span className="font-medium">
+              {t("focusTimeMinutes", { minutes: displayFocusMinutes })}
+            </span>
           </div>
           {displayEssence && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Essence Earned</span>
-              <span className="font-medium text-accent">+1 Furniture Essence</span>
+              <span className="text-muted-foreground">{t("essenceEarned")}</span>
+              <span className="font-medium text-accent">{t("essenceEarnedValue")}</span>
             </div>
           )}
         </div>
@@ -92,7 +93,7 @@ export function SessionEndModal({
           {isSocialPhase && (
             <Button variant="default" className="w-full" onClick={handleRateTablemates}>
               <Star className="h-4 w-4 mr-2" />
-              Rate Tablemates
+              {t("rateTablematesBtn")}
             </Button>
           )}
           <Button
@@ -100,12 +101,10 @@ export function SessionEndModal({
             className="w-full"
             onClick={handleViewSummary}
           >
-            {isCompleted ? "View Summary" : "Continue Session"}
+            {isCompleted ? t("viewSummary") : t("continueSession")}
           </Button>
           {isSocialPhase && (
-            <p className="text-xs text-muted-foreground text-center">
-              Session ends in 5 minutes. Rating helps build trust in the community.
-            </p>
+            <p className="text-xs text-muted-foreground text-center">{t("socialEndsNote")}</p>
           )}
         </DialogFooter>
       </DialogContent>

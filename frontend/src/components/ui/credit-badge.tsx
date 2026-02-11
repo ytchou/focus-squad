@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Coins } from "lucide-react";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -23,6 +24,7 @@ export function CreditBadge({
   refreshDate,
   onClick,
 }: CreditBadgeProps) {
+  const t = useTranslations("credits");
   const isZero = credits === 0;
   const isLow = credits === 1;
   const { countdown } = useCountdown(isZero ? (refreshDate ?? null) : null);
@@ -70,7 +72,7 @@ export function CreditBadge({
       {/* Countdown tooltip on hover when zero */}
       {isZero && countdown !== "--" && (
         <div className="pointer-events-none absolute top-full left-1/2 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 transition-opacity group-hover:opacity-100">
-          Refreshes in {countdown}
+          {t("refreshesIn", { countdown })}
         </div>
       )}
     </div>

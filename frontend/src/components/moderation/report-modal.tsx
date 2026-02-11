@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -22,34 +23,6 @@ interface ReportModalProps {
   sessionId: string;
 }
 
-const REPORT_CATEGORIES = [
-  {
-    value: "verbal_harassment",
-    label: "Verbal Harassment",
-    description: "Insults, name-calling, or hostile language",
-  },
-  {
-    value: "explicit_content",
-    label: "Explicit Content",
-    description: "Sexual, graphic, or inappropriate content",
-  },
-  {
-    value: "threatening_behavior",
-    label: "Threatening Behavior",
-    description: "Threats, intimidation, or aggressive conduct",
-  },
-  {
-    value: "spam_scam",
-    label: "Spam / Scam",
-    description: "Unsolicited links, promotions, or scam attempts",
-  },
-  {
-    value: "other",
-    label: "Other",
-    description: "Any other behavior that violates community guidelines",
-  },
-] as const;
-
 const MAX_DESCRIPTION_LENGTH = 2000;
 
 export function ReportModal({
@@ -59,9 +32,39 @@ export function ReportModal({
   reportedDisplayName,
   sessionId,
 }: ReportModalProps) {
+  const t = useTranslations("moderation");
+  const tc = useTranslations("common");
   const [category, setCategory] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const reportCategories = [
+    {
+      value: "verbal_harassment",
+      label: t("verbalHarassment"),
+      description: t("verbalHarassmentDesc"),
+    },
+    {
+      value: "explicit_content",
+      label: t("explicitContent"),
+      description: t("explicitContentDesc"),
+    },
+    {
+      value: "threatening_behavior",
+      label: t("threateningBehavior"),
+      description: t("threateningBehaviorDesc"),
+    },
+    {
+      value: "spam_scam",
+      label: t("spamScam"),
+      description: t("spamScamDesc"),
+    },
+    {
+      value: "other",
+      label: t("otherLabel"),
+      description: t("otherDesc"),
+    },
+  ];
 
   const resetState = () => {
     setCategory(null);
@@ -85,10 +88,10 @@ export function ReportModal({
         category,
         description: description.trim() || undefined,
       });
-      toast.success("Report submitted. Our team will review it.");
+      toast.success(t("reportSubmittedToast"));
       handleClose();
     } catch {
-      toast.error("Failed to submit report. Please try again.");
+      toast.error(t("reportFailedToast"));
     } finally {
       setIsSubmitting(false);
     }
@@ -100,15 +103,13 @@ export function ReportModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="size-5 text-destructive" />
-            Report {reportedDisplayName}
+            {t("reportDisplayName", { name: reportedDisplayName })}
           </DialogTitle>
-          <DialogDescription>
-            Select the reason for your report. All reports are reviewed by our moderation team.
-          </DialogDescription>
+          <DialogDescription>{t("reportSelectReason")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
-          {REPORT_CATEGORIES.map((cat) => (
+          {reportCategories.map((cat) => (
             <label
               key={cat.value}
               className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
@@ -131,13 +132,13 @@ export function ReportModal({
 
         <div className="space-y-1.5">
           <label htmlFor="report-description" className="text-sm font-medium text-foreground">
-            Additional details (optional)
+            {t("additionalDetails")}
           </label>
           <textarea
             id="report-description"
             value={description}
             onChange={(e) => setDescription(e.target.value.slice(0, MAX_DESCRIPTION_LENGTH))}
-            placeholder="Provide any additional context..."
+            placeholder={t("additionalPlaceholder")}
             rows={3}
             className="w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
@@ -148,11 +149,11 @@ export function ReportModal({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button variant="destructive" onClick={handleSubmit} disabled={!category || isSubmitting}>
             {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin" />}
-            Submit Report
+            {t("submitReport")}
           </Button>
         </DialogFooter>
       </DialogContent>

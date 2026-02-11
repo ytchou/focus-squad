@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Menu, Bell, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditBadge } from "@/components/ui/credit-badge";
@@ -16,6 +17,8 @@ import { useUIStore, useUserStore, useCreditsStore } from "@/stores";
 import { useDebugBanner } from "@/hooks/use-debug-banner";
 
 export function Header() {
+  const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const user = useUserStore((state) => state.user);
   const openModal = useUIStore((state) => state.openModal);
@@ -45,7 +48,7 @@ export function Header() {
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden">
             <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle sidebar</span>
+            <span className="sr-only">{t("toggleSidebar")}</span>
           </Button>
 
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -53,7 +56,7 @@ export function Header() {
               <span className="text-sm font-bold">FS</span>
             </div>
             <span className="hidden text-lg font-semibold text-foreground md:inline">
-              Focus Squad
+              {tCommon("appName")}
             </span>
           </Link>
         </div>
@@ -71,7 +74,7 @@ export function Header() {
 
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
-            <span className="sr-only">Notifications</span>
+            <span className="sr-only">{t("notifications")}</span>
           </Button>
 
           <DropdownMenu>
@@ -88,19 +91,21 @@ export function Header() {
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium">{user?.display_name ?? user?.username}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
-                <p className="mt-1 text-xs text-muted-foreground capitalize">{tier} tier</p>
+                <p className="mt-1 text-xs text-muted-foreground capitalize">
+                  {t("tier", { tier })}
+                </p>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/profile" className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  Profile
+                  {t("profile")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive focus:text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
-                Sign out
+                {t("signOut")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

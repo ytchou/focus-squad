@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,8 @@ export function VoiceModeModal({
   onSelect,
   isLoading = false,
 }: VoiceModeModalProps) {
+  const t = useTranslations("voiceMode");
+  const tCommon = useTranslations("common");
   const [selectedMode, setSelectedMode] = useState<VoiceMode | null>(null);
 
   const handleConfirm = () => {
@@ -39,10 +42,8 @@ export function VoiceModeModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Choose Your Table Mode</DialogTitle>
-          <DialogDescription>
-            How would you like to participate in this focus session?
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("subtitle")}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
@@ -68,15 +69,13 @@ export function VoiceModeModal({
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-foreground flex items-center gap-2">
-                Voice Mode
+                {t("voiceMode")}
                 {selectedMode === "forced_audio" && <Check className="h-4 w-4 text-primary" />}
               </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Your microphone will be on. Chat with your tablemates while you work!
-              </p>
+              <p className="text-sm text-muted-foreground mt-1">{t("voiceModeDesc")}</p>
               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                 <Volume2 className="h-3 w-3" />
-                <span>Hear others • Share audio presence</span>
+                <span>{t("voiceModeHint")}</span>
               </div>
             </div>
           </button>
@@ -103,15 +102,13 @@ export function VoiceModeModal({
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-foreground flex items-center gap-2">
-                Quiet Mode
+                {t("quietMode")}
                 {selectedMode === "quiet" && <Check className="h-4 w-4 text-accent" />}
               </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Focus in silence. Perfect for deep work without distractions.
-              </p>
+              <p className="text-sm text-muted-foreground mt-1">{t("quietModeDesc")}</p>
               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                 <VolumeX className="h-3 w-3" />
-                <span>No audio • Visual presence only</span>
+                <span>{t("quietModeHint")}</span>
               </div>
             </div>
           </button>
@@ -120,7 +117,7 @@ export function VoiceModeModal({
         {/* Action Buttons */}
         <div className="flex gap-3 justify-end">
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button
             onClick={handleConfirm}
@@ -130,7 +127,7 @@ export function VoiceModeModal({
               selectedMode === "quiet" && "bg-accent hover:bg-accent/90"
             )}
           >
-            {isLoading ? "Matching..." : "Join Table"}
+            {isLoading ? t("matching") : t("joinTable")}
           </Button>
         </div>
       </DialogContent>

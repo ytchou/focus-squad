@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 
 interface LoginButtonProps {
@@ -7,6 +8,8 @@ interface LoginButtonProps {
 }
 
 export function LoginButton({ redirectTo }: LoginButtonProps) {
+  const t = useTranslations("auth");
+
   const handleLogin = async () => {
     const supabase = createClient();
 
@@ -29,7 +32,7 @@ export function LoginButton({ redirectTo }: LoginButtonProps) {
       className="flex w-full items-center justify-center gap-3 rounded-full bg-primary px-6 py-3 text-primary-foreground transition-colors hover:bg-primary/90"
     >
       <GoogleIcon />
-      <span>Continue with Google</span>
+      <span>{t("continueWith", { provider: "Google" })}</span>
     </button>
   );
 }

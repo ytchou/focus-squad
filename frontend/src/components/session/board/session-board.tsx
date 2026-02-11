@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useBoardStore, type BoardMessage, type ReflectionPhase } from "@/stores/board-store";
 import { ChatMessage } from "./chat-message";
 import { ReflectionCard } from "./reflection-card";
@@ -21,6 +22,7 @@ export function SessionBoard({
   reflectionPhase,
   onBroadcastMessage,
 }: SessionBoardProps) {
+  const t = useTranslations("session");
   const { messages, isSaving, addMessage, saveReflection, loadSessionReflections } =
     useBoardStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -78,7 +80,7 @@ export function SessionBoard({
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-0">
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full text-sm text-muted-foreground py-8">
-            {reflectionPhase ? "Share your thoughts with the table!" : "No messages yet"}
+            {reflectionPhase ? t("shareThoughts") : t("noMessagesYet")}
           </div>
         )}
 

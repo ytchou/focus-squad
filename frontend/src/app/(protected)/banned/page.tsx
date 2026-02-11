@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Clock, CheckCircle, Coffee, Headphones, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -40,26 +41,8 @@ function formatCountdown(totalSeconds: number): string {
   return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-const SESSION_TIPS = [
-  {
-    icon: Clock,
-    text: "Arrive on time -- join a few minutes early so you're ready when the session starts.",
-  },
-  {
-    icon: Coffee,
-    text: "Stay focused -- keep distractions to a minimum during work blocks.",
-  },
-  {
-    icon: Headphones,
-    text: "Be respectful -- keep your mic muted when not speaking, and be kind to tablemates.",
-  },
-  {
-    icon: Heart,
-    text: "Be present -- your tablemates are counting on you to show up and stay engaged.",
-  },
-];
-
 export default function BannedPage() {
+  const t = useTranslations("rating");
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useUserStore((s) => s.user);
@@ -69,6 +52,13 @@ export default function BannedPage() {
   const initial = computeRemaining(bannedUntil);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(initial.seconds);
   const [isExpired, setIsExpired] = useState(initial.expired);
+
+  const sessionTips = [
+    { icon: Clock, text: t("tipOnTime") },
+    { icon: Coffee, text: t("tipFocused") },
+    { icon: Headphones, text: t("tipRespectful") },
+    { icon: Heart, text: t("tipPresent") },
+  ];
 
   useEffect(() => {
     const tick = () => {
@@ -95,21 +85,17 @@ export default function BannedPage() {
 
           <div className="space-y-2">
             <h1 className="text-xl font-semibold text-foreground">
-              {isExpired
-                ? "Your pause has been lifted"
-                : "Your account has been temporarily paused"}
+              {isExpired ? t("pauseLifted") : t("accountPaused")}
             </h1>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {isExpired
-                ? "You're all set to join sessions again. Welcome back!"
-                : "Based on feedback from your tablemates, we've paused your account to give you a fresh start."}
+              {isExpired ? t("pauseLiftedDesc") : t("accountPausedDesc")}
             </p>
           </div>
 
           {/* Countdown */}
           {!isExpired && bannedUntil && (
             <div className="pt-2">
-              <p className="text-xs text-muted-foreground mb-1">Time remaining</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("timeRemaining")}</p>
               <p className="text-3xl font-mono font-semibold text-warning tabular-nums tracking-wider">
                 {formatCountdown(secondsRemaining)}
               </p>
@@ -120,9 +106,9 @@ export default function BannedPage() {
         {/* Tips section */}
         {!isExpired && (
           <div className="rounded-xl border bg-card p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-foreground">Tips for great sessions</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t("tipsTitle")}</h2>
             <div className="space-y-3">
-              {SESSION_TIPS.map((tip) => (
+              {sessionTips.map((tip) => (
                 <div key={tip.text} className="flex items-start gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
                     <tip.icon className="h-4 w-4 text-muted-foreground" />
@@ -141,12 +127,12 @@ export default function BannedPage() {
           disabled={!isExpired}
           onClick={() => router.push("/dashboard")}
         >
-          {isExpired ? "Return to Dashboard" : "Return to Dashboard"}
+          {t("returnToDashboard")}
         </Button>
 
         {!isExpired && (
           <p className="text-xs text-muted-foreground text-center">
-            The button will become available when your pause period ends.
+            {t("buttonAvailableWhenPauseEnds")}
           </p>
         )}
       </div>

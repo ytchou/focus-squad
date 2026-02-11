@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useSessionStore } from "@/stores/session-store";
 import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Volume2, Clock, Info } from "lucide-react";
 export default function WaitingRoomPage() {
   const router = useRouter();
   const params = useParams();
+  const t = useTranslations("waitingRoom");
   const sessionId = params.sessionId as string;
 
   const { sessionStartTime, isWaiting, clearWaitingRoom } = useSessionStore();
@@ -156,8 +158,10 @@ export default function WaitingRoomPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Waiting Room</CardTitle>
-          <CardDescription>Session starts at {formatStartTime(sessionStartTime)}</CardDescription>
+          <CardTitle className="text-3xl font-bold">{t("title")}</CardTitle>
+          <CardDescription>
+            {t("sessionStartsAt", { time: formatStartTime(sessionStartTime) })}
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -165,7 +169,7 @@ export default function WaitingRoomPage() {
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Clock className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Time until session starts</span>
+              <span className="text-sm text-muted-foreground">{t("timeUntilStart")}</span>
             </div>
             <div className="text-6xl font-bold tracking-tight text-primary">
               {formatTime(timeRemaining)}
@@ -176,7 +180,7 @@ export default function WaitingRoomPage() {
           {showGetReady && (
             <div className="animate-pulse">
               <Badge className="w-full py-3 text-lg justify-center bg-warning text-warning-foreground hover:bg-warning/90">
-                Get Ready! Session starting soon...
+                {t("getReady")}
               </Badge>
             </div>
           )}
@@ -186,11 +190,8 @@ export default function WaitingRoomPage() {
             <div className="flex items-start gap-3">
               <Volume2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="space-y-1">
-                <p className="text-sm font-medium">Audio will connect automatically</p>
-                <p className="text-xs text-muted-foreground">
-                  Your microphone will be unmuted when the session begins. Make sure you are in a
-                  quiet space and ready to focus.
-                </p>
+                <p className="text-sm font-medium">{t("audioConnectTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("audioConnectDesc")}</p>
               </div>
             </div>
           </div>
@@ -200,11 +201,8 @@ export default function WaitingRoomPage() {
             <div className="flex items-start gap-3">
               <Info className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
               <div className="space-y-1">
-                <p className="text-sm font-medium">No refunds for early departure</p>
-                <p className="text-xs text-muted-foreground">
-                  If you leave now or miss the session, your credit will not be refunded. Please
-                  only leave if absolutely necessary.
-                </p>
+                <p className="text-sm font-medium">{t("noRefundTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("noRefundDesc")}</p>
               </div>
             </div>
           </div>
@@ -217,7 +215,7 @@ export default function WaitingRoomPage() {
             onClick={handleLeave}
             disabled={isLeaving}
           >
-            {isLeaving ? "Leaving..." : "Leave Session (No Refund)"}
+            {isLeaving ? t("leaving") : t("leaveNoRefund")}
           </Button>
         </CardContent>
       </Card>

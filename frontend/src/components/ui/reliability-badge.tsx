@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { ShieldCheck, Shield, ShieldAlert, User } from "lucide-react";
 
@@ -20,18 +21,12 @@ function getReliabilityTier(score: number, ratingCount?: number): ReliabilityTie
   return "fair";
 }
 
-function getReliabilityLabel(tier: ReliabilityTier): string {
-  switch (tier) {
-    case "trusted":
-      return "Trusted";
-    case "good":
-      return "Good";
-    case "fair":
-      return "Fair";
-    case "new":
-      return "New";
-  }
-}
+const TIER_LABEL_KEYS: Record<ReliabilityTier, string> = {
+  trusted: "reliabilityTrusted",
+  good: "reliabilityGood",
+  fair: "reliabilityFair",
+  new: "reliabilityNew",
+};
 
 export function ReliabilityBadge({
   score,
@@ -40,6 +35,7 @@ export function ReliabilityBadge({
   size = "md",
   className,
 }: ReliabilityBadgeProps) {
+  const t = useTranslations("rating");
   const tier = getReliabilityTier(score, ratingCount);
 
   const tierStyles = {
@@ -78,7 +74,7 @@ export function ReliabilityBadge({
       )}
     >
       <TierIcon className={iconSizes[size]} />
-      {showLabel && <span>{getReliabilityLabel(tier)}</span>}
+      {showLabel && <span>{t(TIER_LABEL_KEYS[tier])}</span>}
       {tier !== "new" && <span className="tabular-nums">{score}%</span>}
     </div>
   );

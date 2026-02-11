@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useSessionStore } from "@/stores/session-store";
 import { api } from "@/lib/api/client";
 import { useSessionTimer } from "@/hooks/use-session-timer";
@@ -76,6 +77,7 @@ interface SessionApiResponse {
 export default function SessionPage() {
   const params = useParams();
   const router = useRouter();
+  const t = useTranslations("session");
   const sessionId = params.sessionId as string;
 
   const {
@@ -156,13 +158,13 @@ export default function SessionPage() {
         setIsLoading(false);
       } catch (err) {
         console.error("Failed to fetch session:", err);
-        setError("Failed to load session. Please try again.");
+        setError(t("failedToLoad"));
         setIsLoading(false);
       }
     }
 
     fetchSession();
-  }, [sessionId, setQuietMode]);
+  }, [sessionId, setQuietMode, t]);
 
   // Poll for participant updates (AI companions are added at T+5s after session start)
   // Stop polling once we have 4 participants or after 30 seconds
@@ -281,7 +283,7 @@ export default function SessionPage() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading session...</p>
+          <p className="text-muted-foreground">{t("loadingSession")}</p>
         </div>
       </div>
     );
@@ -293,7 +295,7 @@ export default function SessionPage() {
         <div className="text-center">
           <p className="text-destructive mb-4">{error}</p>
           <button onClick={() => router.push("/dashboard")} className="text-primary underline">
-            Return to Dashboard
+            {t("returnToDashboard")}
           </button>
         </div>
       </div>
@@ -571,10 +573,11 @@ function SessionPageContent({
   setViewMode,
   onPiPActiveChange,
 }: SessionPageContentProps) {
+  const t = useTranslations("session");
   const isBoardPhase = BOARD_PHASES.includes(phase);
   const reflectionPhase = REFLECTION_PHASE_MAP[phase] ?? null;
   const currentUser = participants.find((p) => p.isCurrentUser);
-  const currentUserDisplayName = currentUser?.displayName || currentUser?.username || "You";
+  const currentUserDisplayName = currentUser?.displayName || currentUser?.username || t("you");
 
   // Picture-in-Picture mini view
   const { isPiPActive, isPiPSupported, togglePiP } = usePictureInPicture({
@@ -601,14 +604,14 @@ function SessionPageContent({
   useEffect(() => {
     if (phase !== prevPhaseRef.current && reflectionPhase) {
       const prompts: Record<ReflectionPhase, string> = {
-        setup: "Share your session goal with the table!",
-        break: "Time for a quick check-in!",
-        social: "Session wrapping up - share your afterthoughts!",
+        setup: t("phaseNudgeSetup"),
+        break: t("phaseNudgeBreak"),
+        social: t("phaseNudgeSocial"),
       };
       toast.info(prompts[reflectionPhase]);
     }
     prevPhaseRef.current = phase;
-  }, [phase, reflectionPhase]);
+  }, [phase, reflectionPhase, t]);
 
   // Reset board store when session ends or user navigates away
   useEffect(() => {
@@ -659,9 +662,9 @@ function SessionPageContent({
         <button
           onClick={() => setViewMode("classic")}
           className="fixed bottom-4 left-4 z-30 px-3 py-1.5 text-xs bg-foreground/60 backdrop-blur-sm text-primary-foreground rounded-lg hover:bg-foreground/70 transition-colors"
-          title="Switch to classic view"
+          title={t("switchToClassic")}
         >
-          Classic View
+          {t("classicView")}
         </button>
 
         {/* Debug Panel - only for admin users */}
@@ -749,9 +752,9 @@ function SessionPageContent({
       <button
         onClick={() => setViewMode("pixel")}
         className="fixed bottom-20 left-4 z-30 px-3 py-1.5 text-xs bg-primary/80 text-primary-foreground rounded-lg hover:bg-primary transition-colors"
-        title="Switch to pixel art view"
+        title={t("switchToPixel")}
       >
-        Pixel View
+        {t("pixelView")}
       </button>
 
       {/* Session End Modal */}
