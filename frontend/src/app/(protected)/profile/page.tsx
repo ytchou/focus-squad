@@ -212,10 +212,9 @@ function StatsSection({ user }: { user: UserProfile }) {
             user.longest_streak > 0 ? t("bestStreak", { count: user.longest_streak }) : undefined
           }
         />
-        <div className="flex flex-col items-center justify-center rounded-xl bg-card p-4 shadow-sm">
-          <p className="mb-2 text-sm font-medium text-muted-foreground">{t("reliability")}</p>
+        <StatCard title={t("reliability")}>
           <ReliabilityBadge score={Number(user.reliability_score)} size="lg" />
-        </div>
+        </StatCard>
       </div>
     </section>
   );

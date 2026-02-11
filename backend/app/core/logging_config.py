@@ -56,7 +56,17 @@ def setup_logging(level: Optional[str] = None) -> None:
     handler.setFormatter(formatter)
     root.addHandler(handler)
 
-    # Quiet noisy third-party loggers
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    # Quiet noisy third-party loggers (uvicorn[standard] pulls in many verbose libs)
+    noisy_loggers = [
+        "uvicorn.access",
+        "httpx",
+        "httpcore",
+        "hpack",
+        "h2",
+        "h11",
+        "websockets",
+        "watchfiles",
+        "multipart",
+    ]
+    for name in noisy_loggers:
+        logging.getLogger(name).setLevel(logging.WARNING)

@@ -576,6 +576,15 @@
 - [x] All existing tests pass
 - [x] No missing translation key warnings in console
 
+#### Find Table Page (Frontend)
+- [ ] Build `/find-table` page with quick-match flow
+  - [ ] Table mode selector (Forced Audio / Quiet)
+  - [ ] Topic/tag optional input
+  - [ ] "Find Me a Table" CTA button (calls `POST /sessions/quick-match`)
+  - [ ] Loading/matching animation state
+  - [ ] Error handling: zero credits (402), pending ratings (403), already in session
+  - [ ] Redirect to waiting room on successful match
+
 #### Notifications (Basic)
 - [ ] Set up email service (Resend/SendGrid)
 - [ ] Implement browser push notifications
