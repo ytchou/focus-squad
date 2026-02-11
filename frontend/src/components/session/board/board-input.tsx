@@ -3,11 +3,13 @@
 import { useState, useCallback, type KeyboardEvent } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { isBlocked } from "@/lib/moderation/blocklist";
+import { isBlocked, getMatchedCategory } from "@/lib/moderation/blocklist";
+import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 import type { ReflectionPhase } from "@/stores/board-store";
 
 interface BoardInputProps {
+  sessionId: string;
   currentPhase: ReflectionPhase | null;
   isSaving: boolean;
   onSendChat: (content: string) => void;
@@ -21,6 +23,7 @@ const REFLECTION_PROMPTS: Record<ReflectionPhase, string> = {
 };
 
 export function BoardInput({
+  sessionId,
   currentPhase,
   isSaving,
   onSendChat,
@@ -37,6 +40,14 @@ export function BoardInput({
 
     if (isBlocked(trimmed)) {
       toast.error("Message not sent - please rephrase.");
+      const category = getMatchedCategory(trimmed);
+      api
+        .post("/moderation/flag", {
+          session_id: sessionId,
+          content: trimmed,
+          matched_pattern: category,
+        })
+        .catch(() => {});
       return;
     }
 
@@ -46,7 +57,7 @@ export function BoardInput({
       onSendChat(trimmed);
     }
     setText("");
-  }, [text, isReflectionPhase, currentPhase, onSendChat, onSendReflection]);
+  }, [text, sessionId, isReflectionPhase, currentPhase, onSendChat, onSendReflection]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

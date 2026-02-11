@@ -724,6 +724,7 @@ function SessionPageContent({
               participants={participants}
               speakingParticipantIds={speakingParticipantIds}
               currentUserId={currentUserId}
+              sessionId={sessionId}
             />
           </>
         )}

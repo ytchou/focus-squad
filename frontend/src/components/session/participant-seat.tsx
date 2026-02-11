@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Mic, MicOff, Bot } from "lucide-react";
+import { Mic, MicOff, Bot, MoreHorizontal, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ReportModal } from "@/components/moderation/report-modal";
 import type { PresenceState } from "@/types/activity";
 
 export interface ParticipantSeatProps {
@@ -17,9 +19,11 @@ export interface ParticipantSeatProps {
   isSpeaking: boolean;
   isCurrentUser: boolean;
   isEmpty?: boolean;
+  sessionId: string;
 }
 
 export function ParticipantSeat({
+  id,
   seatNumber: _seatNumber,
   username,
   displayName,
@@ -29,7 +33,26 @@ export function ParticipantSeat({
   isSpeaking,
   isCurrentUser,
   isEmpty = false,
+  sessionId,
 }: ParticipantSeatProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
   if (isEmpty) {
     return (
       <div className="bg-muted/50 rounded-2xl p-4 flex flex-col items-center gap-2 border border-dashed border-border min-h-[140px] justify-center">
@@ -43,15 +66,44 @@ export function ParticipantSeat({
 
   const name = displayName || username || (isAI ? "AI Companion" : "User");
   const initials = getInitials(name);
+  const showMenu = !isAI && !isCurrentUser;
 
   return (
     <div
       className={cn(
-        "bg-card rounded-2xl p-4 flex flex-col items-center gap-2 border border-border transition-all duration-300 min-h-[140px]",
+        "relative bg-card rounded-2xl p-4 flex flex-col items-center gap-2 border border-border transition-all duration-300 min-h-[140px]",
         isCurrentUser && "ring-2 ring-primary ring-offset-2 ring-offset-background",
         isSpeaking && !isMuted && "ring-2 ring-success animate-pulse"
       )}
     >
+      {/* Three-dot menu for reportable participants */}
+      {showMenu && (
+        <div ref={menuRef} className="absolute top-2 right-2 z-10">
+          <button
+            onClick={() => setMenuOpen((prev) => !prev)}
+            className="p-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            aria-label="More options"
+          >
+            <MoreHorizontal className="size-4" />
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-border bg-card shadow-lg py-1 z-20">
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  setReportOpen(true);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors"
+              >
+                <Flag className="size-3.5" />
+                Report User
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Avatar with speaking indicator */}
       <div className="relative">
         <Avatar className="size-16">
@@ -117,6 +169,17 @@ export function ParticipantSeat({
           </Badge>
         )}
       </div>
+
+      {/* Report Modal */}
+      {showMenu && (
+        <ReportModal
+          isOpen={reportOpen}
+          onClose={() => setReportOpen(false)}
+          reportedUserId={id}
+          reportedDisplayName={name}
+          sessionId={sessionId}
+        />
+      )}
     </div>
   );
 }

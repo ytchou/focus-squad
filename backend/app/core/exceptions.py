@@ -188,6 +188,28 @@ def register_exception_handlers(app: FastAPI) -> None:
             404, "No pending ratings found for this session.", "NO_PENDING_RATINGS"
         )
 
+    # --- Moderation handlers ---
+
+    from app.models.moderation import (
+        DuplicateReportError,
+        ReportLimitExceededError,
+        SelfReportError,
+    )
+
+    @app.exception_handler(SelfReportError)
+    async def _self_report(request: Request, exc: SelfReportError) -> JSONResponse:
+        return error_response(400, "Cannot report yourself.", "SELF_REPORT")
+
+    @app.exception_handler(DuplicateReportError)
+    async def _duplicate_report(request: Request, exc: DuplicateReportError) -> JSONResponse:
+        return error_response(
+            409, "You have already reported this user for this session.", "DUPLICATE_REPORT"
+        )
+
+    @app.exception_handler(ReportLimitExceededError)
+    async def _report_limit(request: Request, exc: ReportLimitExceededError) -> JSONResponse:
+        return error_response(429, str(exc), "REPORT_LIMIT_EXCEEDED")
+
     # --- Infrastructure handlers ---
 
     @app.exception_handler(LiveKitServiceError)

@@ -516,9 +516,31 @@
 - [x] Wire up: dashboard (render card + handle 402), app shell (render modal), header (pass props)
 
 #### Chat Safety & Moderation
-- [ ] Implement keyword blocklist filter for chat messages
-- [ ] Build report submission endpoint (`POST /api/v1/reports`)
-- [ ] Build report submission UI (button on participant seat + form with categories)
+> **Design Doc:** [.claude/plans/humble-munching-zebra.md](.claude/plans/humble-munching-zebra.md)
+
+**Three-layer moderation: client blocklist (enhanced) + server-side flag logging + user reports (escalation)**
+
+**Backend:**
+- [ ] Add moderation constants to `constants.py` (report limits, flag window, description max length)
+- [ ] Create `models/moderation.py` (ReportCategory enum, request/response models, exceptions)
+- [ ] Create `services/moderation_service.py` (flag logging, report submission, duplicate/self-report prevention)
+- [ ] Create `routers/moderation.py` (POST /flag, POST /reports, GET /reports/mine)
+- [ ] Wire router into `main.py` + register exception handlers in `exceptions.py`
+- [ ] Write TDD tests: 7 service tests + 7 router tests
+
+**Frontend — Blocklist Enhancement:**
+- [ ] Restructure `blocklist.ts` with categorized patterns + `getMatchedCategory()` function
+- [ ] Update `board-input.tsx` to POST flagged messages to backend (fire-and-forget)
+
+**Frontend — Report Modal:**
+- [ ] Build `ReportModal` component (5 categories, description textarea, submit flow)
+- [ ] Add three-dot menu to `ParticipantSeat` with "Report User" option (non-AI, non-self only)
+- [ ] Add "Report a concern" link on session end page (always visible, participant picker)
+- [ ] Thread `sessionId` through TableView → ParticipantSeat → BoardInput
+
+**Frontend Tests:**
+- [ ] ReportModal tests (category selection, submission, toasts)
+- [ ] Blocklist tests (`getMatchedCategory()` categorization, backward compat)
 
 #### Internationalization (i18n)
 - [ ] Configure next-intl with EN + zh-TW

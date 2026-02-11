@@ -3,9 +3,12 @@
 import { ParticipantSeat, type ParticipantSeatProps } from "./participant-seat";
 
 interface TableViewProps {
-  participants: (Omit<ParticipantSeatProps, "isSpeaking"> & { livekitIdentity: string | null })[];
+  participants: (Omit<ParticipantSeatProps, "isSpeaking" | "sessionId"> & {
+    livekitIdentity: string | null;
+  })[];
   speakingParticipantIds: Set<string>;
   currentUserId: string | null;
+  sessionId: string;
 }
 
 /**
@@ -14,7 +17,12 @@ interface TableViewProps {
  * [1] [2]
  * [3] [4]
  */
-export function TableView({ participants, speakingParticipantIds, currentUserId }: TableViewProps) {
+export function TableView({
+  participants,
+  speakingParticipantIds,
+  currentUserId,
+  sessionId,
+}: TableViewProps) {
   // Create a map of seat number to participant
   const seatMap = new Map<number, (typeof participants)[0]>();
   for (const p of participants) {
@@ -39,6 +47,7 @@ export function TableView({ participants, speakingParticipantIds, currentUserId 
           isSpeaking={false}
           isCurrentUser={false}
           isEmpty={true}
+          sessionId={sessionId}
         />
       );
     }
@@ -54,6 +63,7 @@ export function TableView({ participants, speakingParticipantIds, currentUserId 
         {...participant}
         isSpeaking={isSpeaking}
         isCurrentUser={participant.id === currentUserId}
+        sessionId={sessionId}
       />
     );
   });
