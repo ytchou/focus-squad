@@ -49,6 +49,7 @@ def _make_table_mock():
     mock.not_.is_.return_value = mock
     mock.order.return_value = mock
     mock.insert.return_value = mock
+    mock.upsert.return_value = mock
     mock.update.return_value = mock
     mock.execute.return_value = MagicMock(data=[])
     return mock
@@ -352,12 +353,11 @@ class TestCheckVisitors:
         ]
 
         # existing companions: empty
-        # insert visitor: succeeds (may be called multiple times for different companions)
+        # upsert visitor: succeeds (returns data for matching companion)
         # scheduled visitors: empty
         execute_results = [
             MagicMock(data=[]),  # existing companions check
-            MagicMock(data=[]),  # insert owl
-            MagicMock(data=[]),  # insert fox (warm tags meet threshold too)
+            MagicMock(data=[{"companion_type": "owl"}]),  # upsert owl
             MagicMock(data=[]),  # scheduled visitors query
         ]
         tables["user_companions"].execute.side_effect = execute_results
@@ -373,11 +373,11 @@ class TestCheckVisitors:
         assert len(owl_results) == 1
         assert isinstance(owl_results[0], VisitorResult)
 
-        # Verify insert was called for owl
-        insert_calls = tables["user_companions"].insert.call_args_list
-        owl_inserts = [c for c in insert_calls if c.args[0].get("companion_type") == "owl"]
-        assert len(owl_inserts) == 1
-        assert owl_inserts[0].args[0]["is_starter"] is False
+        # Verify upsert was called for owl (with ON CONFLICT for race-safety)
+        upsert_calls = tables["user_companions"].upsert.call_args_list
+        owl_upserts = [c for c in upsert_calls if c.args[0].get("companion_type") == "owl"]
+        assert len(owl_upserts) == 1
+        assert owl_upserts[0].args[0]["is_starter"] is False
 
     @pytest.mark.unit
     def test_already_discovered_companion_skipped(self, service, mock_supabase) -> None:

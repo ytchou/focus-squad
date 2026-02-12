@@ -17,7 +17,6 @@ from fastapi import HTTPException
 
 from app.core.auth import AuthUser
 from app.models.room import (
-    EssenceBalance,
     InsufficientEssenceError,
     ItemNotFoundError,
     PurchaseRequest,
@@ -108,21 +107,20 @@ class TestGetEssenceBalance:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_user_not_found_returns_zeros(
+    async def test_user_not_found_raises_404(
         self, mock_request, mock_user, essence_service, user_service_no_profile
     ) -> None:
-        """User not in database returns EssenceBalance with all zeros."""
-        result = await get_essence_balance(
-            request=mock_request,
-            user=mock_user,
-            user_service=user_service_no_profile,
-            essence_service=essence_service,
-        )
+        """User not in database raises HTTPException 404."""
+        with pytest.raises(HTTPException) as exc_info:
+            await get_essence_balance(
+                request=mock_request,
+                user=mock_user,
+                user_service=user_service_no_profile,
+                essence_service=essence_service,
+            )
 
-        assert isinstance(result, EssenceBalance)
-        assert result.balance == 0
-        assert result.total_earned == 0
-        assert result.total_spent == 0
+        assert exc_info.value.status_code == 404
+        assert "User not found" in exc_info.value.detail
         essence_service.get_balance.assert_not_called()
 
 
@@ -308,16 +306,18 @@ class TestGetUserInventory:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_user_not_found_returns_empty(
+    async def test_user_not_found_raises_404(
         self, mock_request, mock_user, essence_service, user_service_no_profile
     ) -> None:
-        """User not in database returns empty list."""
-        result = await get_user_inventory(
-            request=mock_request,
-            user=mock_user,
-            user_service=user_service_no_profile,
-            essence_service=essence_service,
-        )
+        """User not in database raises HTTPException 404."""
+        with pytest.raises(HTTPException) as exc_info:
+            await get_user_inventory(
+                request=mock_request,
+                user=mock_user,
+                user_service=user_service_no_profile,
+                essence_service=essence_service,
+            )
 
-        assert result == []
+        assert exc_info.value.status_code == 404
+        assert "User not found" in exc_info.value.detail
         essence_service.get_inventory.assert_not_called()

@@ -91,30 +91,15 @@ class EssenceService:
 
         cost = item_data["essence_cost"]
 
-        balance_result = (
-            self.supabase.table("furniture_essence")
-            .select("balance, total_spent")
-            .eq("user_id", user_id)
-            .execute()
-        )
+        # Atomic balance deduction via RPC — prevents race conditions from
+        # concurrent purchases by using UPDATE ... WHERE balance >= cost
+        deduct_result = self.supabase.rpc(
+            "deduct_essence",
+            {"p_user_id": user_id, "p_cost": cost},
+        ).execute()
 
-        if not balance_result.data:
-            raise InsufficientEssenceError(f"No essence balance found for user {user_id}")
-
-        current_balance = balance_result.data[0]["balance"]
-        current_spent = balance_result.data[0]["total_spent"]
-
-        if current_balance < cost:
-            raise InsufficientEssenceError(
-                f"Insufficient essence: need {cost}, have {current_balance}"
-            )
-
-        self.supabase.table("furniture_essence").update(
-            {
-                "balance": current_balance - cost,
-                "total_spent": current_spent + cost,
-            }
-        ).eq("user_id", user_id).execute()
+        if not deduct_result.data or not deduct_result.data.get("success", False):
+            raise InsufficientEssenceError(f"Insufficient essence to purchase item costing {cost}")
 
         self.supabase.table("essence_transactions").insert(
             {

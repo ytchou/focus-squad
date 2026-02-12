@@ -9,7 +9,7 @@ Handles:
 
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.rate_limit import limiter
@@ -40,7 +40,7 @@ async def get_companions(
     """Get all companions for the current user."""
     profile = user_service.get_user_by_auth_id(user.auth_id)
     if not profile:
-        return []
+        raise HTTPException(status_code=404, detail="User not found")
     return companion_service.get_companions(profile.id)
 
 
@@ -56,8 +56,6 @@ async def choose_starter_companion(
     """Choose a starter companion (first-time only)."""
     profile = user_service.get_user_by_auth_id(user.auth_id)
     if not profile:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail="User not found")
     return companion_service.choose_starter(
         user_id=profile.id,
@@ -77,8 +75,6 @@ async def adopt_visitor(
     """Adopt a visiting companion."""
     profile = user_service.get_user_by_auth_id(user.auth_id)
     if not profile:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail="User not found")
     return companion_service.adopt_visitor(
         user_id=profile.id,

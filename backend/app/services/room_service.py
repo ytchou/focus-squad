@@ -264,13 +264,20 @@ class RoomService:
                     "discovered_at": now.isoformat(),
                     "visit_scheduled_at": visit_time.isoformat(),
                 }
-                self.supabase.table("user_companions").insert(insert_data).execute()
-                results.append(
-                    VisitorResult(
-                        companion_type=companion_type,
-                        visit_scheduled_at=visit_time,
-                    )
+                # Use upsert with on_conflict to handle concurrent room loads
+                # that might both try to insert the same companion type
+                upsert_result = (
+                    self.supabase.table("user_companions")
+                    .upsert(insert_data, on_conflict="user_id,companion_type")
+                    .execute()
                 )
+                if upsert_result.data:
+                    results.append(
+                        VisitorResult(
+                            companion_type=companion_type,
+                            visit_scheduled_at=visit_time,
+                        )
+                    )
 
         scheduled_result = (
             self.supabase.table("user_companions")
@@ -282,7 +289,12 @@ class RoomService:
         )
 
         for row in scheduled_result.data or []:
-            scheduled_at = datetime.fromisoformat(row["visit_scheduled_at"].replace("Z", "+00:00"))
+            try:
+                scheduled_at = datetime.fromisoformat(
+                    row["visit_scheduled_at"].replace("Z", "+00:00")
+                )
+            except (ValueError, AttributeError):
+                continue
             if now >= scheduled_at:
                 comp_type = row["companion_type"]
                 if not any(r.companion_type == comp_type for r in results):

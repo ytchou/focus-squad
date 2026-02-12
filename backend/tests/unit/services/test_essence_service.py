@@ -246,18 +246,19 @@ class TestBuyItem:
 
     @pytest.mark.unit
     def test_successful_purchase(self, service, mock_supabase) -> None:
-        """Purchases item: deducts balance, logs transaction, adds to inventory."""
+        """Purchases item: deducts balance via atomic RPC, logs transaction, adds to inventory."""
         tables = _setup_tables(
             mock_supabase,
-            ["items", "furniture_essence", "essence_transactions", "user_items"],
+            ["items", "essence_transactions", "user_items"],
         )
 
         item = _sample_item(item_id="item-1", cost=5)
         tables["items"].execute.return_value = MagicMock(data=[item])
 
-        tables["furniture_essence"].execute.return_value = MagicMock(
-            data=[{"balance": 10, "total_spent": 5}]
-        )
+        # Mock atomic RPC deduction
+        rpc_mock = MagicMock()
+        rpc_mock.execute.return_value = MagicMock(data={"success": True})
+        mock_supabase.rpc.return_value = rpc_mock
 
         tables["essence_transactions"].execute.return_value = MagicMock(data=[{}])
 
@@ -277,9 +278,10 @@ class TestBuyItem:
         assert result.item is not None
         assert result.item.essence_cost == 5
 
-        # Verify balance was updated
-        tables["furniture_essence"].update.assert_called_once_with(
-            {"balance": 5, "total_spent": 10}
+        # Verify atomic RPC was called with correct params
+        mock_supabase.rpc.assert_called_once_with(
+            "deduct_essence",
+            {"p_user_id": "user-123", "p_cost": 5},
         )
 
         # Verify transaction was logged
@@ -320,25 +322,31 @@ class TestBuyItem:
             service.buy_item("user-123", "item-1")
 
     @pytest.mark.unit
-    def test_insufficient_essence_no_balance_row(self, service, mock_supabase) -> None:
-        """Raises InsufficientEssenceError when user has no essence row."""
-        tables = _setup_tables(mock_supabase, ["items", "furniture_essence"])
-        tables["items"].execute.return_value = MagicMock(data=[_sample_item(cost=5)])
-        tables["furniture_essence"].execute.return_value = MagicMock(data=[])
+    def test_insufficient_essence_rpc_fails(self, service, mock_supabase) -> None:
+        """Raises InsufficientEssenceError when RPC returns success=false."""
+        tables = _setup_tables(mock_supabase, ["items"])
+        tables["items"].execute.return_value = MagicMock(data=[_sample_item(cost=10)])
 
-        with pytest.raises(InsufficientEssenceError, match="No essence balance"):
+        # RPC returns failure (insufficient balance)
+        rpc_mock = MagicMock()
+        rpc_mock.execute.return_value = MagicMock(data={"success": False})
+        mock_supabase.rpc.return_value = rpc_mock
+
+        with pytest.raises(InsufficientEssenceError, match="Insufficient essence"):
             service.buy_item("user-123", "item-1")
 
     @pytest.mark.unit
-    def test_insufficient_essence_low_balance(self, service, mock_supabase) -> None:
-        """Raises InsufficientEssenceError when balance is too low."""
-        tables = _setup_tables(mock_supabase, ["items", "furniture_essence"])
-        tables["items"].execute.return_value = MagicMock(data=[_sample_item(cost=10)])
-        tables["furniture_essence"].execute.return_value = MagicMock(
-            data=[{"balance": 3, "total_spent": 7}]
-        )
+    def test_insufficient_essence_rpc_no_data(self, service, mock_supabase) -> None:
+        """Raises InsufficientEssenceError when RPC returns no data."""
+        tables = _setup_tables(mock_supabase, ["items"])
+        tables["items"].execute.return_value = MagicMock(data=[_sample_item(cost=5)])
 
-        with pytest.raises(InsufficientEssenceError, match="need 10, have 3"):
+        # RPC returns empty data (no balance row for user)
+        rpc_mock = MagicMock()
+        rpc_mock.execute.return_value = MagicMock(data=None)
+        mock_supabase.rpc.return_value = rpc_mock
+
+        with pytest.raises(InsufficientEssenceError, match="Insufficient essence"):
             service.buy_item("user-123", "item-1")
 
 

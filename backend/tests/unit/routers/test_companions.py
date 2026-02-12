@@ -113,18 +113,20 @@ class TestGetCompanions:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_user_not_found_returns_empty(
+    async def test_user_not_found_raises_404(
         self, mock_request, mock_user, companion_service, user_service_no_profile
     ) -> None:
-        """User not in database returns empty list."""
-        result = await get_companions(
-            request=mock_request,
-            user=mock_user,
-            user_service=user_service_no_profile,
-            companion_service=companion_service,
-        )
+        """User not in database raises HTTPException 404."""
+        with pytest.raises(HTTPException) as exc_info:
+            await get_companions(
+                request=mock_request,
+                user=mock_user,
+                user_service=user_service_no_profile,
+                companion_service=companion_service,
+            )
 
-        assert result == []
+        assert exc_info.value.status_code == 404
+        assert "User not found" in exc_info.value.detail
         companion_service.get_companions.assert_not_called()
 
 

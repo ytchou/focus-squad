@@ -8,7 +8,7 @@ Handles:
 
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.models.room import LayoutUpdate, RoomResponse, RoomState
@@ -38,8 +38,6 @@ async def get_room_state(
     """Get complete room state including inventory, companions, and visitors."""
     profile = user_service.get_user_by_auth_id(user.auth_id)
     if not profile:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail="User not found")
     return room_service.get_room_state(profile.id)
 
@@ -55,7 +53,5 @@ async def update_room_layout(
     """Update the room layout with item placements."""
     profile = user_service.get_user_by_auth_id(user.auth_id)
     if not profile:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail="User not found")
     return room_service.update_layout(user_id=profile.id, placements=layout_update.placements)
