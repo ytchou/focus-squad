@@ -12,6 +12,7 @@ import {
   Users2,
   ChevronLeft,
   ChevronRight,
+  Armchair,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore, useMessageStore } from "@/stores";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/dashboard", icon: Home, labelKey: "home" as const },
   { href: "/diary", icon: BookOpen, labelKey: "diary" as const },
+  { href: "/room", icon: Armchair, labelKey: "room" as const },
   { href: "/sessions", icon: Clock, labelKey: "sessions" as const },
   { href: "/partners", icon: Users2, labelKey: "partners" as const },
   { href: "/collection", icon: Trophy, labelKey: "collection" as const },

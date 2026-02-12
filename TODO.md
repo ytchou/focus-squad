@@ -691,14 +691,61 @@
 - [x] Add unread badge to sidebar Partners nav item
 - [x] Add `messages` i18n namespace (EN + zh-TW)
 
-#### Gamification
+#### Gamification — Phase 4A: Room & Companions MVP
+> **Design Doc:** [output/plan/2026-02-12-gamification-design.md](output/plan/2026-02-12-gamification-design.md)
+
+**Database & Constants (Step 1):**
 - [x] Award essence on session completion (implemented in webhook room_finished handler)
-- [ ] Implement `EssenceService` for furniture essence (purchase, spend, history)
-- [ ] Implement streak bonuses (10 sessions = bonus essence)
-- [ ] Build item catalog display (pixel art collectibles)
-- [ ] Add item purchase flow
-- [ ] More room types as collectible/unlockable rewards
-- [ ] Character customization (accessories, color swaps, cosmetics via essence)
+- [x] Migration `026_gamification_room_system.sql`: ALTER items/user_items tables, create user_room + user_companions
+- [x] Seed 36 items across 3 tiers (Basic 3-5 ess, Standard 10-30 ess, Premium 80-100+ ess) + 4 free starter beds
+- [x] Add companion constants: types, attraction tags, discovery thresholds, preferred tags
+
+**Backend Models & Services (Step 2-3):**
+- [x] Create `models/room.py`: enums, ShopItem, RoomState, CompanionInfo, VisitorResult, RoomResponse models
+- [x] Create `services/essence_service.py`: get_balance, get_shop_items, buy_item, get_inventory
+- [x] Create `services/room_service.py`: get_room_state (auto visitor check), ensure_room, update_layout
+- [x] Create `services/companion_service.py`: choose_starter, adopt_visitor, get_companions, has_starter
+
+**Backend Routers (Step 4):**
+- [x] Create `routers/essence.py`: GET /balance, GET /shop, POST /buy, GET /inventory
+- [x] Create `routers/room.py`: GET / (full state + visitor check), PUT /layout
+- [x] Create `routers/companions.py`: GET /, POST /choose-starter, POST /adopt
+- [x] Register routers in main.py + exception handlers
+
+**Frontend Stores & Components (Step 5-6):**
+- [x] Create `room-store.ts`: room state, edit mode, layout management
+- [x] Create `shop-store.ts`: catalog, inventory, essence balance, purchase flow
+- [x] Build 10 room components: RoomGrid, RoomItem, RoomBackground, CompanionSprite, EditToolbar, ItemShop, CompanionGuide, StarterCompanionPicker, VisitorNotification, EssenceBadge
+
+**Frontend Pages & Integration (Step 7-8):**
+- [x] Create `/room` page with 2D top-down grid, companion, edit mode
+- [x] Add "My Room" to sidebar navigation + EssenceBadge to header
+- [x] i18n: room, shop, companion strings (EN + zh-TW)
+- [x] Post-session onboarding: starter companion picker → redirect to room
+- [x] All 639 backend tests + 354 frontend tests pass, build succeeds
+
+#### Gamification — Phase 4B: Diary Integration
+
+**Companion Diary Reactions (Chunk 7):**
+- [ ] Define 8 reaction animations (1 per diary tag)
+- [ ] Trigger companion reaction after diary note submission
+- [ ] Implement 7-day mood baseline (recent tags → companion default behavior)
+
+**Growth Timeline (Chunk 8):**
+- [ ] Auto-capture room snapshots at milestones (first item, every 10th session, companion discovery, room unlock)
+- [ ] Build `/my-room/timeline` tab (scrollable timeline with snapshot thumbnails + diary excerpts)
+- [ ] Canvas capture of room state for snapshot images
+
+**Streak UI (Chunk 9):**
+- [ ] Show streak progress on dashboard/room ("3/5 sessions this week")
+- [ ] Streak bonus notification
+- [ ] Tests: diary reactions, timeline, streak display
+
+#### Gamification — Phase 4C: Social Gamification (Post-MVP)
+
+- [ ] Visit partner rooms (read-only view)
+- [ ] Milestone celebration cards (shareable images)
+- [ ] Gift items to partners (buy-as-gift flow, gifted_by tracking)
 
 ---
 

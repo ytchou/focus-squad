@@ -362,6 +362,43 @@ def register_exception_handlers(app: FastAPI) -> None:
             409, "A direct conversation already exists.", "DIRECT_CONVERSATION_EXISTS"
         )
 
+    # --- Room / Essence / Companion handlers ---
+
+    from app.models.room import (
+        AlreadyHasStarterError,
+        InsufficientEssenceError,
+        InvalidPlacementError,
+        InvalidStarterError,
+        ItemNotFoundError,
+        VisitorNotFoundError,
+    )
+
+    @app.exception_handler(InsufficientEssenceError)
+    async def _insufficient_essence(
+        request: Request, exc: InsufficientEssenceError
+    ) -> JSONResponse:
+        return error_response(402, str(exc), "INSUFFICIENT_ESSENCE")
+
+    @app.exception_handler(ItemNotFoundError)
+    async def _item_not_found(request: Request, exc: ItemNotFoundError) -> JSONResponse:
+        return error_response(404, str(exc), "ITEM_NOT_FOUND")
+
+    @app.exception_handler(InvalidPlacementError)
+    async def _invalid_placement(request: Request, exc: InvalidPlacementError) -> JSONResponse:
+        return error_response(400, str(exc), "INVALID_PLACEMENT")
+
+    @app.exception_handler(AlreadyHasStarterError)
+    async def _already_has_starter(request: Request, exc: AlreadyHasStarterError) -> JSONResponse:
+        return error_response(409, str(exc), "ALREADY_HAS_STARTER")
+
+    @app.exception_handler(InvalidStarterError)
+    async def _invalid_starter(request: Request, exc: InvalidStarterError) -> JSONResponse:
+        return error_response(400, str(exc), "INVALID_STARTER")
+
+    @app.exception_handler(VisitorNotFoundError)
+    async def _visitor_not_found(request: Request, exc: VisitorNotFoundError) -> JSONResponse:
+        return error_response(404, str(exc), "VISITOR_NOT_FOUND")
+
     # --- Infrastructure handlers ---
 
     @app.exception_handler(LiveKitServiceError)

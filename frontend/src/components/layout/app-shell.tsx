@@ -4,6 +4,8 @@ import { useUIStore } from "@/stores";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { UpgradeModal } from "@/components/credits/upgrade-modal";
+import { ItemShop } from "@/components/room/item-shop";
+import { CompanionGuide } from "@/components/room/companion-guide";
 import { cn } from "@/lib/utils";
 
 interface AppShellProps {
@@ -31,6 +33,8 @@ export function AppShell({ children }: AppShellProps) {
         <div className="p-4 md:p-6">{children}</div>
       </main>
       <UpgradeModal isOpen={activeModal === "upgrade"} onClose={closeModal} />
+      <ItemShop />
+      <CompanionGuide />
     </div>
   );
 }

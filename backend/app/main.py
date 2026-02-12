@@ -13,12 +13,15 @@ from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.redis import close_redis, init_redis
 from app.routers import (
     analytics,
+    companions,
     credits,
+    essence,
     health,
     messages,
     moderation,
     partners,
     reflections,
+    room,
     schedules,
     sessions,
     users,
@@ -84,4 +87,9 @@ app.include_router(
 app.include_router(partners.router, prefix=f"{settings.api_prefix}/partners", tags=["Partners"])
 app.include_router(messages.router, prefix=f"{settings.api_prefix}/messages", tags=["Messages"])
 app.include_router(schedules.router, prefix=f"{settings.api_prefix}/schedules", tags=["Schedules"])
+app.include_router(essence.router, prefix=f"{settings.api_prefix}/essence", tags=["Essence"])
+app.include_router(room.router, prefix=f"{settings.api_prefix}/room", tags=["Room"])
+app.include_router(
+    companions.router, prefix=f"{settings.api_prefix}/companions", tags=["Companions"]
+)
 app.include_router(webhooks.router, prefix=f"{settings.api_prefix}/webhooks", tags=["Webhooks"])
