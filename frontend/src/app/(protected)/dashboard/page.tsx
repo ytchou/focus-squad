@@ -9,6 +9,7 @@ import {
   useRatingStore,
   useUIStore,
   usePartnerStore,
+  useGamificationStore,
 } from "@/stores";
 import { useSessionStore } from "@/stores/session-store";
 import { api, ApiError } from "@/lib/api/client";
@@ -17,6 +18,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
 import { ZeroCreditCard } from "@/components/credits/zero-credit-card";
 import { FindTableHero } from "@/components/session/find-table-hero";
+import { StreakProgressBar } from "@/components/room/streak-progress-bar";
 import { Clock, BookOpen, Flame, Coins, Bug, AlertTriangle, Users2 } from "lucide-react";
 import { toast } from "sonner";
 import { InvitationAlert } from "@/components/partners";
@@ -40,17 +42,19 @@ export default function DashboardPage() {
   } = useSessionStore();
   const { hasPendingRatings, pendingSessionId, checkPendingRatings } = useRatingStore();
   const { pendingInvitations, fetchInvitations, respondToInvitation } = usePartnerStore();
+  const { weeklyStreak, fetchStreak } = useGamificationStore();
   const openModal = useUIStore((state) => state.openModal);
   const tPartners = useTranslations("partners");
   const [isMatching, setIsMatching] = useState(false);
   const [matchingSlot, setMatchingSlot] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
 
-  // Check for pending ratings and invitations on mount
+  // Check for pending ratings, invitations, and streak on mount
   useEffect(() => {
     checkPendingRatings();
     fetchInvitations();
-  }, [checkPendingRatings, fetchInvitations]);
+    fetchStreak();
+  }, [checkPendingRatings, fetchInvitations, fetchStreak]);
 
   const handleInvitationRespond = async (
     sessionId: string,
@@ -262,6 +266,16 @@ export default function DashboardPage() {
             icon={Coins}
           />
         </div>
+
+        {/* Weekly streak */}
+        {weeklyStreak && (
+          <StreakProgressBar
+            sessionCount={weeklyStreak.session_count}
+            nextBonusAt={weeklyStreak.next_bonus_at}
+            bonus3Awarded={weeklyStreak.bonus_3_awarded}
+            bonus5Awarded={weeklyStreak.bonus_5_awarded}
+          />
+        )}
 
         {/* Quick links */}
         <div className="flex items-center gap-4">

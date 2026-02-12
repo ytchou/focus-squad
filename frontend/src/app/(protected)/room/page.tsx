@@ -1,21 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
-import { Pencil, ShoppingBag, BookOpen, Loader2 } from "lucide-react";
+import { Pencil, ShoppingBag, BookOpen, Loader2, Clock } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useRoomStore } from "@/stores/room-store";
 import { useShopStore } from "@/stores/shop-store";
-import { useUIStore } from "@/stores";
+import { useUIStore, useGamificationStore } from "@/stores";
 import { RoomGrid } from "@/components/room/room-grid";
 import { EditToolbar } from "@/components/room/edit-toolbar";
 import { EssenceBadge } from "@/components/room/essence-badge";
+import { StreakProgressBar } from "@/components/room/streak-progress-bar";
 import { VisitorNotification } from "@/components/room/visitor-notification";
+import { captureRoomSnapshot } from "@/lib/room/capture-snapshot";
+import { toast } from "sonner";
 import type { VisitorResult } from "@/stores/room-store";
 
 export default function RoomPage() {
   const t = useTranslations("room");
+  const router = useRouter();
   const roomData = useRoomStore((s) => s.roomData);
   const isLoading = useRoomStore((s) => s.isLoading);
   const editMode = useRoomStore((s) => s.editMode);
@@ -23,8 +28,20 @@ export default function RoomPage() {
   const fetchRoom = useRoomStore((s) => s.fetchRoom);
   const fetchBalance = useShopStore((s) => s.fetchBalance);
   const openModal = useUIStore((s) => s.openModal);
+  const weeklyStreak = useGamificationStore((s) => s.weeklyStreak);
+  const fetchStreak = useGamificationStore((s) => s.fetchStreak);
+  const mood = useGamificationStore((s) => s.mood);
+  const pendingReaction = useGamificationStore((s) => s.pendingReaction);
+  const fetchMood = useGamificationStore((s) => s.fetchMood);
+  const clearPendingReaction = useGamificationStore((s) => s.clearPendingReaction);
+  const pendingMilestones = useGamificationStore((s) => s.pendingMilestones);
+  const checkMilestones = useGamificationStore((s) => s.checkMilestones);
+  const uploadSnapshot = useGamificationStore((s) => s.uploadSnapshot);
 
+  const tTimeline = useTranslations("timeline");
+  const roomGridRef = useRef<HTMLDivElement>(null);
   const [pendingVisitor, setPendingVisitor] = useState<VisitorResult | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   useEffect(() => {
     fetchRoom().then((data) => {
@@ -33,7 +50,52 @@ export default function RoomPage() {
       }
     });
     fetchBalance();
-  }, [fetchRoom, fetchBalance]);
+    fetchStreak();
+    fetchMood();
+    checkMilestones();
+  }, [fetchRoom, fetchBalance, fetchStreak, fetchMood, checkMilestones]);
+
+  // Clear pending reaction after it plays (2.5s animation duration)
+  useEffect(() => {
+    if (pendingReaction) {
+      const timer = setTimeout(() => {
+        clearPendingReaction();
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingReaction, clearPendingReaction]);
+
+  // Capture room snapshot for pending milestones
+  const captureMilestones = useCallback(async () => {
+    if (isCapturing || pendingMilestones.length === 0 || !roomGridRef.current) return;
+    setIsCapturing(true);
+    try {
+      const imageBase64 = await captureRoomSnapshot(roomGridRef.current);
+      for (const milestone of pendingMilestones) {
+        const result = await uploadSnapshot({
+          milestone_type: milestone,
+          image_base64: imageBase64,
+        });
+        if (result) {
+          toast.success(
+            tTimeline("newMilestone", {
+              milestone: tTimeline(`milestone.${milestone}`),
+            })
+          );
+        }
+      }
+    } catch {
+      // Capture failure is non-critical
+    } finally {
+      setIsCapturing(false);
+    }
+  }, [isCapturing, pendingMilestones, uploadSnapshot, tTimeline]);
+
+  useEffect(() => {
+    if (pendingMilestones.length > 0 && roomGridRef.current && !isCapturing) {
+      captureMilestones();
+    }
+  }, [pendingMilestones, captureMilestones, isCapturing]);
 
   const essenceBalance = roomData?.essence_balance ?? 0;
   const companions = roomData?.companions ?? [];
@@ -64,6 +126,17 @@ export default function RoomPage() {
           </div>
         </div>
 
+        {/* Weekly streak */}
+        {weeklyStreak && (
+          <StreakProgressBar
+            sessionCount={weeklyStreak.session_count}
+            nextBonusAt={weeklyStreak.next_bonus_at}
+            bonus3Awarded={weeklyStreak.bonus_3_awarded}
+            bonus5Awarded={weeklyStreak.bonus_5_awarded}
+            compact
+          />
+        )}
+
         {/* Toolbar */}
         <div className="flex items-center gap-2">
           {editMode ? (
@@ -82,13 +155,20 @@ export default function RoomPage() {
                 <BookOpen className="h-4 w-4" />
                 {t("companions")}
               </Button>
+              <Button variant="ghost" size="sm" onClick={() => router.push("/room/timeline")}>
+                <Clock className="h-4 w-4" />
+                {t("timeline")}
+              </Button>
             </>
           )}
         </div>
 
         {/* Room grid */}
-        <div className="rounded-xl border border-border overflow-hidden bg-card">
-          <RoomGrid />
+        <div ref={roomGridRef} className="rounded-xl border border-border overflow-hidden bg-card">
+          <RoomGrid
+            companionReaction={pendingReaction?.animation ?? null}
+            companionMood={mood?.mood}
+          />
         </div>
 
         {/* Empty state hint */}

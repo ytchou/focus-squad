@@ -157,3 +157,27 @@ export interface SaveDiaryNoteRequest {
   note?: string;
   tags: string[];
 }
+
+export interface DiaryNoteCompanionReaction {
+  companion_type: string;
+  animation: string;
+  tag: string;
+}
+
+export interface DiaryNoteMood {
+  mood: "positive" | "neutral" | "tired";
+  score: number;
+  positive_count: number;
+  negative_count: number;
+  total_count: number;
+}
+
+export interface DiaryNoteWithReactionResponse {
+  session_id: string;
+  note: string;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+  companion_reaction: DiaryNoteCompanionReaction | null;
+  mood: DiaryNoteMood | null;
+}

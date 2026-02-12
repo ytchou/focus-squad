@@ -399,6 +399,21 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def _visitor_not_found(request: Request, exc: VisitorNotFoundError) -> JSONResponse:
         return error_response(404, str(exc), "VISITOR_NOT_FOUND")
 
+    # --- Gamification handlers ---
+
+    from app.models.gamification import (
+        InvalidMilestoneTypeError,
+        SnapshotTooLargeError,
+    )
+
+    @app.exception_handler(InvalidMilestoneTypeError)
+    async def _invalid_milestone(request: Request, exc: InvalidMilestoneTypeError) -> JSONResponse:
+        return error_response(400, str(exc), "INVALID_MILESTONE_TYPE")
+
+    @app.exception_handler(SnapshotTooLargeError)
+    async def _snapshot_too_large(request: Request, exc: SnapshotTooLargeError) -> JSONResponse:
+        return error_response(413, str(exc), "SNAPSHOT_TOO_LARGE")
+
     # --- Infrastructure handlers ---
 
     @app.exception_handler(LiveKitServiceError)

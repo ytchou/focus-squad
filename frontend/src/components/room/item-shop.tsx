@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, ShoppingBag, Package, Loader2 } from "lucide-react";
-import { useUIStore } from "@/stores";
+import { useUIStore, useGamificationStore } from "@/stores";
 import { useShopStore } from "@/stores/shop-store";
 import { useRoomStore } from "@/stores/room-store";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,7 @@ export function ItemShop() {
   const fetchBalance = useShopStore((s) => s.fetchBalance);
   const buyItem = useShopStore((s) => s.buyItem);
   const fetchRoom = useRoomStore((s) => s.fetchRoom);
+  const checkMilestones = useGamificationStore((s) => s.checkMilestones);
 
   const [selectedCategory, setSelectedCategory] = useState("all");
 
@@ -67,8 +68,8 @@ export function ItemShop() {
     const result = await buyItem(itemId);
     if (result) {
       toast.success(t("purchaseSuccess"));
-      // Refresh room data to include new inventory
       fetchRoom();
+      checkMilestones();
     }
   };
 

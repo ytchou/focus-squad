@@ -159,6 +159,47 @@ VISITOR_COOLDOWN_HOURS = 24
 STARTER_COMPANIONS = ["cat", "dog", "bunny", "hamster"]
 DISCOVERABLE_COMPANIONS = ["owl", "fox", "turtle", "raccoon"]
 
+# Gamification — Diary Integration (Phase 4B)
+
+# Companion diary reactions (diary tag -> CSS animation name)
+DIARY_TAG_REACTIONS = {
+    "productive": "reaction-purr",
+    "breakthrough": "reaction-jump",
+    "deep-focus": "reaction-nod",
+    "energized": "reaction-run",
+    "social": "reaction-approach",
+    "tired": "reaction-nap",
+    "distracted": "reaction-wobble",
+    "struggled": "reaction-nudge",
+}
+
+# Mood baseline scoring
+POSITIVE_DIARY_TAGS = ["productive", "breakthrough", "deep-focus", "energized", "social"]
+NEGATIVE_DIARY_TAGS = ["tired", "distracted", "struggled"]
+MOOD_POSITIVE_THRESHOLD = 0.3
+MOOD_NEGATIVE_THRESHOLD = -0.3
+MOOD_WINDOW_DAYS = 7
+
+# Growth timeline milestones
+MILESTONE_TYPES = [
+    "first_item",
+    "session_milestone",
+    "companion_discovered",
+    "room_unlocked",
+    "first_diary",
+    "diary_streak_7",
+    "first_breakthrough",
+]
+SESSION_MILESTONE_INTERVAL = 10
+SNAPSHOT_MAX_SIZE_BYTES = 2 * 1024 * 1024  # 2MB
+DIARY_EXCERPT_MAX_LENGTH = 200
+
+# Weekly streak bonuses
+STREAK_BONUS_THRESHOLDS = [
+    {"sessions": 3, "bonus_essence": 1, "flag": "bonus_3_awarded"},
+    {"sessions": 5, "bonus_essence": 2, "flag": "bonus_5_awarded"},
+]
+
 COMPANION_METADATA = {
     "cat": {
         "personality": "Independent, curious",

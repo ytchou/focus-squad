@@ -16,6 +16,7 @@ from livekit import api
 from app.core.config import get_settings
 from app.core.constants import MIN_ACTIVE_MINUTES_FOR_COMPLETION
 from app.core.database import get_supabase
+from app.services.streak_service import StreakService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -417,6 +418,18 @@ async def _handle_room_finished(event_data: dict) -> None:
 
         except Exception as e:
             logger.error(f"Failed to award essence to user {user_id}: {e}")
+
+        # Check weekly streak bonus
+        try:
+            streak_service = StreakService(supabase=supabase)
+            streak_result = streak_service.increment_session_count(user_id)
+            if streak_result:
+                logger.info(
+                    f"Streak bonus: +{streak_result.bonus_essence} essence "
+                    f"to user {user_id} (threshold {streak_result.threshold_reached})"
+                )
+        except Exception as e:
+            logger.error(f"Failed to process streak for user {user_id}: {e}")
 
     logger.info(f"Awarded essence to {essence_awarded} participants in session {session_id}")
 

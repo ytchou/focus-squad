@@ -10,7 +10,12 @@ import { CompanionSprite } from "./companion-sprite";
 const GRID_COLS = 6;
 const GRID_ROWS = 4;
 
-export function RoomGrid() {
+interface RoomGridProps {
+  companionReaction?: string | null;
+  companionMood?: "positive" | "neutral" | "tired";
+}
+
+export function RoomGrid({ companionReaction, companionMood }: RoomGridProps = {}) {
   const roomData = useRoomStore((s) => s.roomData);
   const editMode = useRoomStore((s) => s.editMode);
   const pendingLayout = useRoomStore((s) => s.pendingLayout);
@@ -140,6 +145,8 @@ export function RoomGrid() {
           companionType={activeCompanion}
           placements={layout}
           gridCellSize={cellSize}
+          reaction={companionReaction}
+          mood={companionMood}
         />
       )}
 

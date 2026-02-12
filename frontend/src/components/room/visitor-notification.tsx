@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { api } from "@/lib/api/client";
 import { useRoomStore } from "@/stores/room-store";
+import { useGamificationStore } from "@/stores";
 import { toast } from "sonner";
 import type { VisitorResult } from "@/stores/room-store";
 
@@ -36,6 +37,7 @@ interface VisitorNotificationProps {
 export function VisitorNotification({ visitor, onDismiss }: VisitorNotificationProps) {
   const t = useTranslations("room");
   const fetchRoom = useRoomStore((s) => s.fetchRoom);
+  const checkMilestones = useGamificationStore((s) => s.checkMilestones);
   const [isAdopting, setIsAdopting] = useState(false);
 
   const emoji = COMPANION_EMOJI[visitor.companion_type] || "🐾";
@@ -48,6 +50,7 @@ export function VisitorNotification({ visitor, onDismiss }: VisitorNotificationP
       });
       toast.success(t("companionAdopted"));
       await fetchRoom();
+      checkMilestones();
       onDismiss();
     } catch {
       toast.error(t("adoptError"));

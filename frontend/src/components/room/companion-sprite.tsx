@@ -26,11 +26,24 @@ function computePosition(placements: RoomPlacement[], gridCellSize: number) {
   };
 }
 
+function getIdleDuration(mood?: "positive" | "neutral" | "tired"): string {
+  switch (mood) {
+    case "positive":
+      return "2s";
+    case "tired":
+      return "5s";
+    default:
+      return "3s";
+  }
+}
+
 interface CompanionSpriteProps {
   companionType: string;
   placements: RoomPlacement[];
   gridCellSize: number;
   className?: string;
+  reaction?: string | null;
+  mood?: "positive" | "neutral" | "tired";
 }
 
 export function CompanionSprite({
@@ -38,10 +51,14 @@ export function CompanionSprite({
   placements,
   gridCellSize,
   className,
+  reaction,
+  mood,
 }: CompanionSpriteProps) {
   const [position, setPosition] = useState(() => computePosition(placements, gridCellSize));
+  const [activeReaction, setActiveReaction] = useState<string | null>(null);
   const placementsRef = useRef(placements);
   const cellSizeRef = useRef(gridCellSize);
+  const prevReactionRef = useRef<string | null | undefined>(null);
 
   useEffect(() => {
     placementsRef.current = placements;
@@ -58,7 +75,26 @@ export function CompanionSprite({
     return () => clearInterval(interval);
   }, []);
 
+  // Handle reaction prop changes
+  useEffect(() => {
+    if (reaction && reaction !== prevReactionRef.current) {
+      prevReactionRef.current = reaction;
+      const frame = requestAnimationFrame(() => {
+        setActiveReaction(reaction);
+      });
+      const timer = setTimeout(() => {
+        setActiveReaction(null);
+        prevReactionRef.current = null;
+      }, 2500);
+      return () => {
+        cancelAnimationFrame(frame);
+        clearTimeout(timer);
+      };
+    }
+  }, [reaction]);
+
   const emoji = COMPANION_EMOJI[companionType] || "\uD83D\uDC3E";
+  const idleDuration = getIdleDuration(mood);
 
   return (
     <div
@@ -74,8 +110,15 @@ export function CompanionSprite({
       }}
     >
       <div
-        className="w-full h-full flex items-center justify-center text-2xl animate-bounce"
-        style={{ animationDuration: "3s" }}
+        className={cn(
+          "w-full h-full flex items-center justify-center text-2xl",
+          !activeReaction && "animate-bounce"
+        )}
+        style={
+          activeReaction
+            ? { animation: `${activeReaction} 2.5s ease-in-out` }
+            : { animationDuration: idleDuration }
+        }
       >
         {emoji}
       </div>
