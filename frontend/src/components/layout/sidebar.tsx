@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Home, BookOpen, Clock, Trophy, User, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Home,
+  BookOpen,
+  Clock,
+  Trophy,
+  User,
+  Users2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores";
 import { useDebugBanner } from "@/hooks/use-debug-banner";
@@ -13,6 +22,7 @@ const navItems = [
   { href: "/dashboard", icon: Home, labelKey: "home" as const },
   { href: "/diary", icon: BookOpen, labelKey: "diary" as const },
   { href: "/sessions", icon: Clock, labelKey: "sessions" as const },
+  { href: "/partners", icon: Users2, labelKey: "partners" as const },
   { href: "/collection", icon: Trophy, labelKey: "collection" as const },
   { href: "/profile", icon: User, labelKey: "profile" as const },
 ];

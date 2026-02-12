@@ -36,3 +36,12 @@ export {
   type MessageType,
   type ReflectionPhase,
 } from "./board-store";
+
+// Partner store (accountability partners)
+export {
+  usePartnerStore,
+  type PartnerInfo,
+  type PartnerRequestInfo,
+  type InvitationInfo,
+  type UserSearchResult,
+} from "./partner-store";

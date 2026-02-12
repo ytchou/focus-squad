@@ -212,6 +212,95 @@ def register_exception_handlers(app: FastAPI) -> None:
             429, "Report limit reached for this session.", "REPORT_LIMIT_EXCEEDED"
         )
 
+    # --- Partner handlers ---
+
+    from app.models.partner import (
+        AlreadyPartnersError,
+        InvalidInterestTagError,
+        InvitationExpiredError,
+        InvitationNotFoundError,
+        NotPartnerError,
+        PartnerLimitError,
+        PartnerRequestExistsError,
+        PartnershipNotFoundError,
+        SelfPartnerError,
+    )
+
+    @app.exception_handler(PartnershipNotFoundError)
+    async def _partnership_not_found(
+        request: Request, exc: PartnershipNotFoundError
+    ) -> JSONResponse:
+        return error_response(404, "Partnership not found.", "PARTNERSHIP_NOT_FOUND")
+
+    @app.exception_handler(AlreadyPartnersError)
+    async def _already_partners(request: Request, exc: AlreadyPartnersError) -> JSONResponse:
+        return error_response(
+            409, "A partnership already exists between these users.", "ALREADY_PARTNERS"
+        )
+
+    @app.exception_handler(PartnerRequestExistsError)
+    async def _partner_request_exists(
+        request: Request, exc: PartnerRequestExistsError
+    ) -> JSONResponse:
+        return error_response(409, "A partner request already exists.", "PARTNER_REQUEST_EXISTS")
+
+    @app.exception_handler(SelfPartnerError)
+    async def _self_partner(request: Request, exc: SelfPartnerError) -> JSONResponse:
+        return error_response(400, "Cannot send partner request to yourself.", "SELF_PARTNER")
+
+    @app.exception_handler(PartnerLimitError)
+    async def _partner_limit(request: Request, exc: PartnerLimitError) -> JSONResponse:
+        return error_response(429, "Maximum number of partners reached.", "PARTNER_LIMIT_EXCEEDED")
+
+    @app.exception_handler(InvitationNotFoundError)
+    async def _invitation_not_found(request: Request, exc: InvitationNotFoundError) -> JSONResponse:
+        return error_response(404, "Invitation not found.", "INVITATION_NOT_FOUND")
+
+    @app.exception_handler(InvitationExpiredError)
+    async def _invitation_expired(request: Request, exc: InvitationExpiredError) -> JSONResponse:
+        return error_response(410, "Invitation has expired.", "INVITATION_EXPIRED")
+
+    @app.exception_handler(NotPartnerError)
+    async def _not_partner(request: Request, exc: NotPartnerError) -> JSONResponse:
+        return error_response(403, "You can only invite partners to private tables.", "NOT_PARTNER")
+
+    @app.exception_handler(InvalidInterestTagError)
+    async def _invalid_interest_tag(request: Request, exc: InvalidInterestTagError) -> JSONResponse:
+        return error_response(400, str(exc), "INVALID_INTEREST_TAG")
+
+    # --- Schedule handlers ---
+
+    from app.models.schedule import (
+        ScheduleLimitError,
+        ScheduleNotFoundError,
+        ScheduleOwnershipError,
+        SchedulePermissionError,
+    )
+
+    @app.exception_handler(ScheduleNotFoundError)
+    async def _schedule_not_found(request: Request, exc: ScheduleNotFoundError) -> JSONResponse:
+        return error_response(404, "Schedule not found.", "SCHEDULE_NOT_FOUND")
+
+    @app.exception_handler(SchedulePermissionError)
+    async def _schedule_permission(request: Request, exc: SchedulePermissionError) -> JSONResponse:
+        return error_response(
+            403,
+            "Recurring schedules require the Unlimited plan.",
+            "SCHEDULE_PERMISSION",
+        )
+
+    @app.exception_handler(ScheduleOwnershipError)
+    async def _schedule_ownership(request: Request, exc: ScheduleOwnershipError) -> JSONResponse:
+        return error_response(
+            403, "You are not the creator of this schedule.", "SCHEDULE_OWNERSHIP"
+        )
+
+    @app.exception_handler(ScheduleLimitError)
+    async def _schedule_limit(request: Request, exc: ScheduleLimitError) -> JSONResponse:
+        return error_response(
+            429, "Maximum number of recurring schedules reached.", "SCHEDULE_LIMIT_EXCEEDED"
+        )
+
     # --- Infrastructure handlers ---
 
     @app.exception_handler(LiveKitServiceError)

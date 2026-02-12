@@ -596,16 +596,67 @@
 - [x] Frontend tests: FindTableHero, TimeSlotCard, ModeToggle components
 - [x] Verification: all tests pass (491 backend, 354 frontend), lint clean, build succeeds
 
-#### Notifications (Basic)
-- [ ] Set up email service (Resend/SendGrid)
-- [ ] Implement browser push notifications
-- [ ] Create notification preferences settings
-- [ ] Send notifications for: session start, match found, credit refresh, Red rating
+#### Accountability Partners & Private Study Groups
+> **Design Doc:** [output/plan/2026-02-12-accountability-partners-design.md](output/plan/2026-02-12-accountability-partners-design.md)
+> **Plan File:** [.claude/plans/stateful-popping-giraffe.md](.claude/plans/stateful-popping-giraffe.md)
 
-#### Analytics (Basic)
-- [ ] Integrate PostHog
-- [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.)
-- [ ] Add user identification and properties
+**Database & Constants (Chunk 1):**
+- [x] Migration `019_interest_tags.sql`: `user_interest_tags` table + RLS
+- [x] Migration `020_partnerships.sql`: `partnerships` table + indexes + RLS
+- [x] Migration `021_table_invitations.sql`: `table_invitations` table + indexes
+- [x] Migration `022_recurring_schedules.sql`: `recurring_schedules` table + constraints
+- [x] Migration `023_sessions_private_columns.sql`: add `is_private`, `created_by`, `recurring_schedule_id`, `max_seats` to sessions
+- [x] Add interest tags, partnership, and schedule constants to `constants.py`
+
+**Backend Models & Exceptions (Chunk 2):**
+- [x] Create `models/partner.py`: enums, request/response models, domain exceptions
+- [x] Create `models/schedule.py`: recurring schedule models
+- [x] Register new exception handlers in `core/exceptions.py`
+
+**Backend Services (Chunk 3):**
+- [x] Create `PartnerService` (`services/partner_service.py`): request flow, list, remove, search, interest tags, last-session tracking
+- [x] Create `ScheduleService` (`services/schedule_service.py`): CRUD, auto-session creation logic
+- [x] Modify `SessionService`: add `is_private` filter to `find_matching_session()`, private session creation, invitation handling
+- [x] Post-session integration: update `last_session_together` for partner pairs
+
+**Backend Routers & Tasks (Chunk 4):**
+- [x] Create `routers/partners.py`: 6 endpoints (list, requests, search, send, respond, remove)
+- [x] Create `routers/schedules.py`: 4 endpoints (list, create, update, delete)
+- [x] Modify `routers/sessions.py`: add create-private, invitations, invite-respond endpoints
+- [x] Modify `routers/users.py`: add interest tags endpoint, partnership status in public profile
+- [x] Create `tasks/schedule_tasks.py`: hourly Celery task for auto-session creation
+- [x] Register new routers in `main.py`
+
+**Backend Tests (Chunk 5 — TDD):**
+- [x] `test_partner_service.py` (25 tests): send, respond, list, remove, tags, search, partnership status
+- [x] `test_schedule_service.py` (25 tests): create, permissions, auto-creation, timezone, update, delete
+- [x] `test_partners.py` (23 tests) + `test_schedules.py` (18 tests) router tests
+- [x] All existing tests still pass — 582 total (91 new, 491 pre-existing)
+
+**Frontend Store & Components (Chunk 6):**
+- [x] Create `stores/partner-store.ts`: Zustand store for partner state + API calls
+- [x] Build `PartnerCard` component (avatar, name, tags, last session, actions)
+- [x] Build `PartnerRequestCard` component (accept/decline/cancel)
+- [x] Build `CreatePrivateTableModal` (multi-step: slot → partners → config → confirm)
+- [x] Build `InvitationAlert` dashboard card
+- [x] Build `AddPartnerButton` (reusable, state-aware)
+- [x] Build `InterestTagPicker` + `InterestTagBadge` components
+- [x] Add `partners`, `schedule` i18n namespaces (EN + zh-TW)
+
+**Frontend Pages & Modifications (Chunk 7):**
+- [x] Create `/partners` page (card grid, tabs: Partners/Requests/Invitations, search)
+- [x] Create `/partners/schedules` page (Coming Soon placeholder, unlimited-gated)
+- [x] Add "Partners" to sidebar navigation (Users2 icon)
+- [x] Dashboard: add invitation alerts
+- [x] Session end page: add "Add as Partner" button per human tablemate
+- [x] Profile page: add interest tags section
+
+#### Partner Direct Messaging (Chat)
+- [ ] Design chat system architecture (real-time vs async)
+- [ ] Build partner chat UI
+- [ ] Implement message persistence
+- [ ] Add chat notifications
+
 
 #### Gamification
 - [x] Award essence on session completion (implemented in webhook room_finished handler)
@@ -618,27 +669,24 @@
 
 ---
 
-## Phase 5: Launch Prep
+## Phase 5: MVP Launch Prep
 
-### Friends & Private Study Groups
-- [ ] Friend request/accept flow
-- [ ] Private table creation & invitation (≤4 friends)
-- [ ] Recurring schedule management
-- [ ] Credit implications for private tables
+### Notifications
+- [ ] Set up email service (Resend/SendGrid)
+- [ ] Implement browser push notifications
+- [ ] Create notification preferences settings
+- [ ] Send notifications for: session start, match found, credit refresh, Red rating
+
+### Analytics
+- [ ] Integrate PostHog
+- [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.)
+- [ ] Add user identification and properties
 
 ### Payment Integration
 - [ ] Research Taiwan payment gateways (ECPay, LINE Pay, NewebPay) or international (Stripe, LemonSqueezy)
 - [ ] Document integration requirements
 - [ ] Design subscription upgrade flow (UI mockups)
 - [ ] Implement payment processing
-
-### Production Hardening
-- [ ] Security audit (OWASP top 10, use [shannon](https://github.com/KeygraphHQ/shannon))
-- [ ] Add JWKS cache TTL (1-hour expiration with background refresh)
-- [ ] Convert JWKS fetch to async (`httpx.AsyncClient`)
-- [ ] Performance testing
-- [ ] Mobile responsiveness check
-- [ ] Accessibility audit (basic)
 
 ### PWA
 - [ ] Service worker for offline shell
@@ -660,6 +708,14 @@
 - [ ] Content marketing (for SEO)
   - [ ] "Body doubling" research as marketing assets, or some built in prompts in the system
   - [ ] Comments about attention span issues, how to regain focus, etc.
+
+### Production Hardening
+- [ ] Security audit (OWASP top 10, use [shannon](https://github.com/KeygraphHQ/shannon))
+- [ ] Add JWKS cache TTL (1-hour expiration with background refresh)
+- [ ] Convert JWKS fetch to async (`httpx.AsyncClient`)
+- [ ] Performance testing
+- [ ] Mobile responsiveness check
+- [ ] Accessibility audit (basic)
 
 ---
 

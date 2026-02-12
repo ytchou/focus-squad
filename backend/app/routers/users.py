@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.rate_limit import limiter
+from app.models.partner import UpdateInterestTagsRequest
 from app.models.user import (
     DeleteAccountResponse,
     UserProfile,
@@ -104,6 +105,28 @@ async def cancel_my_deletion(
     soft-deleted user signs back in.
     """
     return user_service.cancel_account_deletion(current_user.auth_id)
+
+
+@router.put("/me/interests")
+@limiter.limit("15/minute")
+async def set_interest_tags(
+    request: Request,
+    body: UpdateInterestTagsRequest,
+    current_user: AuthUser = Depends(require_auth_from_state),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Set interest tags on the current user's profile."""
+    from app.services.partner_service import PartnerService
+
+    partner_service = PartnerService()
+    profile = user_service.get_user_by_auth_id(current_user.auth_id)
+    if not profile:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="User not found")
+
+    tags = partner_service.set_interest_tags(profile.id, body.tags)
+    return {"tags": tags}
 
 
 @router.get("/{user_id}", response_model=UserPublicProfile)

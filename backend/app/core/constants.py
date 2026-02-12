@@ -102,3 +102,34 @@ OFF_PEAK_HOUR_ESTIMATE = 5  # Other hours
 REPORT_DESCRIPTION_MAX_LENGTH = 2000
 FLAG_WINDOW_DAYS = 7  # Rolling window for pattern detection
 MAX_REPORTS_PER_SESSION = 3  # Prevent report spam per user per session
+
+# Interest Tags (predefined — stored in users.study_interests TEXT[])
+INTEREST_TAGS = [
+    "coding",
+    "writing",
+    "design",
+    "language_learning",
+    "exam_prep",
+    "reading",
+    "research",
+    "music_practice",
+    "art",
+    "job_hunting",
+    "data_science",
+    "meditation",
+]
+MAX_INTEREST_TAGS_PER_USER = 5
+
+# Accountability Partners
+MAX_PARTNERS = 50
+PARTNER_SEARCH_LIMIT = 20
+
+# Private Tables & Invitations
+MIN_PRIVATE_TABLE_SEATS = 2
+MAX_PRIVATE_TABLE_SEATS = 4
+INVITATION_EXPIRY_HOURS = 24
+
+# Recurring Schedules (Unlimited plan only)
+MAX_RECURRING_SCHEDULES = 10
+SCHEDULE_LOOKAHEAD_HOURS = 24
+SCHEDULE_LABEL_MAX_LENGTH = 100

@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Star,
   Flag,
+  UserPlus,
 } from "lucide-react";
 import { useSessionStore } from "@/stores/session-store";
 import { useRatingStore } from "@/stores/rating-store";
@@ -29,6 +30,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api/client";
+import { usePartnerStore } from "@/stores";
+import { AddPartnerButton } from "@/components/partners";
+import { toast } from "sonner";
 
 interface SessionSummary {
   focus_minutes: number;
@@ -62,6 +66,10 @@ export default function SessionEndPage() {
     skipAll,
     checkPendingRatings,
   } = useRatingStore();
+
+  const tPartners = useTranslations("partners");
+  const { sendRequest } = usePartnerStore();
+  const [partnerStatus, setPartnerStatus] = useState<Record<string, string | null>>({});
 
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,6 +130,16 @@ export default function SessionEndPage() {
   const handleSkipAll = async () => {
     await skipAll(sessionId);
     setRatingsCompleted(true);
+  };
+
+  const handleSendPartnerRequest = async (userId: string) => {
+    try {
+      await sendRequest(userId);
+      setPartnerStatus((prev) => ({ ...prev, [userId]: "pending" }));
+      toast.success(tPartners("requestSent"));
+    } catch {
+      toast.error(tPartners("createError"));
+    }
   };
 
   const handleReturnHome = () => {
@@ -280,6 +298,41 @@ export default function SessionEndPage() {
             </CardContent>
           </Card>
         ) : null}
+
+        {/* Add as Partner */}
+        {rateableUsers.length > 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <UserPlus className="h-4 w-4 text-accent" />
+                <p className="text-sm font-medium text-foreground">{tPartners("addPartner")}</p>
+              </div>
+              <div className="space-y-2">
+                {rateableUsers.map((user) => (
+                  <div
+                    key={user.user_id}
+                    className="flex items-center justify-between rounded-lg border border-border p-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="size-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary">
+                        {getInitials(user.display_name || user.username || "U")}
+                      </div>
+                      <span className="text-sm font-medium text-foreground">
+                        {user.display_name || user.username || "User"}
+                      </span>
+                    </div>
+                    <AddPartnerButton
+                      userId={user.user_id}
+                      partnershipStatus={partnerStatus[user.user_id] ?? null}
+                      onSendRequest={handleSendPartnerRequest}
+                      compact
+                    />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Report a concern */}
         {rateableUsers.length > 0 && (
