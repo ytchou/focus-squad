@@ -15,6 +15,7 @@ from app.routers import (
     analytics,
     credits,
     health,
+    messages,
     moderation,
     partners,
     reflections,
@@ -81,5 +82,6 @@ app.include_router(
     moderation.router, prefix=f"{settings.api_prefix}/moderation", tags=["Moderation"]
 )
 app.include_router(partners.router, prefix=f"{settings.api_prefix}/partners", tags=["Partners"])
+app.include_router(messages.router, prefix=f"{settings.api_prefix}/messages", tags=["Messages"])
 app.include_router(schedules.router, prefix=f"{settings.api_prefix}/schedules", tags=["Schedules"])
 app.include_router(webhooks.router, prefix=f"{settings.api_prefix}/webhooks", tags=["Webhooks"])

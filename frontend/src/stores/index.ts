@@ -45,3 +45,12 @@ export {
   type InvitationInfo,
   type UserSearchResult,
 } from "./partner-store";
+
+// Message store (partner direct messaging)
+export {
+  useMessageStore,
+  type ConversationInfo,
+  type MessageInfo,
+  type MessageSenderInfo,
+  type ConversationMemberInfo,
+} from "./message-store";

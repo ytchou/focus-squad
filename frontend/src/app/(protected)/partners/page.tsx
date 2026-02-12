@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/layout";
-import { usePartnerStore } from "@/stores";
+import { usePartnerStore, useMessageStore, useUserStore } from "@/stores";
 import { Button } from "@/components/ui/button";
 import { Search, Users2, Plus, Loader2 } from "lucide-react";
 import {
@@ -13,13 +13,21 @@ import {
   CreatePrivateTableModal,
   AddPartnerButton,
 } from "@/components/partners";
+import { ConversationList } from "@/components/messages/conversation-list";
+import { ChatThread } from "@/components/messages/chat-thread";
+import { ChatHeader } from "@/components/messages/chat-header";
+import { ChatInput } from "@/components/messages/chat-input";
+import { CreateGroupModal } from "@/components/messages/create-group-modal";
+import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/use-debounce";
 
-type Tab = "partners" | "requests" | "invitations";
+type Tab = "partners" | "requests" | "invitations" | "messages";
 
 export default function PartnersPage() {
   const t = useTranslations("partners");
+  const user = useUserStore((s) => s.user);
+  const currentUserId = user?.id || "";
 
   const {
     partners,
@@ -39,11 +47,20 @@ export default function PartnersPage() {
     respondToInvitation,
   } = usePartnerStore();
 
+  const totalUnreadCount = useMessageStore((s) => s.totalUnreadCount);
+  const activeConversationId = useMessageStore((s) => s.activeConversationId);
+  const conversations = useMessageStore((s) => s.conversations);
+  const openConversation = useMessageStore((s) => s.openConversation);
+
   const [activeTab, setActiveTab] = useState<Tab>("partners");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showGroupModal, setShowGroupModal] = useState(false);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // Initialize Realtime subscriptions
+  useRealtimeMessages(currentUserId);
 
   // Fetch all data on mount
   useEffect(() => {
@@ -109,13 +126,42 @@ export default function PartnersPage() {
     [respondToInvitation, t]
   );
 
+  const handleOpenMessage = useCallback(
+    async (partnerId: string) => {
+      // Switch to messages tab
+      setActiveTab("messages");
+      // Create or find direct conversation
+      try {
+        const { createDirectChat } = useMessageStore.getState();
+        const convId = await createDirectChat(partnerId);
+        await openConversation(convId);
+      } catch {
+        // Error handled in store
+      }
+    },
+    [openConversation]
+  );
+
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      openConversation(id);
+    },
+    [openConversation]
+  );
+
+  const handleBack = useCallback(() => {
+    useMessageStore.setState({ activeConversationId: null });
+  }, []);
+
   const tabs: { key: Tab; label: string }[] = [
     { key: "partners", label: t("tabs.partners") },
     { key: "requests", label: t("tabs.requests") },
     { key: "invitations", label: t("tabs.invitations") },
+    { key: "messages", label: t("tabs.messages") },
   ];
 
   const incomingRequests = pendingRequests.filter((r) => r.direction === "incoming");
+  const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
   return (
     <AppShell>
@@ -147,6 +193,11 @@ export default function PartnersPage() {
               {tab.key === "invitations" && pendingInvitations.length > 0 && (
                 <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-foreground">
                   {pendingInvitations.length}
+                </span>
+              )}
+              {tab.key === "messages" && totalUnreadCount > 0 && (
+                <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground">
+                  {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
                 </span>
               )}
             </button>
@@ -220,6 +271,7 @@ export default function PartnersPage() {
                         key={partner.partnership_id}
                         partner={partner}
                         onRemove={handleRemovePartner}
+                        onMessage={handleOpenMessage}
                       />
                     ))}
                   </div>
@@ -286,6 +338,55 @@ export default function PartnersPage() {
             )}
           </div>
         )}
+
+        {/* Messages tab */}
+        {activeTab === "messages" && (
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="flex h-[calc(100vh-280px)] min-h-[400px]">
+              {/* Conversation list (left panel) - hidden on mobile when conversation is open */}
+              <div
+                className={`w-full md:w-80 md:border-r md:border-border flex-shrink-0 ${
+                  activeConversationId ? "hidden md:block" : "block"
+                }`}
+              >
+                <ConversationList
+                  currentUserId={currentUserId}
+                  onSelectConversation={handleSelectConversation}
+                  onNewGroup={() => setShowGroupModal(true)}
+                />
+              </div>
+
+              {/* Chat thread (right panel) */}
+              <div
+                className={`flex-1 flex flex-col ${
+                  activeConversationId ? "block" : "hidden md:flex"
+                }`}
+              >
+                {activeConversation ? (
+                  <>
+                    <ChatHeader
+                      conversation={activeConversation}
+                      currentUserId={currentUserId}
+                      onBack={handleBack}
+                    />
+                    <ChatThread
+                      conversationId={activeConversation.id}
+                      currentUserId={currentUserId}
+                    />
+                    <ChatInput
+                      conversationId={activeConversation.id}
+                      isReadOnly={activeConversation.is_read_only}
+                    />
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center">
+                    <p className="text-sm text-muted-foreground">{t("tabs.messages")}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Create Private Table Modal */}
@@ -294,6 +395,11 @@ export default function PartnersPage() {
         onOpenChange={setShowCreateModal}
         partners={partners}
       />
+
+      {/* Create Group Chat Modal */}
+      {showGroupModal && (
+        <CreateGroupModal open={showGroupModal} onClose={() => setShowGroupModal(false)} />
+      )}
     </AppShell>
   );
 }
