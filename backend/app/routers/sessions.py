@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
 from app.core.rate_limit import limiter
+from app.models.partner import CreatePrivateTableRequest, InvitationRespond
 from app.models.rating import (
     PendingRatingsResponse,
     RatingHistoryResponse,
@@ -409,6 +410,105 @@ async def get_upcoming_slots(
     return UpcomingSlotsResponse(slots=slots)
 
 
+# =============================================================================
+# Private Sessions & Invitations (static routes before /{session_id})
+# =============================================================================
+
+
+@router.post("/create-private")
+@limiter.limit("5/minute")
+async def create_private_table(
+    request: Request,
+    body: CreatePrivateTableRequest,
+    auth_user: AuthUser = Depends(require_auth_from_state),
+    session_service: SessionService = Depends(get_session_service),
+    credit_service: CreditService = Depends(get_credit_service),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Create a private table and send invitations to partners."""
+    from app.models.partner import CreatePrivateTableResponse
+
+    profile = user_service.get_user_by_auth_id(auth_user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check ban
+    if profile.banned_until and profile.banned_until > datetime.now(timezone.utc):
+        raise HTTPException(status_code=403, detail="You are currently banned")
+
+    # Check credits
+    balance = credit_service.get_balance(profile.id)
+    if balance["credits_remaining"] < 1:
+        raise HTTPException(status_code=402, detail="Insufficient credits")
+
+    # Create private session
+    result = session_service.create_private_session(
+        creator_id=profile.id,
+        partner_ids=body.partner_ids,
+        time_slot=body.time_slot,
+        mode=body.mode,
+        max_seats=body.max_seats,
+        fill_ai=body.fill_ai,
+        topic=body.topic,
+    )
+
+    # Deduct credit for creator
+    credit_service.deduct_credit(
+        user_id=profile.id,
+        amount=1,
+        transaction_type=TransactionType.SESSION_JOIN,
+        description="Private table creation",
+        related_session_id=result["session_id"],
+    )
+
+    return CreatePrivateTableResponse(
+        session_id=result["session_id"],
+        invitations_sent=result["invitations_sent"],
+        credit_deducted=True,
+    )
+
+
+@router.get("/invitations")
+@limiter.limit("60/minute")
+async def get_invitations(
+    request: Request,
+    auth_user: AuthUser = Depends(require_auth_from_state),
+    session_service: SessionService = Depends(get_session_service),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Get pending table invitations for the current user."""
+    from app.models.partner import InvitationInfo, InvitationStatus, PendingInvitationsResponse
+
+    profile = user_service.get_user_by_auth_id(auth_user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    raw_invitations = session_service.get_pending_invitations(profile.id)
+
+    invitations = []
+    for inv in raw_invitations:
+        session = inv.get("sessions", {})
+        # Resolve inviter name
+        inviter = user_service.get_public_profile(inv["inviter_id"])
+        inviter_name = inviter.display_name or inviter.username if inviter else "Unknown"
+
+        invitations.append(
+            InvitationInfo(
+                id=inv["id"],
+                session_id=inv["session_id"],
+                inviter_id=inv["inviter_id"],
+                inviter_name=inviter_name,
+                time_slot=session.get("start_time", ""),
+                mode=session.get("mode", "forced_audio"),
+                topic=session.get("topic"),
+                status=InvitationStatus(inv["status"]),
+                created_at=inv["created_at"],
+            )
+        )
+
+    return PendingInvitationsResponse(invitations=invitations)
+
+
 @router.get("/{session_id}", response_model=SessionInfo)
 async def get_session(
     session_id: str,
@@ -767,6 +867,75 @@ def _schedule_livekit_tasks(session_data: dict, start_time: datetime) -> None:
         # Don't fail the request if task scheduling fails
         # Room will be auto-created by LiveKit when first participant joins
         logger.warning(f"Failed to schedule LiveKit tasks: {e}")
+
+
+# =============================================================================
+# Invitation Response
+# =============================================================================
+
+
+@router.post("/{session_id}/invite/respond")
+@limiter.limit("10/minute")
+async def respond_to_invitation(
+    session_id: str,
+    request: Request,
+    body: InvitationRespond,
+    auth_user: AuthUser = Depends(require_auth_from_state),
+    session_service: SessionService = Depends(get_session_service),
+    credit_service: CreditService = Depends(get_credit_service),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Accept or decline a table invitation."""
+
+    profile = user_service.get_user_by_auth_id(auth_user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Find the invitation by session_id + user_id
+    from app.core.database import get_supabase
+
+    supabase = get_supabase()
+    inv_result = (
+        supabase.table("table_invitations")
+        .select("id")
+        .eq("session_id", session_id)
+        .eq("invitee_id", profile.id)
+        .eq("status", "pending")
+        .execute()
+    )
+
+    if not inv_result.data:
+        raise HTTPException(status_code=404, detail="No pending invitation found")
+
+    invitation_id = inv_result.data[0]["id"]
+
+    if body.accept:
+        # Check credits before accepting
+        balance = credit_service.get_balance(profile.id)
+        if balance["credits_remaining"] < 1:
+            raise HTTPException(status_code=402, detail="Insufficient credits")
+
+    session_service.respond_to_invitation(
+        invitation_id=invitation_id,
+        user_id=profile.id,
+        accept=body.accept,
+    )
+
+    if body.accept:
+        # Deduct credit on acceptance
+        credit_service.deduct_credit(
+            user_id=profile.id,
+            amount=1,
+            transaction_type=TransactionType.SESSION_JOIN,
+            description="Accepted private table invitation",
+            related_session_id=session_id,
+        )
+
+    return {
+        "status": "accepted" if body.accept else "declined",
+        "session_id": session_id,
+        "credit_deducted": body.accept,
+    }
 
 
 # =============================================================================

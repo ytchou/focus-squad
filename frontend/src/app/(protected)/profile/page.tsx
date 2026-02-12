@@ -1,8 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Flame, Users, Pencil, Check, X, LogOut, Trash2, Mic, MicOff } from "lucide-react";
+import {
+  Clock,
+  Flame,
+  Users,
+  Pencil,
+  Check,
+  X,
+  LogOut,
+  Trash2,
+  Mic,
+  MicOff,
+  Tag,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/layout";
 import { StatCard } from "@/components/ui/stat-card";
@@ -16,6 +28,63 @@ import { useUserStore, type UserProfile } from "@/stores/user-store";
 import { api, ApiError } from "@/lib/api/client";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { InterestTagPicker } from "@/components/partners";
+import { toast } from "sonner";
+
+// ─── Interest Tags Section ──────────────────────────────────────────────────
+
+function InterestTagsSection() {
+  const t = useTranslations("partners");
+  const [tags, setTags] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    async function fetchTags() {
+      try {
+        const data = await api.get<{ tags: string[] }>("/users/me/interests");
+        setTags(data.tags);
+      } catch {
+        // Non-critical
+      } finally {
+        setLoaded(true);
+      }
+    }
+    fetchTags();
+  }, []);
+
+  const handleChange = async (newTags: string[]) => {
+    const prevTags = tags;
+    setTags(newTags);
+    setIsSaving(true);
+    try {
+      await api.patch("/users/me/interests", { tags: newTags });
+      toast.success(t("tagsSaved"));
+    } catch {
+      setTags(prevTags);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <section className="rounded-2xl bg-card p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Tag className="h-4 w-4 text-accent" />
+          <h2 className="text-lg font-semibold text-foreground">{t("interestTags")}</h2>
+        </div>
+        {isSaving && (
+          <span className="text-xs text-muted-foreground animate-pulse">{t("creating")}</span>
+        )}
+      </div>
+      <InterestTagPicker selected={tags} onChange={handleChange} />
+      <p className="mt-2 text-xs text-muted-foreground">{t("maxTagsHint", { max: 5 })}</p>
+    </section>
+  );
+}
 
 // ─── Identity Section ───────────────────────────────────────────────────────
 
@@ -443,6 +512,7 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-2xl space-y-6">
         <h1 className="text-2xl font-semibold text-foreground">{t("title")}</h1>
         <IdentitySection user={user} />
+        <InterestTagsSection />
         <StatsSection user={user} />
         <PreferencesSection user={user} />
         <AccountSection user={user} />

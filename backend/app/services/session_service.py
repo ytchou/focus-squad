@@ -383,6 +383,7 @@ class SessionService:
             .select("*, session_participants(count)")
             .eq("start_time", start_time.isoformat())
             .eq("current_phase", "setup")  # Only match sessions in setup phase
+            .eq("is_private", False)  # Exclude private sessions from public matching
         )
 
         # Apply filters
@@ -722,3 +723,190 @@ class SessionService:
             if p.get("user_id") == user_id:
                 return p
         return None
+
+    # =========================================================================
+    # Private Sessions & Invitations
+    # =========================================================================
+
+    def create_private_session(
+        self,
+        creator_id: str,
+        partner_ids: list[str],
+        time_slot: datetime,
+        mode: str,
+        max_seats: int,
+        fill_ai: bool,
+        topic: Optional[str],
+    ) -> dict[str, Any]:
+        """
+        Create a private session and send invitations to partners.
+
+        Args:
+            creator_id: User ID of the table creator
+            partner_ids: List of partner user IDs to invite
+            time_slot: Session start time (must be :00 or :30)
+            mode: Table mode ('forced_audio' or 'quiet')
+            max_seats: Maximum seats (2-4)
+            fill_ai: Whether to fill empty seats with AI companions
+            topic: Optional study topic
+
+        Returns:
+            Dict with session_id, invitations_sent count
+        """
+        end_time = time_slot + timedelta(minutes=SESSION_DURATION_MINUTES)
+        room_name = f"private-{uuid.uuid4().hex[:12]}"
+
+        session_data = {
+            "start_time": time_slot.isoformat(),
+            "end_time": end_time.isoformat(),
+            "mode": mode,
+            "topic": topic,
+            "language": "en",
+            "current_phase": SessionPhase.SETUP.value,
+            "phase_started_at": time_slot.isoformat(),
+            "livekit_room_name": room_name,
+            "room_type": random.choice(PIXEL_ROOMS),
+            "is_private": True,
+            "created_by": creator_id,
+            "max_seats": max_seats,
+        }
+
+        result = self.supabase.table("sessions").insert(session_data).execute()
+        if not result.data:
+            raise SessionServiceError("Failed to create private session")
+
+        session = result.data[0]
+        session_id = session["id"]
+
+        # Add creator as participant (seat 1)
+        self.supabase.table("session_participants").insert(
+            {
+                "session_id": session_id,
+                "user_id": creator_id,
+                "participant_type": ParticipantType.HUMAN.value,
+                "seat_number": 1,
+            }
+        ).execute()
+
+        # Create invitations for partners
+        invitations = []
+        for partner_id in partner_ids:
+            invitations.append(
+                {
+                    "session_id": session_id,
+                    "inviter_id": creator_id,
+                    "invitee_id": partner_id,
+                    "status": "pending",
+                }
+            )
+
+        invitations_sent = 0
+        if invitations:
+            inv_result = self.supabase.table("table_invitations").insert(invitations).execute()
+            invitations_sent = len(inv_result.data) if inv_result.data else 0
+
+        return {
+            "session_id": session_id,
+            "invitations_sent": invitations_sent,
+        }
+
+    def get_pending_invitations(self, user_id: str) -> list[dict[str, Any]]:
+        """
+        Get pending table invitations for a user.
+
+        Returns invitations where the user is the invitee and status is pending,
+        joined with session info for display.
+        """
+        now = datetime.now(timezone.utc)
+
+        result = (
+            self.supabase.table("table_invitations")
+            .select("*, sessions(id, start_time, end_time, mode, topic)")
+            .eq("invitee_id", user_id)
+            .eq("status", "pending")
+            .execute()
+        )
+
+        if not result.data:
+            return []
+
+        # Filter out expired invitations (session already started)
+        active = []
+        for inv in result.data:
+            session = inv.get("sessions", {})
+            if session:
+                start_time = datetime.fromisoformat(session["start_time"].replace("Z", "+00:00"))
+                if start_time > now:
+                    active.append(inv)
+
+        return active
+
+    def respond_to_invitation(
+        self,
+        invitation_id: str,
+        user_id: str,
+        accept: bool,
+    ) -> dict[str, Any]:
+        """
+        Accept or decline a table invitation.
+
+        If accepting:
+        - Validates the session hasn't started yet
+        - Adds user as participant
+        - Updates invitation status
+
+        Args:
+            invitation_id: Invitation UUID
+            user_id: User ID of the invitee
+            accept: True to accept, False to decline
+
+        Returns:
+            Updated invitation record
+
+        Raises:
+            InvitationNotFoundError: If invitation not found
+            InvitationExpiredError: If session already started
+        """
+        from app.models.partner import InvitationExpiredError, InvitationNotFoundError
+
+        # Fetch invitation
+        result = (
+            self.supabase.table("table_invitations")
+            .select("*, sessions(id, start_time, max_seats)")
+            .eq("id", invitation_id)
+            .eq("invitee_id", user_id)
+            .eq("status", "pending")
+            .execute()
+        )
+
+        if not result.data:
+            raise InvitationNotFoundError()
+
+        invitation = result.data[0]
+        session = invitation.get("sessions", {})
+
+        if accept:
+            # Check session hasn't started
+            now = datetime.now(timezone.utc)
+            start_time = datetime.fromisoformat(session["start_time"].replace("Z", "+00:00"))
+            if start_time <= now:
+                raise InvitationExpiredError()
+
+            # Add as participant
+            self.add_participant(session["id"], user_id)
+
+        # Update invitation status
+        status = "accepted" if accept else "declined"
+        update_result = (
+            self.supabase.table("table_invitations")
+            .update(
+                {
+                    "status": status,
+                    "responded_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            .eq("id", invitation_id)
+            .execute()
+        )
+
+        return update_result.data[0] if update_result.data else {"status": status}

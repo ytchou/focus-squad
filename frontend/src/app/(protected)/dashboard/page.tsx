@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useCreditsStore, useUserStore, useRatingStore, useUIStore } from "@/stores";
+import {
+  useCreditsStore,
+  useUserStore,
+  useRatingStore,
+  useUIStore,
+  usePartnerStore,
+} from "@/stores";
 import { useSessionStore } from "@/stores/session-store";
 import { api, ApiError } from "@/lib/api/client";
 import { AppShell } from "@/components/layout";
@@ -11,8 +17,9 @@ import { StatCard } from "@/components/ui/stat-card";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
 import { ZeroCreditCard } from "@/components/credits/zero-credit-card";
 import { FindTableHero } from "@/components/session/find-table-hero";
-import { Clock, BookOpen, Flame, Coins, Bug, AlertTriangle } from "lucide-react";
+import { Clock, BookOpen, Flame, Coins, Bug, AlertTriangle, Users2 } from "lucide-react";
 import { toast } from "sonner";
+import { InvitationAlert } from "@/components/partners";
 
 // Debug mode: session starts in 1 minute instead of next :00/:30 slot
 const DEBUG_WAIT_MINUTES = 1;
@@ -32,15 +39,31 @@ export default function DashboardPage() {
     setQuietMode,
   } = useSessionStore();
   const { hasPendingRatings, pendingSessionId, checkPendingRatings } = useRatingStore();
+  const { pendingInvitations, fetchInvitations, respondToInvitation } = usePartnerStore();
   const openModal = useUIStore((state) => state.openModal);
+  const tPartners = useTranslations("partners");
   const [isMatching, setIsMatching] = useState(false);
   const [matchingSlot, setMatchingSlot] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
 
-  // Check for pending ratings on mount
+  // Check for pending ratings and invitations on mount
   useEffect(() => {
     checkPendingRatings();
-  }, [checkPendingRatings]);
+    fetchInvitations();
+  }, [checkPendingRatings, fetchInvitations]);
+
+  const handleInvitationRespond = async (
+    sessionId: string,
+    invitationId: string,
+    accept: boolean
+  ) => {
+    try {
+      await respondToInvitation(sessionId, invitationId, accept);
+      toast.success(accept ? tPartners("invitationAccepted") : tPartners("invitationDeclined"));
+    } catch {
+      toast.error(t("pleaseTryAgain"));
+    }
+  };
 
   // Auto-redirect to waiting room if user has a pending session
   useEffect(() => {
@@ -187,6 +210,23 @@ export default function DashboardPage() {
               </div>
             </div>
           </button>
+        )}
+
+        {/* Pending invitations */}
+        {pendingInvitations.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Users2 className="h-4 w-4 text-accent" />
+              {tPartners("tabs.invitations")} ({pendingInvitations.length})
+            </div>
+            {pendingInvitations.map((inv) => (
+              <InvitationAlert
+                key={inv.invitation_id}
+                invitation={inv}
+                onRespond={handleInvitationRespond}
+              />
+            ))}
+          </div>
         )}
 
         {/* Zero credits alert */}
