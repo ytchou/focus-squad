@@ -20,8 +20,10 @@ import {
 } from "lucide-react";
 import { useSessionStore } from "@/stores/session-store";
 import { useRatingStore } from "@/stores/rating-store";
+import { useUIStore } from "@/stores";
 import { RatingCard } from "@/components/session/rating-card";
 import { ReportModal } from "@/components/moderation/report-modal";
+import { StarterCompanionPicker } from "@/components/room/starter-companion-picker";
 import {
   Dialog,
   DialogContent,
@@ -71,9 +73,12 @@ export default function SessionEndPage() {
   const { sendRequest } = usePartnerStore();
   const [partnerStatus, setPartnerStatus] = useState<Record<string, string | null>>({});
 
+  const openModal = useUIStore((s) => s.openModal);
+
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [ratingsCompleted, setRatingsCompleted] = useState(false);
+  const [showStarterPicker, setShowStarterPicker] = useState(false);
   const [reportPickerOpen, setReportPickerOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<{
     user_id: string;
@@ -104,6 +109,20 @@ export default function SessionEndPage() {
     fetchSummary();
     checkPendingRatings();
   }, [sessionId, checkPendingRatings]);
+
+  // Check if user needs to pick a starter companion
+  useEffect(() => {
+    if (!ratingsCompleted) return;
+    api
+      .get<Array<{ companion_type: string }>>("/api/v1/companions/")
+      .then((companions) => {
+        if (companions.length === 0) {
+          setShowStarterPicker(true);
+          openModal("starterPicker");
+        }
+      })
+      .catch(() => {});
+  }, [ratingsCompleted, openModal]);
 
   // Clean up session state on unmount
   useEffect(() => {
@@ -398,6 +417,16 @@ export default function SessionEndPage() {
           {t("returnHome")}
         </Button>
       </div>
+
+      {/* Starter Companion Picker (shown after first session if no companions) */}
+      {showStarterPicker && (
+        <StarterCompanionPicker
+          onComplete={() => {
+            setShowStarterPicker(false);
+            router.push("/room");
+          }}
+        />
+      )}
     </div>
   );
 }

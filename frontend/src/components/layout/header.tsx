@@ -13,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useUIStore, useUserStore, useCreditsStore } from "@/stores";
+import { useUIStore, useUserStore, useCreditsStore, useShopStore } from "@/stores";
+import { EssenceBadge } from "@/components/room/essence-badge";
 import { useDebugBanner } from "@/hooks/use-debug-banner";
 
 export function Header() {
@@ -28,6 +29,7 @@ export function Header() {
   const weeklyLimit = useCreditsStore((state) =>
     state.tier === "infinite" || state.tier === "admin" ? undefined : state.weeklyLimit
   );
+  const essenceBalance = useShopStore((state) => state.essenceBalance.balance);
   const { topOffset } = useDebugBanner();
 
   const initials = user?.display_name
@@ -63,6 +65,7 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center gap-2 md:gap-4">
+          <EssenceBadge balance={essenceBalance} size="sm" className="hidden sm:flex" />
           <CreditBadge
             credits={credits}
             maxCredits={weeklyLimit}

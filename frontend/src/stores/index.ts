@@ -54,3 +54,18 @@ export {
   type MessageSenderInfo,
   type ConversationMemberInfo,
 } from "./message-store";
+
+// Room store (personal room & layout)
+export {
+  useRoomStore,
+  type RoomPlacement,
+  type RoomResponse,
+  type RoomState,
+  type CompanionInfo,
+  type VisitorResult,
+  type ShopItem,
+  type InventoryItem,
+} from "./room-store";
+
+// Shop store (essence & item shop)
+export { useShopStore, type EssenceBalance } from "./shop-store";

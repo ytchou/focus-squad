@@ -26,7 +26,8 @@
     "notifications": "通知",
     "toggleSidebar": "切換側邊欄",
     "tier": "{tier} 方案",
-    "partners": "夥伴"
+    "partners": "夥伴",
+    "room": "我的房間"
   },
   "auth": {
     "signInWith": "使用 {provider} 登入",
@@ -727,6 +728,69 @@
       "thu": "四",
       "fri": "五",
       "sat": "六"
+    }
+  },
+  "room": {
+    "title": "我的房間",
+    "subtitle": "佈置你的空間，發現新的夥伴",
+    "editRoom": "編輯房間",
+    "shop": "商店",
+    "companions": "夥伴圖鑑",
+    "save": "儲存",
+    "cancel": "取消",
+    "emptyHint": "你的房間空空的！去商店逛逛吧。",
+    "visitShop": "逛商店",
+    "companionGuide": "夥伴圖鑑",
+    "companionGuideDesc": "佈置房間來發現所有 8 隻夥伴！",
+    "companion": {
+      "cat": "貓咪",
+      "dog": "小狗",
+      "bunny": "兔兔",
+      "hamster": "倉鼠",
+      "owl": "貓頭鷹",
+      "fox": "狐狸",
+      "turtle": "烏龜",
+      "raccoon": "浣熊"
+    },
+    "undiscovered": "???",
+    "adopted": "已領養",
+    "visiting": "拜訪中",
+    "chooseAsStarter": "選為初始夥伴",
+    "companionHint": {
+      "owl": "喜歡高處和閃亮的東西",
+      "fox": "被溫暖和柔軟的布料吸引",
+      "turtle": "喜歡有水的寧靜空間",
+      "raccoon": "對新奇繽紛的事物感到好奇"
+    },
+    "chooseCompanion": "選擇你的夥伴",
+    "chooseCompanionDesc": "選一隻夥伴陪你一起專注學習吧！",
+    "catPersonality": "獨立、舒適",
+    "dogPersonality": "忠誠、溫暖",
+    "bunnyPersonality": "溫和、平靜",
+    "hamsterPersonality": "活潑、小巧",
+    "adoptCompanion": "領養這隻夥伴",
+    "starterChosen": "夥伴已選擇！歡迎來到你的房間。",
+    "starterError": "選擇夥伴失敗，請再試一次。",
+    "visitorArrived": "有訪客來了！",
+    "visitorDesc": "一隻{type}被你的房間裝飾吸引了！",
+    "adopt": "領養",
+    "maybeLater": "下次再說",
+    "companionAdopted": "已領養夥伴！",
+    "adoptError": "領養失敗，請再試一次。"
+  },
+  "shop": {
+    "title": "道具商店",
+    "subtitle": "用家具和飾品佈置你的房間",
+    "purchaseSuccess": "購買成功！",
+    "free": "免費",
+    "noItems": "此分類無商品",
+    "category": {
+      "all": "全部",
+      "furniture": "家具",
+      "decor": "裝飾",
+      "plant": "植物",
+      "pet_accessory": "寵物",
+      "seasonal": "季節限定"
     }
   }
 }

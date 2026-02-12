@@ -150,3 +150,54 @@ ALLOWED_REACTIONS = [
     "\U0001f602",
     "\U0001f4af",
 ]
+
+# Gamification — Room & Companions
+ROOM_GRID_WIDTH = 6
+ROOM_GRID_HEIGHT = 4
+VISITOR_COOLDOWN_HOURS = 24
+
+STARTER_COMPANIONS = ["cat", "dog", "bunny", "hamster"]
+DISCOVERABLE_COMPANIONS = ["owl", "fox", "turtle", "raccoon"]
+
+COMPANION_METADATA = {
+    "cat": {
+        "personality": "Independent, curious",
+        "preferred_tags": ["height", "cozy"],
+    },
+    "dog": {
+        "personality": "Loyal, energetic",
+        "preferred_tags": ["outdoor", "warm"],
+    },
+    "bunny": {
+        "personality": "Gentle, calm",
+        "preferred_tags": ["soft", "cozy"],
+    },
+    "hamster": {
+        "personality": "Playful, tiny",
+        "preferred_tags": ["small", "colorful"],
+    },
+    "owl": {
+        "personality": "Wise, nocturnal",
+        "preferred_tags": ["height", "shiny"],
+        "discovery_hint": "Loves high places and shiny things",
+        "threshold": 3,
+    },
+    "fox": {
+        "personality": "Clever, warm-seeking",
+        "preferred_tags": ["warm", "soft"],
+        "discovery_hint": "Drawn to warmth and soft fabrics",
+        "threshold": 3,
+    },
+    "turtle": {
+        "personality": "Calm, patient",
+        "preferred_tags": ["water", "calm"],
+        "discovery_hint": "Enjoys slow spaces with water nearby",
+        "threshold": 3,
+    },
+    "raccoon": {
+        "personality": "Curious, mischievous",
+        "preferred_tags": ["colorful", "new"],
+        "discovery_hint": "Curious about anything new and colorful",
+        "threshold": 3,
+    },
+}

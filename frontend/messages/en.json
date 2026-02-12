@@ -26,7 +26,8 @@
     "notifications": "Notifications",
     "toggleSidebar": "Toggle sidebar",
     "tier": "{tier} tier",
-    "partners": "Partners"
+    "partners": "Partners",
+    "room": "My Room"
   },
   "auth": {
     "signInWith": "Sign in with {provider}",
@@ -727,6 +728,69 @@
       "thu": "Thu",
       "fri": "Fri",
       "sat": "Sat"
+    }
+  },
+  "room": {
+    "title": "My Room",
+    "subtitle": "Decorate your space and discover companions",
+    "editRoom": "Edit Room",
+    "shop": "Shop",
+    "companions": "Companions",
+    "save": "Save",
+    "cancel": "Cancel",
+    "emptyHint": "Your room is empty! Visit the shop to get started.",
+    "visitShop": "Visit Shop",
+    "companionGuide": "Companion Guide",
+    "companionGuideDesc": "Discover all 8 companions by decorating your room!",
+    "companion": {
+      "cat": "Cat",
+      "dog": "Dog",
+      "bunny": "Bunny",
+      "hamster": "Hamster",
+      "owl": "Owl",
+      "fox": "Fox",
+      "turtle": "Turtle",
+      "raccoon": "Raccoon"
+    },
+    "undiscovered": "???",
+    "adopted": "Adopted",
+    "visiting": "Visiting",
+    "chooseAsStarter": "Choose as starter",
+    "companionHint": {
+      "owl": "Loves high places and shiny things",
+      "fox": "Drawn to warmth and soft fabrics",
+      "turtle": "Enjoys slow spaces with water nearby",
+      "raccoon": "Curious about anything new and colorful"
+    },
+    "chooseCompanion": "Choose Your Companion",
+    "chooseCompanionDesc": "Pick a companion to join you on your focus journey!",
+    "catPersonality": "Independent, cozy",
+    "dogPersonality": "Loyal, warm",
+    "bunnyPersonality": "Gentle, calm",
+    "hamsterPersonality": "Playful, tiny",
+    "adoptCompanion": "Adopt This Companion",
+    "starterChosen": "Companion chosen! Welcome to your room.",
+    "starterError": "Failed to choose companion. Try again.",
+    "visitorArrived": "A Visitor Appeared!",
+    "visitorDesc": "A {type} was attracted by your room decorations!",
+    "adopt": "Adopt",
+    "maybeLater": "Maybe Later",
+    "companionAdopted": "Companion adopted!",
+    "adoptError": "Failed to adopt companion. Try again."
+  },
+  "shop": {
+    "title": "Item Shop",
+    "subtitle": "Decorate your room with furniture and accessories",
+    "purchaseSuccess": "Item purchased!",
+    "free": "Free",
+    "noItems": "No items in this category",
+    "category": {
+      "all": "All",
+      "furniture": "Furniture",
+      "decor": "Decor",
+      "plant": "Plants",
+      "pet_accessory": "Pet",
+      "seasonal": "Seasonal"
     }
   }
 }
