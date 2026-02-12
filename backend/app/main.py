@@ -16,6 +16,7 @@ from app.routers import (
     companions,
     credits,
     essence,
+    gamification,
     health,
     messages,
     moderation,
@@ -91,5 +92,8 @@ app.include_router(essence.router, prefix=f"{settings.api_prefix}/essence", tags
 app.include_router(room.router, prefix=f"{settings.api_prefix}/room", tags=["Room"])
 app.include_router(
     companions.router, prefix=f"{settings.api_prefix}/companions", tags=["Companions"]
+)
+app.include_router(
+    gamification.router, prefix=f"{settings.api_prefix}/gamification", tags=["Gamification"]
 )
 app.include_router(webhooks.router, prefix=f"{settings.api_prefix}/webhooks", tags=["Webhooks"])

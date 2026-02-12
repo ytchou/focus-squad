@@ -69,3 +69,11 @@ export {
 
 // Shop store (essence & item shop)
 export { useShopStore, type EssenceBalance } from "./shop-store";
+
+// Gamification store (streaks, bonuses, mood, reactions)
+export {
+  useGamificationStore,
+  type WeeklyStreakResponse,
+  type MoodResponse,
+  type CompanionReactionResponse,
+} from "./gamification-store";

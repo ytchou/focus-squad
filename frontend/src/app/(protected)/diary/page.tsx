@@ -7,8 +7,14 @@ import { AppShell } from "@/components/layout";
 import { DiaryHeader } from "@/components/diary/diary-header";
 import { DiaryTimeline } from "@/components/diary/diary-timeline";
 import { DiaryCalendar } from "@/components/diary/diary-calendar";
-import { api, type DiaryEntry, type DiaryResponse } from "@/lib/api/client";
+import {
+  api,
+  type DiaryEntry,
+  type DiaryResponse,
+  type DiaryNoteWithReactionResponse,
+} from "@/lib/api/client";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useGamificationStore } from "@/stores";
 import { toast } from "sonner";
 
 type ViewMode = "timeline" | "calendar";
@@ -76,10 +82,16 @@ export default function DiaryPage() {
 
   const handleSaveNote = async (sessionId: string, note: string, tags: string[]) => {
     try {
-      await api.post(`/sessions/diary/${sessionId}/note`, { note, tags });
+      const response = await api.post<DiaryNoteWithReactionResponse>(
+        `/sessions/diary/${sessionId}/note`,
+        { note, tags }
+      );
       setEntries((prev) =>
         prev.map((entry) => (entry.session_id === sessionId ? { ...entry, note, tags } : entry))
       );
+      if (response.companion_reaction) {
+        useGamificationStore.getState().setPendingReaction(response.companion_reaction);
+      }
       toast.success(t("noteSaved"));
     } catch (error) {
       console.error("Failed to save note:", error);

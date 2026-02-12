@@ -21,8 +21,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.rate_limit import limiter
+from app.models.gamification import DiaryNoteWithReactionResponse
 from app.models.reflection import (
-    DiaryNoteResponse,
     DiaryResponse,
     DiaryStatsResponse,
     ReflectionResponse,
@@ -30,6 +30,7 @@ from app.models.reflection import (
     SaveReflectionRequest,
     SessionReflectionsResponse,
 )
+from app.services.mood_service import MoodService
 from app.services.reflection_service import ReflectionService
 from app.services.user_service import UserService
 
@@ -51,6 +52,11 @@ def get_reflection_service() -> ReflectionService:
 def get_user_service() -> UserService:
     """Get UserService instance."""
     return UserService()
+
+
+def get_mood_service() -> MoodService:
+    """Get MoodService instance."""
+    return MoodService()
 
 
 # =============================================================================
@@ -118,7 +124,7 @@ async def get_diary_stats(
 
 @router.post(
     "/diary/{session_id}/note",
-    response_model=DiaryNoteResponse,
+    response_model=DiaryNoteWithReactionResponse,
     status_code=201,
 )
 @limiter.limit("30/minute")
@@ -129,17 +135,39 @@ async def save_diary_note(
     user: AuthUser = Depends(require_auth_from_state),
     reflection_service: ReflectionService = Depends(get_reflection_service),
     user_service: UserService = Depends(get_user_service),
-) -> DiaryNoteResponse:
-    """Save or update a post-session diary note with tags."""
+    mood_service: MoodService = Depends(get_mood_service),
+) -> DiaryNoteWithReactionResponse:
+    """Save or update a post-session diary note with tags.
+
+    Returns the saved note along with companion reaction data (if the user
+    has an active companion and submitted tags that trigger a reaction).
+    """
     profile = user_service.get_user_by_auth_id(user.auth_id)
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return reflection_service.save_diary_note(
+    note_result = reflection_service.save_diary_note(
         session_id=session_id,
         user_id=profile.id,
         note=diary_request.note,
         tags=diary_request.tags,
+    )
+
+    # Compute companion reaction and mood
+    companion_reaction = None
+    mood = None
+    if diary_request.tags:
+        companion_reaction = mood_service.get_reaction_for_tags(profile.id, diary_request.tags)
+        mood = mood_service.compute_mood(profile.id)
+
+    return DiaryNoteWithReactionResponse(
+        session_id=note_result.session_id,
+        note=note_result.note,
+        tags=note_result.tags,
+        created_at=note_result.created_at,
+        updated_at=note_result.updated_at,
+        companion_reaction=companion_reaction,
+        mood=mood,
     )
 
 

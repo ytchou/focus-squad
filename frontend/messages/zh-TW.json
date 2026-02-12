@@ -776,7 +776,41 @@
     "adopt": "領養",
     "maybeLater": "下次再說",
     "companionAdopted": "已領養夥伴！",
-    "adoptError": "領養失敗，請再試一次。"
+    "adoptError": "領養失敗，請再試一次。",
+    "timeline": "成長記錄"
+  },
+  "streak": {
+    "title": "每週連續",
+    "progress": "本週 {count}/{target}",
+    "bonus3": "3 次達標可獲得 +1 精華獎勵",
+    "bonus5": "5 次達標可獲得 +2 精華獎勵",
+    "complete": "所有獎勵已獲得！",
+    "bonusEarned": "連續獎勵！+{amount} 精華"
+  },
+  "mood": {
+    "positive": "精神很好！",
+    "neutral": "感覺普通",
+    "tired": "有點累",
+    "reactionPlayed": "你的同伴對你的日記做出了反應！"
+  },
+  "timeline": {
+    "title": "成長記錄",
+    "subtitle": "你的房間旅程與里程碑",
+    "empty": "還沒有快照",
+    "emptyHint": "隨著你的成長，里程碑時刻將被記錄在這裡！",
+    "loadMore": "載入更多",
+    "sessionCount": "{count} 次專注",
+    "milestone": {
+      "first_item": "第一件家具",
+      "session_milestone": "專注里程碑",
+      "companion_discovered": "發現新夥伴",
+      "room_unlocked": "解鎖房間",
+      "first_diary": "第一篇日記",
+      "diary_streak_7": "連續寫日記 7 天",
+      "first_breakthrough": "第一次突破"
+    },
+    "snapshotSaved": "里程碑已記錄！",
+    "newMilestone": "新里程碑：{milestone}"
   },
   "shop": {
     "title": "道具商店",

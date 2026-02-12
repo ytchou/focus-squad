@@ -776,7 +776,41 @@
     "adopt": "Adopt",
     "maybeLater": "Maybe Later",
     "companionAdopted": "Companion adopted!",
-    "adoptError": "Failed to adopt companion. Try again."
+    "adoptError": "Failed to adopt companion. Try again.",
+    "timeline": "Timeline"
+  },
+  "streak": {
+    "title": "Weekly Streak",
+    "progress": "{count}/{target} this week",
+    "bonus3": "+1 bonus essence at 3 sessions",
+    "bonus5": "+2 bonus essence at 5 sessions",
+    "complete": "All bonuses earned!",
+    "bonusEarned": "Streak bonus! +{amount} essence"
+  },
+  "mood": {
+    "positive": "Feeling great!",
+    "neutral": "Feeling okay",
+    "tired": "A bit tired",
+    "reactionPlayed": "Your companion reacted to your diary entry!"
+  },
+  "timeline": {
+    "title": "Growth Timeline",
+    "subtitle": "Your room's journey through milestones",
+    "empty": "No snapshots yet",
+    "emptyHint": "Milestone moments will be captured here as you grow!",
+    "loadMore": "Load more",
+    "sessionCount": "{count} sessions",
+    "milestone": {
+      "first_item": "First Furniture",
+      "session_milestone": "Session Milestone",
+      "companion_discovered": "New Companion",
+      "room_unlocked": "Room Unlocked",
+      "first_diary": "First Diary Entry",
+      "diary_streak_7": "7-Day Writing Streak",
+      "first_breakthrough": "First Breakthrough"
+    },
+    "snapshotSaved": "Milestone captured!",
+    "newMilestone": "New milestone: {milestone}"
   },
   "shop": {
     "title": "Item Shop",

@@ -725,21 +725,54 @@
 - [x] All 639 backend tests + 354 frontend tests pass, build succeeds
 
 #### Gamification — Phase 4B: Diary Integration
+> **Design Doc:** [output/plan/2026-02-12-gamification-design.md](output/plan/2026-02-12-gamification-design.md) (Phase 4B section)
+> **Plan File:** [.claude/plans/partitioned-noodling-wilkinson.md](.claude/plans/partitioned-noodling-wilkinson.md)
 
-**Companion Diary Reactions (Chunk 7):**
-- [ ] Define 8 reaction animations (1 per diary tag)
-- [ ] Trigger companion reaction after diary note submission
-- [ ] Implement 7-day mood baseline (recent tags → companion default behavior)
+**Database & Constants (Step 0):**
+- [x] Migration `028_diary_integration.sql`: `weekly_streaks` table, `room_snapshots` table, Supabase Storage bucket, RLS policies
+- [x] Add streak, reaction, mood, milestone constants to `constants.py`
 
-**Growth Timeline (Chunk 8):**
-- [ ] Auto-capture room snapshots at milestones (first item, every 10th session, companion discovery, room unlock)
-- [ ] Build `/my-room/timeline` tab (scrollable timeline with snapshot thumbnails + diary excerpts)
-- [ ] Canvas capture of room state for snapshot images
+**Streak UI — Backend (Chunk 9, Step 1):**
+- [x] Create `models/gamification.py`: `WeeklyStreakResponse`, `StreakBonusResult`
+- [x] TDD: Write `test_streak_service.py` (8 tests: increment, bonus award, no double-award, week boundary)
+- [x] Create `services/streak_service.py`: `get_weekly_streak`, `increment_session_count` (fetch-then-update + threshold check)
+- [x] Modify `webhooks.py`: call `streak_service.increment_session_count()` after essence award
+- [x] Create `routers/gamification.py`: `GET /streak` endpoint, register in `main.py`
 
-**Streak UI (Chunk 9):**
-- [ ] Show streak progress on dashboard/room ("3/5 sessions this week")
-- [ ] Streak bonus notification
-- [ ] Tests: diary reactions, timeline, streak display
+**Streak UI — Frontend (Chunk 9, Step 2):**
+- [x] Create `stores/gamification-store.ts`: streak state + `fetchStreak()` action
+- [x] Create `StreakProgressBar` component (compact progress bar, X/3 or X/5 display)
+- [x] Add `StreakProgressBar` to Dashboard (stats section) + Room page header
+- [x] Add `streak` i18n strings (EN + zh-TW)
+
+**Companion Reactions — Backend (Chunk 7, Step 3):**
+- [x] Add mood/reaction models to `models/gamification.py`: `MoodResponse`, `CompanionReactionResponse`, `DiaryNoteWithReactionResponse`
+- [x] TDD: Write `test_mood_service.py` (10 tests: mood states, reaction mapping, no companion)
+- [x] Create `services/mood_service.py`: `compute_mood` (7-day tag analysis → 3 states), `get_reaction_for_tags`
+- [x] Modify `routers/reflections.py`: extend diary note response with companion reaction + mood
+- [x] Add `GET /gamification/mood` endpoint
+
+**Companion Reactions — Frontend (Chunk 7, Step 4):**
+- [x] Add 8 CSS `@keyframes` reaction animations to `globals.css`
+- [x] Modify `CompanionSprite`: add `reaction` prop (2.5s animation + auto-clear) and `mood` prop (idle speed)
+- [x] Add mood/reaction state to `gamification-store.ts`
+- [x] Wire diary note submission → `setPendingReaction()` → room page plays animation
+- [x] Fetch mood on room page load, pass to CompanionSprite
+
+**Growth Timeline — Backend (Chunk 8, Step 5):**
+- [x] Add timeline models to `models/gamification.py`: `RoomSnapshot`, `TimelineResponse`, `SnapshotUploadRequest/Response`
+- [x] TDD: Write `test_timeline_service.py` (9 tests: upload, milestone detection, pagination)
+- [x] Create `services/timeline_service.py`: `get_timeline`, `upload_snapshot`, `check_milestones`
+- [x] Add timeline endpoints: `GET /timeline`, `POST /timeline/snapshot`, `GET /timeline/milestones`
+
+**Growth Timeline — Frontend (Chunk 8, Step 6):**
+- [x] Install `html2canvas`, create `lib/room/capture-snapshot.ts` utility
+- [x] Add timeline state to `gamification-store.ts`
+- [x] Create `TimelineCard` component (snapshot image, date, event, session count, excerpt)
+- [x] Create `/room/timeline` page (scrollable, load-more, empty state)
+- [x] Add "Timeline" button to room page toolbar
+- [x] Add `timeline` i18n strings (EN + zh-TW)
+- [x] Wire milestone detection: room page checks on load + after item purchase / companion adoption → auto-capture + toast
 
 #### Gamification — Phase 4C: Social Gamification (Post-MVP)
 
