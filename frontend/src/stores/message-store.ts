@@ -141,17 +141,25 @@ export const useMessageStore = create<MessageState>()((set, get) => ({
 
       set((state) => {
         const existing = state.messages[conversationId] || [];
+
+        // Optimistically update conversation list: set last_message and re-sort
+        const conversations = state.conversations
+          .map((c) =>
+            c.id === conversationId
+              ? { ...c, last_message: data.message, updated_at: data.message.created_at }
+              : c
+          )
+          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
         return {
           messages: {
             ...state.messages,
             [conversationId]: [data.message, ...existing],
           },
+          conversations,
           isSending: false,
         };
       });
-
-      // Update conversation list (last message + order)
-      await get().fetchConversations();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send message";
       set({ error: message, isSending: false });
@@ -210,10 +218,17 @@ export const useMessageStore = create<MessageState>()((set, get) => ({
       await get().fetchConversations();
       return data.conversation.id;
     } catch (err) {
-      // If conversation already exists, find it
+      // If conversation already exists, find it locally or refetch to find it
       if (err instanceof Error && err.message.includes("already exists")) {
-        const { conversations } = get();
-        const existing = conversations.find(
+        // First check local state
+        let existing = get().conversations.find(
+          (c) => c.type === "direct" && c.members.some((m) => m.user_id === partnerId)
+        );
+        if (existing) return existing.id;
+
+        // Local state may be stale — refetch and try again
+        await get().fetchConversations();
+        existing = get().conversations.find(
           (c) => c.type === "direct" && c.members.some((m) => m.user_id === partnerId)
         );
         if (existing) return existing.id;
@@ -346,8 +361,11 @@ export const useMessageStore = create<MessageState>()((set, get) => ({
       return { messages, conversations, totalUnreadCount };
     });
 
-    // Show toast if not in the active conversation
-    if (activeConversationId !== convId) {
+    if (activeConversationId === convId) {
+      // Message arrived for active conversation — update server-side read receipt
+      get().markRead(convId);
+    } else {
+      // Show toast for messages in other conversations
       const senderName = message.sender?.display_name || message.sender?.username || "New message";
       toast(senderName, {
         description: message.content.slice(0, 80),

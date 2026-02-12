@@ -136,10 +136,10 @@ export default function PartnersPage() {
         const convId = await createDirectChat(partnerId);
         await openConversation(convId);
       } catch {
-        // Error handled in store
+        toast.error(t("messageOpenFailed"));
       }
     },
-    [openConversation]
+    [openConversation, t]
   );
 
   const handleSelectConversation = useCallback(

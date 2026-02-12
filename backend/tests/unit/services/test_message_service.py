@@ -820,41 +820,41 @@ class TestToggleReaction:
 
         messages_mock.update.return_value.eq.return_value.execute.return_value = MagicMock()
 
-        result = service.toggle_reaction(MSG_ID, USER_A, "heart")
+        result = service.toggle_reaction(MSG_ID, USER_A, "\u2764\ufe0f")
 
         assert result["message_id"] == MSG_ID
-        assert USER_A in result["reactions"]["heart"]
+        assert USER_A in result["reactions"]["\u2764\ufe0f"]
 
     @pytest.mark.unit
     def test_remove_reaction(self, service, mock_supabase) -> None:
         """Removes user from emoji list and cleans empty key."""
         _, _, members_mock, messages_mock, _, _ = mock_supabase
 
-        msg = _make_message(reactions={"heart": [USER_A]})
+        msg = _make_message(reactions={"\u2764\ufe0f": [USER_A]})
         _setup_get_message(messages_mock, [msg])
         _setup_verify_membership(members_mock, [_make_member_row(user_id=USER_A)])
 
         messages_mock.update.return_value.eq.return_value.execute.return_value = MagicMock()
 
-        result = service.toggle_reaction(MSG_ID, USER_A, "heart")
+        result = service.toggle_reaction(MSG_ID, USER_A, "\u2764\ufe0f")
 
         assert result["message_id"] == MSG_ID
-        assert "heart" not in result["reactions"]
+        assert "\u2764\ufe0f" not in result["reactions"]
 
     @pytest.mark.unit
     def test_remove_reaction_keeps_other_users(self, service, mock_supabase) -> None:
         """When removing a reaction, other users' reactions are preserved."""
         _, _, members_mock, messages_mock, _, _ = mock_supabase
 
-        msg = _make_message(reactions={"heart": [USER_A, USER_B]})
+        msg = _make_message(reactions={"\u2764\ufe0f": [USER_A, USER_B]})
         _setup_get_message(messages_mock, [msg])
         _setup_verify_membership(members_mock, [_make_member_row(user_id=USER_A)])
 
         messages_mock.update.return_value.eq.return_value.execute.return_value = MagicMock()
 
-        result = service.toggle_reaction(MSG_ID, USER_A, "heart")
+        result = service.toggle_reaction(MSG_ID, USER_A, "\u2764\ufe0f")
 
-        assert result["reactions"]["heart"] == [USER_B]
+        assert result["reactions"]["\u2764\ufe0f"] == [USER_B]
 
     @pytest.mark.unit
     def test_invalid_emoji_raises(self, service, mock_supabase) -> None:
@@ -872,7 +872,7 @@ class TestToggleReaction:
         _setup_verify_membership(members_mock, [])
 
         with pytest.raises(NotConversationMemberError, match="not a member"):
-            service.toggle_reaction(MSG_ID, USER_A, "heart")
+            service.toggle_reaction(MSG_ID, USER_A, "\u2764\ufe0f")
 
     @pytest.mark.unit
     def test_message_not_found_raises(self, service, mock_supabase) -> None:
@@ -882,7 +882,7 @@ class TestToggleReaction:
         _setup_get_message(messages_mock, [])
 
         with pytest.raises(MessageNotFoundError, match="not found"):
-            service.toggle_reaction(MSG_ID, USER_A, "heart")
+            service.toggle_reaction(MSG_ID, USER_A, "\u2764\ufe0f")
 
 
 # =============================================================================

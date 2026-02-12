@@ -585,6 +585,7 @@
     "requestAccepted": "已接受夥伴邀請！",
     "requestDeclined": "已拒絕邀請",
     "partnerRemoved": "已移除夥伴",
+    "messageOpenFailed": "無法開啟對話",
     "wantsToPartner": "想成為你的問責夥伴",
     "accept": "接受",
     "decline": "拒絕",

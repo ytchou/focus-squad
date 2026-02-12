@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useMessageStore, type MessageInfo } from "@/stores/message-store";
+import { useMessageStore, type MessageInfo, type MessageSenderInfo } from "@/stores/message-store";
 
 /**
  * Subscribes to Supabase Realtime for live message delivery and read receipts.
@@ -8,6 +8,9 @@ import { useMessageStore, type MessageInfo } from "@/stores/message-store";
  * - Listens for INSERT events on the `messages` table
  * - Listens for UPDATE events on `conversation_members` (read receipts)
  * - RLS policies ensure users only receive events for their conversations
+ *
+ * Note: Realtime payloads only contain raw DB columns (no JOINed sender profile).
+ * We enrich messages by looking up the sender from the conversation member list.
  */
 export function useRealtimeMessages(userId: string | null) {
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
@@ -29,10 +32,26 @@ export function useRealtimeMessages(userId: string | null) {
           table: "messages",
         },
         (payload) => {
-          const newMessage = payload.new as MessageInfo;
+          const raw = payload.new as MessageInfo;
           // Don't process messages sent by the current user (already in state)
-          if (newMessage.sender_id === userId) return;
-          handleNewMessage(newMessage);
+          if (raw.sender_id === userId) return;
+
+          // Realtime payloads lack JOINed sender data. Enrich from conversation members.
+          const { conversations } = useMessageStore.getState();
+          const conv = conversations.find((c) => c.id === raw.conversation_id);
+          const member = conv?.members.find((m) => m.user_id === raw.sender_id);
+
+          const sender: MessageSenderInfo | null = member
+            ? {
+                user_id: member.user_id,
+                username: member.username,
+                display_name: member.display_name,
+                avatar_config: member.avatar_config,
+                pixel_avatar_id: member.pixel_avatar_id,
+              }
+            : null;
+
+          handleNewMessage({ ...raw, sender, reactions: raw.reactions || {} });
         }
       )
       .on(

@@ -142,4 +142,11 @@ MAX_GROUP_CONVERSATIONS = 20
 MAX_GROUP_SIZE = 4
 MIN_GROUP_SIZE = 2
 MESSAGES_PAGE_SIZE = 50
-ALLOWED_REACTIONS = ["thumbs-up", "heart", "fire", "clap", "laugh", "100"]
+ALLOWED_REACTIONS = [
+    "\U0001f44d",
+    "\u2764\ufe0f",
+    "\U0001f525",
+    "\U0001f44f",
+    "\U0001f602",
+    "\U0001f4af",
+]

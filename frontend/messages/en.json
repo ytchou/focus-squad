@@ -585,6 +585,7 @@
     "requestAccepted": "Partner request accepted!",
     "requestDeclined": "Request declined",
     "partnerRemoved": "Partner removed",
+    "messageOpenFailed": "Could not open conversation",
     "wantsToPartner": "wants to be your accountability partner",
     "accept": "Accept",
     "decline": "Decline",
