@@ -776,9 +776,9 @@
 
 #### Gamification — Phase 4C: Social Gamification (Post-MVP)
 
-- [ ] Visit partner rooms (read-only view)
-- [ ] Milestone celebration cards (shareable images)
-- [ ] Gift items to partners (buy-as-gift flow, gifted_by tracking)
+- [x] Visit partner rooms (read-only view)
+- [x] Milestone celebration cards (shareable images)
+- [x] Gift items to partners (buy-as-gift flow, gifted_by tracking)
 
 ---
 

@@ -13,14 +13,38 @@ const GRID_ROWS = 4;
 interface RoomGridProps {
   companionReaction?: string | null;
   companionMood?: "positive" | "neutral" | "tired";
+  /** Override data for read-only partner room viewing */
+  overrideData?: {
+    room: {
+      room_type: string;
+      layout: Array<{ inventory_id: string; grid_x: number; grid_y: number; rotation: number }>;
+      active_companion?: string | null;
+    };
+    inventory: Array<{
+      id: string;
+      item_id: string;
+      item: { name: string; image_url: string | null; size_w: number; size_h: number } | null;
+      acquired_at: string;
+      acquisition_type: string;
+    }>;
+  };
+  readOnly?: boolean;
 }
 
-export function RoomGrid({ companionReaction, companionMood }: RoomGridProps = {}) {
-  const roomData = useRoomStore((s) => s.roomData);
-  const editMode = useRoomStore((s) => s.editMode);
+export function RoomGrid({
+  companionReaction,
+  companionMood,
+  overrideData,
+  readOnly,
+}: RoomGridProps = {}) {
+  const storeRoomData = useRoomStore((s) => s.roomData);
+  const storeEditMode = useRoomStore((s) => s.editMode);
   const pendingLayout = useRoomStore((s) => s.pendingLayout);
   const removePlacement = useRoomStore((s) => s.removePlacement);
   const addPlacement = useRoomStore((s) => s.addPlacement);
+
+  const roomData = overrideData ?? storeRoomData;
+  const editMode = readOnly ? false : storeEditMode;
 
   const gridRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState(80);

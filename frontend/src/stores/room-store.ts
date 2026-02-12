@@ -35,6 +35,9 @@ export interface InventoryItem {
   item: ShopItem | null;
   acquired_at: string;
   acquisition_type: string;
+  gifted_by?: string | null;
+  gifted_by_name?: string | null;
+  gift_seen?: boolean;
 }
 
 export interface CompanionInfo {
@@ -68,6 +71,23 @@ export interface RoomResponse {
   essence_balance: number;
 }
 
+export interface PartnerRoomResponse {
+  room: RoomState;
+  inventory: InventoryItem[];
+  companions: CompanionInfo[];
+  owner_name: string;
+  owner_username: string;
+  owner_pixel_avatar_id: string | null;
+}
+
+export interface GiftNotification {
+  inventory_item_id: string;
+  item_name: string;
+  item_name_zh: string | null;
+  gifted_by_name: string;
+  gift_message: string | null;
+}
+
 // =============================================================================
 // Store
 // =============================================================================
@@ -79,12 +99,23 @@ interface RoomStoreState {
   pendingLayout: RoomPlacement[];
   error: string | null;
 
+  // Partner room viewing
+  partnerRoom: PartnerRoomResponse | null;
+  isPartnerRoomLoading: boolean;
+
+  // Gift notifications
+  unseenGifts: GiftNotification[];
+
   fetchRoom: () => Promise<RoomResponse | null>;
   saveLayout: () => Promise<void>;
   toggleEditMode: () => void;
   exitEditMode: () => void;
   addPlacement: (placement: RoomPlacement) => void;
   removePlacement: (inventoryId: string) => void;
+  fetchPartnerRoom: (userId: string) => Promise<PartnerRoomResponse | null>;
+  clearPartnerRoom: () => void;
+  fetchUnseenGifts: () => Promise<GiftNotification[]>;
+  markGiftsSeen: (ids: string[]) => Promise<void>;
   reset: () => void;
 }
 
@@ -94,6 +125,9 @@ const initialState = {
   editMode: false,
   pendingLayout: [] as RoomPlacement[],
   error: null as string | null,
+  partnerRoom: null as PartnerRoomResponse | null,
+  isPartnerRoomLoading: false,
+  unseenGifts: [] as GiftNotification[],
 };
 
 export const useRoomStore = create<RoomStoreState>()((set, get) => ({
@@ -160,6 +194,39 @@ export const useRoomStore = create<RoomStoreState>()((set, get) => ({
     set((state) => ({
       pendingLayout: state.pendingLayout.filter((p) => p.inventory_id !== inventoryId),
     })),
+
+  fetchPartnerRoom: async (userId: string) => {
+    set({ isPartnerRoomLoading: true, partnerRoom: null });
+    try {
+      const data = await api.get<PartnerRoomResponse>(`/api/v1/room/partner/${userId}`);
+      set({ partnerRoom: data, isPartnerRoomLoading: false });
+      return data;
+    } catch {
+      set({ isPartnerRoomLoading: false });
+      return null;
+    }
+  },
+
+  clearPartnerRoom: () => set({ partnerRoom: null }),
+
+  fetchUnseenGifts: async () => {
+    try {
+      const data = await api.get<GiftNotification[]>("/api/v1/room/gifts");
+      set({ unseenGifts: data });
+      return data;
+    } catch {
+      return [];
+    }
+  },
+
+  markGiftsSeen: async (ids: string[]) => {
+    try {
+      await api.post("/api/v1/room/gifts/seen", { inventory_ids: ids });
+      set({ unseenGifts: [] });
+    } catch {
+      // Non-critical
+    }
+  },
 
   reset: () => set(initialState),
 }));

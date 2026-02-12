@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Camera } from "lucide-react";
 import { useGamificationStore } from "@/stores";
 import { TimelineCard } from "@/components/room/timeline-card";
+import { MilestoneShareModal } from "@/components/room/milestone-share-modal";
 
 export default function TimelinePage() {
   const t = useTranslations("timeline");
@@ -76,6 +77,8 @@ export default function TimelinePage() {
           </div>
         )}
       </div>
+
+      <MilestoneShareModal />
     </AppShell>
   );
 }

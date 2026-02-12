@@ -643,6 +643,7 @@
     "hoursAgo": "{count}h ago",
     "confirmRemove": "Confirm Remove",
     "remove": "Remove",
+    "visitRoom": "Visit Room",
     "wantsToBePartner": "wants to be your partner",
     "pendingRequest": "Request pending",
     "createError": "Failed to create table",
@@ -777,7 +778,13 @@
     "maybeLater": "Maybe Later",
     "companionAdopted": "Companion adopted!",
     "adoptError": "Failed to adopt companion. Try again.",
-    "timeline": "Timeline"
+    "timeline": "Timeline",
+    "visitRoom": "Visit Room",
+    "partnerRoom": "{name}'s Room",
+    "partnerRoomBack": "Back to Partners",
+    "partnerRoomError": "Could not load this room. You may not be partners.",
+    "giftReceived": "You received a {item} from {sender}!",
+    "noGifts": "No new gifts"
   },
   "streak": {
     "title": "Weekly Streak",
@@ -810,12 +817,26 @@
       "first_breakthrough": "First Breakthrough"
     },
     "snapshotSaved": "Milestone captured!",
-    "newMilestone": "New milestone: {milestone}"
+    "newMilestone": "New milestone: {milestone}",
+    "share": "Share",
+    "shareCard": "Share Milestone",
+    "shareCardDesc": "Download or copy your milestone card to share with others",
+    "shareCardError": "Failed to generate card",
+    "download": "Download PNG",
+    "copyClipboard": "Copy to Clipboard",
+    "copied": "Copied!",
+    "downloadStarted": "Download started"
   },
   "shop": {
     "title": "Item Shop",
     "subtitle": "Decorate your room with furniture and accessories",
     "purchaseSuccess": "Item purchased!",
+    "buyAsGift": "Gift to Partner",
+    "giftTo": "Gift to {name}",
+    "selectPartner": "Choose a partner to gift to",
+    "giftSent": "Gift sent to {name}!",
+    "giftError": "Failed to send gift",
+    "noPartners": "No partners to gift to",
     "free": "Free",
     "noItems": "No items in this category",
     "category": {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout";
 import { usePartnerStore, useMessageStore, useUserStore } from "@/stores";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ type Tab = "partners" | "requests" | "invitations" | "messages";
 
 export default function PartnersPage() {
   const t = useTranslations("partners");
+  const router = useRouter();
   const user = useUserStore((s) => s.user);
   const currentUserId = user?.id || "";
 
@@ -124,6 +126,13 @@ export default function PartnersPage() {
       }
     },
     [respondToInvitation, t]
+  );
+
+  const handleVisitRoom = useCallback(
+    (userId: string) => {
+      router.push(`/room/visit/${userId}`);
+    },
+    [router]
   );
 
   const handleOpenMessage = useCallback(
@@ -272,6 +281,7 @@ export default function PartnersPage() {
                         partner={partner}
                         onRemove={handleRemovePartner}
                         onMessage={handleOpenMessage}
+                        onVisitRoom={handleVisitRoom}
                       />
                     ))}
                   </div>

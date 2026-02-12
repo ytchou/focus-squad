@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { UserMinus, Clock, MessageCircle } from "lucide-react";
+import { UserMinus, Clock, MessageCircle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
 import { InterestTagBadge } from "./interest-tag-badge";
@@ -12,6 +12,7 @@ interface PartnerCardProps {
   partner: PartnerInfo;
   onRemove: (id: string) => void;
   onMessage?: (userId: string) => void;
+  onVisitRoom?: (userId: string) => void;
 }
 
 function getRelativeDays(isoDate: string, now: number): number {
@@ -19,7 +20,7 @@ function getRelativeDays(isoDate: string, now: number): number {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-export function PartnerCard({ partner, onRemove, onMessage }: PartnerCardProps) {
+export function PartnerCard({ partner, onRemove, onMessage, onVisitRoom }: PartnerCardProps) {
   const t = useTranslations("partners");
   const [confirmRemove, setConfirmRemove] = useState(false);
 
@@ -91,6 +92,12 @@ export function PartnerCard({ partner, onRemove, onMessage }: PartnerCardProps) 
         </div>
       ) : (
         <div className="flex items-center gap-2">
+          {onVisitRoom && (
+            <Button variant="outline" size="sm" onClick={() => onVisitRoom(partner.user_id)}>
+              <Eye className="h-3.5 w-3.5" />
+              {t("visitRoom")}
+            </Button>
+          )}
           {onMessage && (
             <Button
               variant="outline"

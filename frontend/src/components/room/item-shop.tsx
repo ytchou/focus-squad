@@ -11,13 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, ShoppingBag, Package, Loader2 } from "lucide-react";
+import { Sparkles, ShoppingBag, Package, Loader2, Gift } from "lucide-react";
 import { useUIStore, useGamificationStore } from "@/stores";
 import { useShopStore } from "@/stores/shop-store";
 import { useRoomStore } from "@/stores/room-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { EssenceBadge } from "./essence-badge";
+import { PartnerGiftSelector } from "./partner-gift-selector";
 
 const CATEGORIES = [
   { key: "all", icon: "🏠" },
@@ -44,9 +45,13 @@ export function ItemShop() {
   const essenceBalance = useShopStore((s) => s.essenceBalance);
   const isLoading = useShopStore((s) => s.isLoading);
   const isPurchasing = useShopStore((s) => s.isPurchasing);
+  const isGifting = useShopStore((s) => s.isGifting);
+  const selectedRecipientId = useShopStore((s) => s.selectedRecipientId);
   const fetchShop = useShopStore((s) => s.fetchShop);
   const fetchBalance = useShopStore((s) => s.fetchBalance);
   const buyItem = useShopStore((s) => s.buyItem);
+  const giftItem = useShopStore((s) => s.giftItem);
+  const setGiftingMode = useShopStore((s) => s.setGiftingMode);
   const fetchRoom = useRoomStore((s) => s.fetchRoom);
   const checkMilestones = useGamificationStore((s) => s.checkMilestones);
 
@@ -65,6 +70,14 @@ export function ItemShop() {
       : catalog.filter((item) => item.category === selectedCategory);
 
   const handleBuy = async (itemId: string) => {
+    if (isGifting && selectedRecipientId) {
+      const result = await giftItem(itemId, selectedRecipientId);
+      if (result) {
+        toast.success(t("giftSent", { name: result.recipient_name }));
+        fetchBalance();
+      }
+      return;
+    }
     const result = await buyItem(itemId);
     if (result) {
       toast.success(t("purchaseSuccess"));
@@ -73,19 +86,48 @@ export function ItemShop() {
     }
   };
 
+  const handleClose = () => {
+    setGiftingMode(null);
+    closeModal();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && closeModal()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5 text-accent" />
-            {t("title")}
+            {isGifting ? (
+              <Gift className="h-5 w-5 text-accent" />
+            ) : (
+              <ShoppingBag className="h-5 w-5 text-accent" />
+            )}
+            {isGifting ? t("buyAsGift") : t("title")}
           </DialogTitle>
           <DialogDescription className="flex items-center gap-2">
             {t("subtitle")}
             <EssenceBadge balance={essenceBalance.balance} size="sm" />
           </DialogDescription>
         </DialogHeader>
+
+        {/* Gift toggle + partner selector */}
+        <div className="space-y-2">
+          <Button
+            variant={isGifting ? "accent" : "outline"}
+            size="xs"
+            onClick={() => {
+              if (isGifting) {
+                setGiftingMode(null);
+              } else {
+                // Enter gift mode — store shows isGifting=true, no recipient selected yet
+                useShopStore.setState({ isGifting: true, selectedRecipientId: null });
+              }
+            }}
+          >
+            <Gift className="h-3.5 w-3.5" />
+            {t("buyAsGift")}
+          </Button>
+          {isGifting && <PartnerGiftSelector />}
+        </div>
 
         {/* Category tabs */}
         <div className="flex gap-1 overflow-x-auto pb-1">
@@ -156,19 +198,28 @@ export function ItemShop() {
                       </div>
                     </div>
 
-                    {/* Price + Buy */}
+                    {/* Price + Buy/Gift */}
                     <Button
                       variant={canAfford ? "accent" : "outline"}
                       size="xs"
                       className="w-full"
-                      disabled={!canAfford || isPurchasing || !item.is_available}
+                      disabled={
+                        !canAfford ||
+                        isPurchasing ||
+                        !item.is_available ||
+                        (isGifting && !selectedRecipientId)
+                      }
                       onClick={() => handleBuy(item.id)}
                     >
                       {isPurchasing ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
                         <>
-                          <Sparkles className="h-3 w-3" />
+                          {isGifting ? (
+                            <Gift className="h-3 w-3" />
+                          ) : (
+                            <Sparkles className="h-3 w-3" />
+                          )}
                           {item.essence_cost === 0 ? t("free") : item.essence_cost}
                         </>
                       )}

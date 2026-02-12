@@ -643,6 +643,7 @@
     "hoursAgo": "{count} 小時前",
     "confirmRemove": "確認移除",
     "remove": "移除",
+    "visitRoom": "參觀房間",
     "wantsToBePartner": "想成為你的夥伴",
     "pendingRequest": "邀請等待中",
     "createError": "建立桌位失敗",
@@ -777,7 +778,13 @@
     "maybeLater": "下次再說",
     "companionAdopted": "已領養夥伴！",
     "adoptError": "領養失敗，請再試一次。",
-    "timeline": "成長記錄"
+    "timeline": "成長記錄",
+    "visitRoom": "參觀房間",
+    "partnerRoom": "{name} 的房間",
+    "partnerRoomBack": "返回夥伴",
+    "partnerRoomError": "無法載入此房間。你們可能不是夥伴。",
+    "giftReceived": "你收到了 {sender} 送的 {item}！",
+    "noGifts": "沒有新禮物"
   },
   "streak": {
     "title": "每週連續",
@@ -810,12 +817,26 @@
       "first_breakthrough": "第一次突破"
     },
     "snapshotSaved": "里程碑已記錄！",
-    "newMilestone": "新里程碑：{milestone}"
+    "newMilestone": "新里程碑：{milestone}",
+    "share": "分享",
+    "shareCard": "分享里程碑",
+    "shareCardDesc": "下載或複製你的里程碑卡片分享給朋友",
+    "shareCardError": "無法產生卡片",
+    "download": "下載 PNG",
+    "copyClipboard": "複製到剪貼簿",
+    "copied": "已複製！",
+    "downloadStarted": "下載已開始"
   },
   "shop": {
     "title": "道具商店",
     "subtitle": "用家具和飾品佈置你的房間",
     "purchaseSuccess": "購買成功！",
+    "buyAsGift": "送禮給夥伴",
+    "giftTo": "送給 {name}",
+    "selectPartner": "選擇要送禮的夥伴",
+    "giftSent": "禮物已送給 {name}！",
+    "giftError": "送禮失敗",
+    "noPartners": "沒有可以送禮的夥伴",
     "free": "免費",
     "noItems": "此分類無商品",
     "category": {
