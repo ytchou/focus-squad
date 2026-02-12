@@ -69,9 +69,8 @@ class StreakService:
         """
         Increment the weekly session count after a completed session.
 
-        Fetch-then-upsert pattern: read current row, increment in Python,
-        write back via upsert. Concurrent calls are serialized by the
-        webhook handler (one session completion at a time).
+        Uses upsert with ON CONFLICT(user_id, week_start) for atomicity —
+        safe against concurrent webhook calls for the same user.
 
         Awards bonus essence if a threshold is crossed.
         Returns StreakBonusResult if bonus awarded, None otherwise.
@@ -79,7 +78,7 @@ class StreakService:
         week_start = self._get_current_week_start()
         now = datetime.now(timezone.utc).isoformat()
 
-        # Fetch current row
+        # Fetch current row (if exists) to get current count + flags
         fetch = (
             self.supabase.table("weekly_streaks")
             .select("*")
@@ -89,37 +88,32 @@ class StreakService:
         )
 
         if fetch.data:
-            # Existing row: increment count
             row = fetch.data[0]
             new_count = row["session_count"] + 1
-
-            self.supabase.table("weekly_streaks").update(
-                {"session_count": new_count, "updated_at": now}
-            ).eq("id", row["id"]).execute()
-
             bonus_3 = row["bonus_3_awarded"]
             bonus_5 = row["bonus_5_awarded"]
-            row_id = row["id"]
         else:
-            # New row: insert with count=1
-            insert_result = (
-                self.supabase.table("weekly_streaks")
-                .insert(
-                    {
-                        "user_id": user_id,
-                        "week_start": week_start.isoformat(),
-                        "session_count": 1,
-                        "bonus_3_awarded": False,
-                        "bonus_5_awarded": False,
-                        "updated_at": now,
-                    }
-                )
-                .execute()
-            )
             new_count = 1
             bonus_3 = False
             bonus_5 = False
-            row_id = insert_result.data[0]["id"] if insert_result.data else None
+
+        # Atomic upsert — ON CONFLICT(user_id, week_start) updates count
+        upsert_result = (
+            self.supabase.table("weekly_streaks")
+            .upsert(
+                {
+                    "user_id": user_id,
+                    "week_start": week_start.isoformat(),
+                    "session_count": new_count,
+                    "bonus_3_awarded": bonus_3,
+                    "bonus_5_awarded": bonus_5,
+                    "updated_at": now,
+                },
+                on_conflict="user_id,week_start",
+            )
+            .execute()
+        )
+        row_id = upsert_result.data[0]["id"] if upsert_result.data else None
 
         # Check each threshold in order
         for threshold in STREAK_BONUS_THRESHOLDS:
@@ -148,19 +142,31 @@ class StreakService:
 
     def _award_bonus_essence(self, user_id: str, amount: int) -> int:
         """Award bonus essence and log transaction. Returns new balance."""
-        result = (
+        now = datetime.now(timezone.utc).isoformat()
+
+        # Fetch current balance first, then add — never overwrite
+        essence_result = (
             self.supabase.table("furniture_essence")
-            .update(
-                {
-                    "balance": amount,
-                    "total_earned": amount,
-                }
-            )
+            .select("balance, total_earned")
             .eq("user_id", user_id)
             .execute()
         )
 
-        new_balance = result.data[0]["balance"] if result.data else 0
+        if not essence_result.data:
+            logger.warning(f"No furniture_essence row for user {user_id}")
+            return 0
+
+        current = essence_result.data[0]
+        new_balance = current["balance"] + amount
+        new_total = current["total_earned"] + amount
+
+        self.supabase.table("furniture_essence").update(
+            {
+                "balance": new_balance,
+                "total_earned": new_total,
+                "updated_at": now,
+            }
+        ).eq("user_id", user_id).execute()
 
         self.supabase.table("essence_transactions").insert(
             {

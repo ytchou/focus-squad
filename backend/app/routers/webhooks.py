@@ -16,6 +16,7 @@ from livekit import api
 from app.core.config import get_settings
 from app.core.constants import MIN_ACTIVE_MINUTES_FOR_COMPLETION
 from app.core.database import get_supabase
+from app.services.streak_service import StreakService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -420,8 +421,6 @@ async def _handle_room_finished(event_data: dict) -> None:
 
         # Check weekly streak bonus
         try:
-            from app.services.streak_service import StreakService
-
             streak_service = StreakService(supabase=supabase)
             streak_result = streak_service.increment_session_count(user_id)
             if streak_result:

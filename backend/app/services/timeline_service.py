@@ -168,7 +168,7 @@ class TimelineService:
             .eq("user_id", user_id)
             .execute()
         )
-        session_count = len(session_result.data) if session_result.data else 0
+        session_count = session_result.count if session_result.count is not None else 0
 
         if session_count >= SESSION_MILESTONE_INTERVAL:
             if "session_milestone" not in captured:

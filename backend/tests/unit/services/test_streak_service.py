@@ -128,21 +128,20 @@ class TestGetWeeklyStreak:
 
 class TestIncrementSessionCount:
     def test_first_session_no_bonus(self, service, mock_supabase):
-        """First session inserts new row with count=1, no bonus."""
+        """First session upserts new row with count=1, no bonus."""
         tables = _setup_tables(
             mock_supabase,
             ["weekly_streaks", "furniture_essence", "essence_transactions"],
         )
 
-        # First call: fetch returns empty (no existing row)
-        # Second call: insert returns new row
+        # fetch returns empty, upsert returns new row
         call_count = {"n": 0}
 
         def streaks_execute(*args, **kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 return MagicMock(data=[])  # fetch: no existing row
-            return MagicMock(data=[_streak_row(session_count=1)])  # insert
+            return MagicMock(data=[_streak_row(session_count=1)])  # upsert
 
         tables["weekly_streaks"].execute.side_effect = streaks_execute
 
@@ -150,44 +149,76 @@ class TestIncrementSessionCount:
         assert result is None
 
     def test_crossing_3_awards_bonus(self, service, mock_supabase):
-        """Crossing 3-session threshold awards +1 essence."""
+        """Crossing 3-session threshold awards +1 essence (additive)."""
         tables = _setup_tables(
             mock_supabase,
             ["weekly_streaks", "furniture_essence", "essence_transactions"],
         )
 
-        # fetch returns existing row with count=2 (will become 3)
-        tables["weekly_streaks"].execute.return_value = MagicMock(
-            data=[_streak_row(session_count=2)]
-        )
-        tables["furniture_essence"].execute.return_value = MagicMock(data=[{"balance": 6}])
+        # Streaks: fetch returns count=2, upsert returns count=3
+        streaks_call = {"n": 0}
+
+        def streaks_execute(*args, **kwargs):
+            streaks_call["n"] += 1
+            if streaks_call["n"] == 1:
+                return MagicMock(data=[_streak_row(session_count=2)])  # fetch
+            return MagicMock(data=[_streak_row(session_count=3)])  # upsert/flag update
+
+        tables["weekly_streaks"].execute.side_effect = streaks_execute
+
+        # Essence: first call is select (current balance), second is update
+        essence_call = {"n": 0}
+
+        def essence_execute(*args, **kwargs):
+            essence_call["n"] += 1
+            if essence_call["n"] == 1:
+                return MagicMock(data=[{"balance": 5, "total_earned": 5}])  # select
+            return MagicMock(data=[{"balance": 6, "total_earned": 6}])  # update
+
+        tables["furniture_essence"].execute.side_effect = essence_execute
 
         result = service.increment_session_count("user-1")
 
         assert result is not None
         assert result.bonus_essence == 1
         assert result.threshold_reached == 3
-        assert result.new_balance == 6
+        assert result.new_balance == 6  # 5 + 1 = 6
 
     def test_crossing_5_awards_bonus(self, service, mock_supabase):
-        """Crossing 5-session threshold awards +2 essence."""
+        """Crossing 5-session threshold awards +2 essence (additive)."""
         tables = _setup_tables(
             mock_supabase,
             ["weekly_streaks", "furniture_essence", "essence_transactions"],
         )
 
-        # Existing row with count=4, bonus_3 already awarded
-        tables["weekly_streaks"].execute.return_value = MagicMock(
-            data=[_streak_row(session_count=4, bonus_3=True)]
-        )
-        tables["furniture_essence"].execute.return_value = MagicMock(data=[{"balance": 10}])
+        # Streaks: fetch returns count=4 with bonus_3, upsert returns count=5
+        streaks_call = {"n": 0}
+
+        def streaks_execute(*args, **kwargs):
+            streaks_call["n"] += 1
+            if streaks_call["n"] == 1:
+                return MagicMock(data=[_streak_row(session_count=4, bonus_3=True)])
+            return MagicMock(data=[_streak_row(session_count=5, bonus_3=True)])
+
+        tables["weekly_streaks"].execute.side_effect = streaks_execute
+
+        # Essence: select returns 8, update returns 10
+        essence_call = {"n": 0}
+
+        def essence_execute(*args, **kwargs):
+            essence_call["n"] += 1
+            if essence_call["n"] == 1:
+                return MagicMock(data=[{"balance": 8, "total_earned": 8}])
+            return MagicMock(data=[{"balance": 10, "total_earned": 10}])
+
+        tables["furniture_essence"].execute.side_effect = essence_execute
 
         result = service.increment_session_count("user-1")
 
         assert result is not None
         assert result.bonus_essence == 2
         assert result.threshold_reached == 5
-        assert result.new_balance == 10
+        assert result.new_balance == 10  # 8 + 2 = 10
 
     def test_no_double_award(self, service, mock_supabase):
         """Already-awarded bonus is not given again."""
@@ -197,9 +228,15 @@ class TestIncrementSessionCount:
         )
 
         # count=3 with bonus_3 already awarded, not at 5 yet
-        tables["weekly_streaks"].execute.return_value = MagicMock(
-            data=[_streak_row(session_count=3, bonus_3=True)]
-        )
+        streaks_call = {"n": 0}
+
+        def streaks_execute(*args, **kwargs):
+            streaks_call["n"] += 1
+            if streaks_call["n"] == 1:
+                return MagicMock(data=[_streak_row(session_count=3, bonus_3=True)])
+            return MagicMock(data=[_streak_row(session_count=4, bonus_3=True)])
+
+        tables["weekly_streaks"].execute.side_effect = streaks_execute
 
         result = service.increment_session_count("user-1")
         assert result is None
@@ -211,9 +248,15 @@ class TestIncrementSessionCount:
             ["weekly_streaks", "furniture_essence", "essence_transactions"],
         )
 
-        tables["weekly_streaks"].execute.return_value = MagicMock(
-            data=[_streak_row(session_count=6, bonus_3=True, bonus_5=True)]
-        )
+        streaks_call = {"n": 0}
+
+        def streaks_execute(*args, **kwargs):
+            streaks_call["n"] += 1
+            if streaks_call["n"] == 1:
+                return MagicMock(data=[_streak_row(session_count=6, bonus_3=True, bonus_5=True)])
+            return MagicMock(data=[_streak_row(session_count=7, bonus_3=True, bonus_5=True)])
+
+        tables["weekly_streaks"].execute.side_effect = streaks_execute
 
         result = service.increment_session_count("user-1")
         assert result is None

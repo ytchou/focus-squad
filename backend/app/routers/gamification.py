@@ -151,4 +151,4 @@ def _get_user_session_count(timeline_service: TimelineService, user_id: str) -> 
         .eq("user_id", user_id)
         .execute()
     )
-    return len(result.data) if result.data else 0
+    return result.count if result.count is not None else 0
