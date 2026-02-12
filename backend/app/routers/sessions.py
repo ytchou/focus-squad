@@ -424,6 +424,7 @@ async def create_private_table(
     session_service: SessionService = Depends(get_session_service),
     credit_service: CreditService = Depends(get_credit_service),
     user_service: UserService = Depends(get_user_service),
+    rating_service: RatingService = Depends(get_rating_service),
 ):
     """Create a private table and send invitations to partners."""
     from app.models.partner import CreatePrivateTableResponse
@@ -435,6 +436,16 @@ async def create_private_table(
     # Check ban
     if profile.banned_until and profile.banned_until > datetime.now(timezone.utc):
         raise HTTPException(status_code=403, detail="You are currently banned")
+
+    # Check pending ratings
+    if rating_service.has_pending_ratings(profile.id):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "PENDING_RATINGS",
+                "message": "Please rate your tablemates from your last session before creating a new one.",
+            },
+        )
 
     # Check credits
     balance = credit_service.get_balance(profile.id)
@@ -884,12 +895,31 @@ async def respond_to_invitation(
     session_service: SessionService = Depends(get_session_service),
     credit_service: CreditService = Depends(get_credit_service),
     user_service: UserService = Depends(get_user_service),
+    rating_service: RatingService = Depends(get_rating_service),
 ):
     """Accept or decline a table invitation."""
 
     profile = user_service.get_user_by_auth_id(auth_user.auth_id)
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if body.accept:
+        # Check ban
+        if profile.banned_until and profile.banned_until > datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Account suspended until {profile.banned_until.isoformat()}",
+            )
+
+        # Check pending ratings
+        if rating_service.has_pending_ratings(profile.id):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "PENDING_RATINGS",
+                    "message": "Please rate your tablemates from your last session before joining a new one.",
+                },
+            )
 
     # Find the invitation by session_id + user_id
     from app.core.database import get_supabase

@@ -100,11 +100,11 @@ export function CreatePrivateTableModal({
     setError(null);
     try {
       await api.post("/api/v1/sessions/create-private", {
-        start_time: selectedSlot,
-        invited_user_ids: selectedPartners,
+        time_slot: selectedSlot,
+        partner_ids: selectedPartners,
         mode,
         max_seats: maxSeats,
-        ai_fill: aiFill,
+        fill_ai: aiFill,
         topic: topic.trim() || null,
       });
       onOpenChange(false);

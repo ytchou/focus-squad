@@ -651,7 +651,7 @@
 - [x] Session end page: add "Add as Partner" button per human tablemate
 - [x] Profile page: add interest tags section
 
-#### Partner Direct Messaging (Chat) — Deferred
+#### Partner Direct Messaging (Chat)
 - [ ] Design chat system architecture (real-time vs async)
 - [ ] Build partner chat UI
 - [ ] Implement message persistence
@@ -669,7 +669,7 @@
 
 ---
 
-## Phase 5: Launch Prep
+## Phase 5: MVP Launch Prep
 
 ### Notifications
 - [ ] Set up email service (Resend/SendGrid)
@@ -677,8 +677,7 @@
 - [ ] Create notification preferences settings
 - [ ] Send notifications for: session start, match found, credit refresh, Red rating
 
-
-### Analytics (Basic)
+### Analytics
 - [ ] Integrate PostHog
 - [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.)
 - [ ] Add user identification and properties
@@ -688,14 +687,6 @@
 - [ ] Document integration requirements
 - [ ] Design subscription upgrade flow (UI mockups)
 - [ ] Implement payment processing
-
-### Production Hardening
-- [ ] Security audit (OWASP top 10, use [shannon](https://github.com/KeygraphHQ/shannon))
-- [ ] Add JWKS cache TTL (1-hour expiration with background refresh)
-- [ ] Convert JWKS fetch to async (`httpx.AsyncClient`)
-- [ ] Performance testing
-- [ ] Mobile responsiveness check
-- [ ] Accessibility audit (basic)
 
 ### PWA
 - [ ] Service worker for offline shell
@@ -717,6 +708,14 @@
 - [ ] Content marketing (for SEO)
   - [ ] "Body doubling" research as marketing assets, or some built in prompts in the system
   - [ ] Comments about attention span issues, how to regain focus, etc.
+
+### Production Hardening
+- [ ] Security audit (OWASP top 10, use [shannon](https://github.com/KeygraphHQ/shannon))
+- [ ] Add JWKS cache TTL (1-hour expiration with background refresh)
+- [ ] Convert JWKS fetch to async (`httpx.AsyncClient`)
+- [ ] Performance testing
+- [ ] Mobile responsiveness check
+- [ ] Accessibility audit (basic)
 
 ---
 
