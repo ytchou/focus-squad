@@ -280,6 +280,7 @@ class PartnerService:
         self.supabase.table("partnerships").delete().eq("id", partnership_id).execute()
 
         self._cascade_remove_from_schedules(user_id, partner_id)
+        self._cascade_remove_from_group_conversations(user_id, partner_id)
 
     def search_users(self, query: str, current_user_id: str) -> list[dict]:
         """
@@ -512,4 +513,73 @@ class PartnerService:
                         "Removed partner %s from recurring schedule %s",
                         removed_id,
                         schedule["id"],
+                    )
+
+    def _cascade_remove_from_group_conversations(self, user_id: str, partner_id: str) -> None:
+        """
+        Remove users from group conversations where they have no remaining
+        mutual partners after an un-partnering event.
+
+        Checks BOTH directions symmetrically: user_id may need removal from
+        groups where they only had partner_id as a mutual partner, and vice versa.
+        """
+        user_convs = (
+            self.supabase.table("conversation_members")
+            .select("conversation_id")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        partner_convs = (
+            self.supabase.table("conversation_members")
+            .select("conversation_id")
+            .eq("user_id", partner_id)
+            .execute()
+        )
+
+        user_conv_ids = {m["conversation_id"] for m in user_convs.data}
+        partner_conv_ids = {m["conversation_id"] for m in partner_convs.data}
+        shared_conv_ids = user_conv_ids & partner_conv_ids
+
+        if not shared_conv_ids:
+            return
+
+        groups = (
+            self.supabase.table("conversations")
+            .select("id")
+            .in_("id", list(shared_conv_ids))
+            .eq("type", "group")
+            .execute()
+        )
+
+        for group in groups.data:
+            members = (
+                self.supabase.table("conversation_members")
+                .select("user_id")
+                .eq("conversation_id", group["id"])
+                .execute()
+            )
+            member_ids = [m["user_id"] for m in members.data]
+
+            # Check both users symmetrically
+            for check_user in [user_id, partner_id]:
+                if check_user not in member_ids:
+                    continue
+                others = [mid for mid in member_ids if mid != check_user]
+
+                has_remaining_partner = False
+                for other_id in others:
+                    partnership = self._find_partnership(check_user, other_id)
+                    if partnership and partnership["status"] == "accepted":
+                        has_remaining_partner = True
+                        break
+
+                if not has_remaining_partner:
+                    self.supabase.table("conversation_members").delete().eq(
+                        "conversation_id", group["id"]
+                    ).eq("user_id", check_user).execute()
+                    member_ids.remove(check_user)
+                    logger.info(
+                        "Removed %s from group %s (no remaining mutual partners)",
+                        check_user,
+                        group["id"],
                     )

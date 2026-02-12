@@ -86,6 +86,22 @@ class ApiClient {
     return response.json();
   }
 
+  async put<T>(endpoint: string, data?: unknown): Promise<T> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: "PUT",
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new ApiError(response.status, text);
+    }
+
+    return response.json();
+  }
+
   async delete<T>(endpoint: string): Promise<T> {
     const headers = await this.getAuthHeaders();
     const response = await fetch(`${API_URL}${endpoint}`, {

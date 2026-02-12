@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { UserMinus, Clock } from "lucide-react";
+import { UserMinus, Clock, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
 import { InterestTagBadge } from "./interest-tag-badge";
@@ -11,6 +11,7 @@ import type { PartnerInfo } from "@/stores";
 interface PartnerCardProps {
   partner: PartnerInfo;
   onRemove: (id: string) => void;
+  onMessage?: (userId: string) => void;
 }
 
 function getRelativeDays(isoDate: string, now: number): number {
@@ -18,7 +19,7 @@ function getRelativeDays(isoDate: string, now: number): number {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-export function PartnerCard({ partner, onRemove }: PartnerCardProps) {
+export function PartnerCard({ partner, onRemove, onMessage }: PartnerCardProps) {
   const t = useTranslations("partners");
   const [confirmRemove, setConfirmRemove] = useState(false);
 
@@ -89,15 +90,28 @@ export function PartnerCard({ partner, onRemove }: PartnerCardProps) {
           </Button>
         </div>
       ) : (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground"
-          onClick={() => setConfirmRemove(true)}
-        >
-          <UserMinus className="h-3.5 w-3.5" />
-          {t("remove")}
-        </Button>
+        <div className="flex items-center gap-2">
+          {onMessage && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => onMessage(partner.user_id)}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {t("tabs.messages")}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={() => setConfirmRemove(true)}
+          >
+            <UserMinus className="h-3.5 w-3.5" />
+            {t("remove")}
+          </Button>
+        </div>
       )}
     </div>
   );

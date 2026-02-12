@@ -301,6 +301,67 @@ def register_exception_handlers(app: FastAPI) -> None:
             429, "Maximum number of recurring schedules reached.", "SCHEDULE_LIMIT_EXCEEDED"
         )
 
+    # --- Message handlers ---
+
+    from app.models.message import (
+        ConversationLimitError,
+        ConversationNotFoundError,
+        ConversationReadOnlyError,
+        DirectConversationExistsError,
+        GroupSizeError,
+        InvalidReactionError,
+        MessageNotFoundError,
+        NotConversationMemberError,
+        NotMessageOwnerError,
+        NotMutualPartnersError,
+    )
+
+    @app.exception_handler(ConversationNotFoundError)
+    async def _conv_not_found(request: Request, exc: ConversationNotFoundError) -> JSONResponse:
+        return error_response(404, "Conversation not found.", "CONVERSATION_NOT_FOUND")
+
+    @app.exception_handler(NotConversationMemberError)
+    async def _not_conv_member(request: Request, exc: NotConversationMemberError) -> JSONResponse:
+        return error_response(
+            403, "You are not a member of this conversation.", "NOT_CONVERSATION_MEMBER"
+        )
+
+    @app.exception_handler(ConversationLimitError)
+    async def _conv_limit(request: Request, exc: ConversationLimitError) -> JSONResponse:
+        return error_response(429, str(exc), "CONVERSATION_LIMIT_EXCEEDED")
+
+    @app.exception_handler(InvalidReactionError)
+    async def _invalid_reaction(request: Request, exc: InvalidReactionError) -> JSONResponse:
+        return error_response(400, str(exc), "INVALID_REACTION")
+
+    @app.exception_handler(MessageNotFoundError)
+    async def _msg_not_found(request: Request, exc: MessageNotFoundError) -> JSONResponse:
+        return error_response(404, "Message not found.", "MESSAGE_NOT_FOUND")
+
+    @app.exception_handler(NotMessageOwnerError)
+    async def _not_msg_owner(request: Request, exc: NotMessageOwnerError) -> JSONResponse:
+        return error_response(403, "You can only modify your own messages.", "NOT_MESSAGE_OWNER")
+
+    @app.exception_handler(GroupSizeError)
+    async def _group_size(request: Request, exc: GroupSizeError) -> JSONResponse:
+        return error_response(400, str(exc), "GROUP_SIZE_ERROR")
+
+    @app.exception_handler(NotMutualPartnersError)
+    async def _not_mutual_partners(request: Request, exc: NotMutualPartnersError) -> JSONResponse:
+        return error_response(403, "All members must be mutual partners.", "NOT_MUTUAL_PARTNERS")
+
+    @app.exception_handler(ConversationReadOnlyError)
+    async def _conv_read_only(request: Request, exc: ConversationReadOnlyError) -> JSONResponse:
+        return error_response(403, "This conversation is read-only.", "CONVERSATION_READ_ONLY")
+
+    @app.exception_handler(DirectConversationExistsError)
+    async def _direct_conv_exists(
+        request: Request, exc: DirectConversationExistsError
+    ) -> JSONResponse:
+        return error_response(
+            409, "A direct conversation already exists.", "DIRECT_CONVERSATION_EXISTS"
+        )
+
     # --- Infrastructure handlers ---
 
     @app.exception_handler(LiveKitServiceError)

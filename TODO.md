@@ -652,11 +652,44 @@
 - [x] Profile page: add interest tags section
 
 #### Partner Direct Messaging (Chat)
-- [ ] Design chat system architecture (real-time vs async)
-- [ ] Build partner chat UI
-- [ ] Implement message persistence
-- [ ] Add chat notifications
+> **Design Doc:** [output/plan/2026-02-12-partner-messaging-design.md](output/plan/2026-02-12-partner-messaging-design.md)
+> **Plan File:** [.claude/plans/abstract-kindling-hollerith.md](.claude/plans/abstract-kindling-hollerith.md)
 
+**Database & Constants (Chunk 1):**
+- [x] Add messaging constants to `constants.py`
+- [x] Create migration `025_messaging.sql`: conversations, conversation_members, messages tables + RLS + Realtime
+
+**Backend Models & Service (Chunk 2):**
+- [x] Create `models/message.py`: enums, request/response models, domain exceptions
+- [x] Create `services/message_service.py`: 10 methods (create conversation, send, list, paginate, mark read, reactions, delete, groups)
+- [x] Add un-partner cascade to `partner_service.py` (auto-remove from groups)
+- [x] Register exception handlers in `core/exceptions.py`
+
+**Backend Router & Tests (Chunk 3):**
+- [x] Create `routers/messages.py`: 9 endpoints (conversations CRUD, messages, reactions, groups)
+- [x] Register router in `main.py`
+- [x] Write service unit tests (`test_message_service.py`) — target 80%+ coverage
+- [x] Write router unit tests (`test_messages.py`)
+
+**Frontend Store & Realtime (Chunk 4):**
+- [x] Create `stores/message-store.ts`: Zustand store for conversations + messages
+- [x] Create `hooks/use-realtime-messages.ts`: Supabase Realtime subscriptions
+- [x] Export from `stores/index.ts`
+
+**Frontend Components (Chunk 5):**
+- [x] Build `conversation-list.tsx` (left panel with unread badges)
+- [x] Build `chat-thread.tsx` (message thread with scroll + pagination)
+- [x] Build `message-bubble.tsx` (message display + reactions)
+- [x] Build `chat-input.tsx` (input with moderation blocklist)
+- [x] Build `reaction-picker.tsx` (curated 6-emoji picker)
+- [x] Build `chat-header.tsx` (conversation header + back button)
+- [x] Build `create-group-modal.tsx` (select partners + name group)
+
+**Page Integration (Chunk 6):**
+- [x] Add Messages tab to Partners page (split layout)
+- [x] Add "Message" button to PartnerCard
+- [x] Add unread badge to sidebar Partners nav item
+- [x] Add `messages` i18n namespace (EN + zh-TW)
 
 #### Gamification
 - [x] Award essence on session completion (implemented in webhook room_finished handler)

@@ -14,7 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useUIStore } from "@/stores";
+import { useUIStore, useMessageStore } from "@/stores";
 import { useDebugBanner } from "@/hooks/use-debug-banner";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +33,7 @@ export function Sidebar() {
   const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
   const isSidebarCollapsed = useUIStore((state) => state.isSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((state) => state.setSidebarCollapsed);
+  const totalUnreadCount = useMessageStore((s) => s.totalUnreadCount);
   const { isVisible: isDebugBannerVisible } = useDebugBanner();
 
   // On mobile, sidebar is controlled by isSidebarOpen (overlay)
@@ -87,6 +88,11 @@ export function Sidebar() {
                   >
                     <item.icon className="h-5 w-5 shrink-0" />
                     {!isCollapsed && <span>{t(item.labelKey)}</span>}
+                    {item.href === "/partners" && totalUnreadCount > 0 && (
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                        {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );
