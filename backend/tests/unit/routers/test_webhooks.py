@@ -26,7 +26,6 @@ from app.routers.webhooks import (
     livekit_webhook,
 )
 
-
 # =============================================================================
 # Webhook Signature Validation Tests
 # =============================================================================
@@ -92,7 +91,7 @@ class TestWebhookSignatureValidation:
     async def test_webhook_rejects_invalid_json_in_development(self) -> None:
         """Returns 400 for invalid JSON even in development."""
         mock_request = MagicMock()
-        mock_request.body = AsyncMock(return_value=b'not valid json')
+        mock_request.body = AsyncMock(return_value=b"not valid json")
 
         mock_settings = MagicMock()
         mock_settings.environment = "development"
@@ -102,6 +101,7 @@ class TestWebhookSignatureValidation:
                 await livekit_webhook(mock_request, authorization=None)
             assert exc_info.value.status_code == 400
             assert "Invalid JSON" in exc_info.value.detail
+
 
 # =============================================================================
 # is_session_completed() Tests

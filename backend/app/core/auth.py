@@ -12,7 +12,7 @@ Two modes of operation:
 import asyncio
 import logging
 import time
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import httpx
 from fastapi import Depends, HTTPException, Request, status
@@ -179,7 +179,7 @@ class DeletedUserCache:
     DEFAULT_TTL = 60  # 60 seconds
 
     def __init__(self, ttl_seconds: int = DEFAULT_TTL):
-        self._cache: Dict[str, Tuple[bool, float]] = {}
+        self._cache: dict[str, tuple[bool, float]] = {}
         self._ttl = ttl_seconds
 
     def is_deleted(self, auth_id: str) -> Optional[bool]:
@@ -399,12 +399,7 @@ async def require_auth_from_state(request: Request) -> AuthUser:
     if cached_deleted is None:
         # Cache miss - check database
         supabase = get_supabase()
-        result = (
-            supabase.table("users")
-            .select("deleted_at")
-            .eq("auth_id", user.auth_id)
-            .execute()
-        )
+        result = supabase.table("users").select("deleted_at").eq("auth_id", user.auth_id).execute()
 
         is_deleted = False
         if result.data and result.data[0].get("deleted_at"):

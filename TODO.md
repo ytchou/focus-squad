@@ -809,12 +809,12 @@
 - [ ] Reset message cursors on conversation switch in message-store
 
 ### Security Hardening
-- [ ] Add explicit ENVIRONMENT check for webhook signature validation (`webhooks.py`)
-- [ ] Validate CORS origins in production (`config.py`)
-- [ ] Use HTTPBearer class for bearer token extraction (`middleware.py`)
-- [ ] Add token revocation check for deleted users (`auth.py`)
-- [ ] Add retry logic for referral code collision (`user_service.py`)
-- [ ] Sanitize ban timestamp in error messages (generic "temporarily suspended")
+- [x] Add explicit ENVIRONMENT check for webhook signature validation (`webhooks.py`)
+- [x] Validate CORS origins in production (`config.py`)
+- [x] Use FastAPI HTTPBearer utility for token extraction (`middleware.py`) - Case-insensitive scheme matching
+- [x] Add token revocation check for deleted users (`auth.py`) - 60s TTL cache
+- [x] Sanitize ban timestamp in error messages (generic "temporarily suspended")
+- [x] Add retry logic for referral code collision (`user_service.py`) - Max 5 attempts
 
 ### Scalability Improvements
 - [ ] Optimize session page polling (increase interval or use WebSocket)
@@ -829,7 +829,7 @@
 - [ ] Add tests for message pagination cursor reset
 
 ### Standard Hardening
-- [ ] Security audit (OWASP top 10, use [shannon](https://github.com/KeygraphHQ/shannon))
+- [ ] Security audit with Shannon AI scanner ($5-25/scan) - Manual fixes done, ready for scan
 - [x] Convert JWKS fetch to async (`httpx.AsyncClient`)
 - [ ] Performance testing
 - [ ] Mobile responsiveness check

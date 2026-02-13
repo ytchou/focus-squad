@@ -132,7 +132,9 @@ class TestJWTValidationMiddleware:
             request.state = MagicMock()
             request.headers = {"Authorization": f"{scheme} {valid_jwt_token}"}
 
-            with patch.object(middleware, "_validate_token", new_callable=AsyncMock) as mock_validate:
+            with patch.object(
+                middleware, "_validate_token", new_callable=AsyncMock
+            ) as mock_validate:
                 mock_validate.return_value = valid_jwt_claims
 
                 await middleware.dispatch(request, mock_call_next)
