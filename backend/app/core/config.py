@@ -73,6 +73,32 @@ class Settings(BaseSettings):
 
         return self
 
+    @model_validator(mode="after")
+    def validate_cors_origins_in_production(self) -> "Settings":
+        """Validate CORS origins are safe in production."""
+        if self.environment != "production":
+            return self
+
+        unsafe_patterns = ["localhost", "127.0.0.1", "0.0.0.0"]
+
+        for origin in self.cors_origins:
+            # Check for wildcard
+            if origin == "*":
+                raise ValueError(
+                    "Wildcard (*) CORS origin is not allowed in production. "
+                    "Specify exact origins instead."
+                )
+
+            # Check for unsafe patterns
+            for pattern in unsafe_patterns:
+                if pattern in origin:
+                    raise ValueError(
+                        f"CORS origin '{origin}' contains '{pattern}' which is not "
+                        f"allowed in production. Use HTTPS production URLs instead."
+                    )
+
+        return self
+
 
 @lru_cache
 def get_settings() -> Settings:
