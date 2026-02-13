@@ -125,9 +125,7 @@ class TestCreateScheduledSessions:
             "invitations_sent": 0,
         }
 
-        with patch(
-            "app.services.schedule_service.ScheduleService", mock_service_class
-        ):
+        with patch("app.services.schedule_service.ScheduleService", mock_service_class):
             import app.tasks.schedule_tasks as schedule_tasks_module
 
             importlib.reload(schedule_tasks_module)

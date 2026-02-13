@@ -109,9 +109,7 @@ describe("PartnerCard", () => {
 
   it("renders message button when onMessage provided", () => {
     const partner = createMockPartner();
-    render(
-      <PartnerCard partner={partner} onRemove={mockOnRemove} onMessage={mockOnMessage} />
-    );
+    render(<PartnerCard partner={partner} onRemove={mockOnRemove} onMessage={mockOnMessage} />);
 
     // partners.tabs.messages = "Messages"
     expect(screen.getByRole("button", { name: /Messages/i })).toBeInTheDocument();
@@ -119,9 +117,7 @@ describe("PartnerCard", () => {
 
   it("calls onMessage when clicked", () => {
     const partner = createMockPartner({ user_id: "user-xyz" });
-    render(
-      <PartnerCard partner={partner} onRemove={mockOnRemove} onMessage={mockOnMessage} />
-    );
+    render(<PartnerCard partner={partner} onRemove={mockOnRemove} onMessage={mockOnMessage} />);
 
     fireEvent.click(screen.getByRole("button", { name: /Messages/i }));
 
@@ -130,9 +126,7 @@ describe("PartnerCard", () => {
 
   it("renders visit room button when onVisitRoom provided", () => {
     const partner = createMockPartner();
-    render(
-      <PartnerCard partner={partner} onRemove={mockOnRemove} onVisitRoom={mockOnVisitRoom} />
-    );
+    render(<PartnerCard partner={partner} onRemove={mockOnRemove} onVisitRoom={mockOnVisitRoom} />);
 
     // partners.visitRoom = "Visit Room"
     expect(screen.getByRole("button", { name: /Visit Room/i })).toBeInTheDocument();

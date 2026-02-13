@@ -379,13 +379,7 @@ describe("CreatePrivateTableModal", () => {
   });
 
   it("shows no partners message when partners list is empty", async () => {
-    render(
-      <CreatePrivateTableModal
-        open={true}
-        onOpenChange={mockOnOpenChange}
-        partners={[]}
-      />
-    );
+    render(<CreatePrivateTableModal open={true} onOpenChange={mockOnOpenChange} partners={[]} />);
 
     // Navigate to step 2
     const timeSlots = screen.getAllByRole("button").filter((btn) => {
