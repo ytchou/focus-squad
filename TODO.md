@@ -803,10 +803,10 @@
 - [x] Add Celery task to cleanup expired pending_ratings (48hr expiry, daily cleanup)
 
 ### [P2] Medium Priority - Second sprint
-- [ ] Add analytics retention policy (1-year TTL via Celery)
-- [ ] Serialize essence purchases (SELECT FOR UPDATE)
-- [ ] Cache partner lists for RLS performance
-- [ ] Reset message cursors on conversation switch in message-store
+- [x] Add analytics retention policy (1-year TTL via Celery)
+- [x] Serialize essence purchases (SELECT FOR UPDATE)
+- [x] Cache partner lists for RLS performance
+- [x] Reset message cursors on conversation switch in message-store
 
 ### Security Hardening
 - [x] Add explicit ENVIRONMENT check for webhook signature validation (`webhooks.py`)
@@ -818,15 +818,15 @@
 
 ### Scalability Improvements
 - [ ] Optimize session page polling (increase interval or use WebSocket)
-- [ ] Add analytics table TTL (1-year retention via Celery)
-- [ ] Optimize RLS partner subqueries (cache or denormalize)
+- [x] Add analytics table TTL (1-year retention via Celery)
+- [x] Optimize RLS partner subqueries (Redis cache)
 
 ### Test Coverage Gaps
 - [x] Add tests for JWKS cache expiration scenario
 - [x] Add tests for Redis connection failure during startup
 - [x] Add tests for missing environment secrets startup behavior
-- [ ] Add tests for essence purchase race condition
-- [ ] Add tests for message pagination cursor reset
+- [x] Add tests for essence purchase race condition
+- [x] Add tests for message pagination cursor reset
 
 ### Standard Hardening
 - [ ] Security audit with Shannon AI scanner ($5-25/scan) - Manual fixes done, ready for scan
