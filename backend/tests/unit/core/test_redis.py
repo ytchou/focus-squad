@@ -1,5 +1,6 @@
 """Tests for Redis connection validation with retry."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -87,3 +88,37 @@ class TestRedisInitWithRetry:
                     assert mock_sleep.call_count == 2
                     mock_sleep.assert_any_call(1)  # Before attempt 2
                     mock_sleep.assert_any_call(2)  # Before attempt 3
+
+    @pytest.mark.asyncio
+    async def test_timeout_error_triggers_retry(self):
+        """TimeoutError is caught and triggers retry."""
+        mock_redis = AsyncMock()
+        mock_redis.ping = AsyncMock(side_effect=[asyncio.TimeoutError("Timed out"), True])
+
+        with patch("app.core.redis.Redis", return_value=mock_redis):
+            with patch("app.core.redis.ConnectionPool") as mock_pool:
+                mock_pool.from_url = MagicMock()
+                with patch("app.core.redis.asyncio.sleep", new_callable=AsyncMock):
+                    from app.core.redis import _reset_redis, init_redis
+
+                    _reset_redis()
+                    await init_redis()
+
+                    assert mock_redis.ping.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_oserror_triggers_retry(self):
+        """OSError (network issues) is caught and triggers retry."""
+        mock_redis = AsyncMock()
+        mock_redis.ping = AsyncMock(side_effect=[OSError("Network unreachable"), True])
+
+        with patch("app.core.redis.Redis", return_value=mock_redis):
+            with patch("app.core.redis.ConnectionPool") as mock_pool:
+                mock_pool.from_url = MagicMock()
+                with patch("app.core.redis.asyncio.sleep", new_callable=AsyncMock):
+                    from app.core.redis import _reset_redis, init_redis
+
+                    _reset_redis()
+                    await init_redis()
+
+                    assert mock_redis.ping.call_count == 2

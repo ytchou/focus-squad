@@ -63,7 +63,13 @@ class JWKSCache:
         self._keys: Optional[dict] = None
         self._fetched_at: Optional[float] = None
         self._refresh_task: Optional[asyncio.Task] = None
-        self._lock: asyncio.Lock = asyncio.Lock()
+        self._lock: Optional[asyncio.Lock] = None  # Lazy init to avoid event loop issues
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Get or create the asyncio lock (lazy initialization)."""
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
     async def get_keys(self) -> dict:
         """
@@ -76,18 +82,21 @@ class JWKSCache:
 
         # Case 1: Fresh cache - return immediately
         if self._is_fresh(now):
-            return self._keys  # type: ignore
+            assert self._keys is not None  # Guaranteed by _is_fresh check
+            return self._keys
 
         # Case 2: Within refresh window - return old keys, refresh in background
         if self._should_refresh_in_background(now):
             self._schedule_background_refresh()
-            return self._keys  # type: ignore
+            assert self._keys is not None  # Guaranteed by _should_refresh_in_background check
+            return self._keys
 
         # Case 3: Expired or empty - synchronous fetch
-        async with self._lock:
+        async with self._get_lock():
             # Double-check after acquiring lock (another task may have fetched)
             if self._is_fresh(time.time()):
-                return self._keys  # type: ignore
+                assert self._keys is not None  # Guaranteed by _is_fresh check
+                return self._keys
 
             self._keys = await self._fetch_keys()
             self._fetched_at = time.time()
@@ -114,12 +123,18 @@ class JWKSCache:
         if self._refresh_task is not None and not self._refresh_task.done():
             return
 
+        # Log if previous task failed (for debugging)
+        if self._refresh_task is not None and self._refresh_task.done():
+            exc = self._refresh_task.exception()
+            if exc is not None:
+                logger.debug(f"Previous background refresh failed: {exc}")
+
         self._refresh_task = asyncio.create_task(self._background_refresh())
 
     async def _background_refresh(self) -> None:
         """Refresh keys in the background, keeping old keys on failure."""
         try:
-            async with self._lock:
+            async with self._get_lock():
                 new_keys = await self._fetch_keys()
                 self._keys = new_keys
                 self._fetched_at = time.time()

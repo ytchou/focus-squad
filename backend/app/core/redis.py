@@ -12,17 +12,27 @@ logger = logging.getLogger(__name__)
 
 _redis_pool: Optional[ConnectionPool] = None
 _redis_client: Optional[Redis] = None
+_init_lock: Optional[asyncio.Lock] = None  # Lazy init to avoid event loop issues
 
 # Retry configuration
 MAX_RETRIES = 3
 RETRY_DELAYS = [1, 2, 4]  # Exponential backoff in seconds
 
 
+def _get_init_lock() -> asyncio.Lock:
+    """Get or create the initialization lock (lazy initialization)."""
+    global _init_lock
+    if _init_lock is None:
+        _init_lock = asyncio.Lock()
+    return _init_lock
+
+
 def _reset_redis() -> None:
     """Reset Redis state (for testing)."""
-    global _redis_pool, _redis_client
+    global _redis_pool, _redis_client, _init_lock
     _redis_pool = None
     _redis_client = None
+    _init_lock = None
 
 
 async def init_redis() -> None:
@@ -33,36 +43,39 @@ async def init_redis() -> None:
     """
     global _redis_pool, _redis_client
 
-    if _redis_pool is None:
-        _redis_pool = ConnectionPool.from_url(
-            settings.redis_url,
-            max_connections=10,
-            decode_responses=True,
-        )
-        _redis_client = Redis(connection_pool=_redis_pool)
+    # Use lock to prevent concurrent initialization
+    async with _get_init_lock():
+        if _redis_pool is None:
+            _redis_pool = ConnectionPool.from_url(
+                settings.redis_url,
+                max_connections=10,
+                decode_responses=True,
+            )
+            _redis_client = Redis(connection_pool=_redis_pool)
 
-    # Verify connectivity with retry
-    last_error: Optional[Exception] = None
+        # Verify connectivity with retry
+        last_error: Optional[Exception] = None
 
-    for attempt in range(MAX_RETRIES):
-        try:
-            await _redis_client.ping()
-            logger.info("Redis connection verified")
-            return
-        except RedisError as e:
-            last_error = e
-            if attempt < MAX_RETRIES - 1:
-                delay = RETRY_DELAYS[attempt]
-                logger.warning(
-                    "Redis ping failed (attempt %d/%d), retrying in %ds: %s",
-                    attempt + 1,
-                    MAX_RETRIES,
-                    delay,
-                    e,
-                )
-                await asyncio.sleep(delay)
+        for attempt in range(MAX_RETRIES):
+            try:
+                await _redis_client.ping()
+                logger.info("Redis connection verified")
+                return
+            except (RedisError, OSError, asyncio.TimeoutError) as e:
+                # Catch Redis errors, network errors, and timeouts
+                last_error = e
+                if attempt < MAX_RETRIES - 1:
+                    delay = RETRY_DELAYS[attempt]
+                    logger.warning(
+                        "Redis ping failed (attempt %d/%d), retrying in %ds: %s",
+                        attempt + 1,
+                        MAX_RETRIES,
+                        delay,
+                        e,
+                    )
+                    await asyncio.sleep(delay)
 
-    raise RuntimeError(f"Redis connection failed after {MAX_RETRIES} attempts: {last_error}")
+        raise RuntimeError(f"Redis connection failed after {MAX_RETRIES} attempts: {last_error}")
 
 
 async def close_redis() -> None:
