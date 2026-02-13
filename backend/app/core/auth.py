@@ -9,6 +9,9 @@ Two modes of operation:
 2. With middleware: Dependencies read from request.state (recommended)
 """
 
+import asyncio
+import logging
+import time
 from typing import Optional
 
 import httpx
@@ -20,12 +23,10 @@ from pydantic import BaseModel
 from app.core.config import get_settings
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # HTTP Bearer token extraction
 security = HTTPBearer(auto_error=False)
-
-# Cache for JWKS keys
-_jwks_cache: Optional[dict] = None
 
 
 class AuthUser(BaseModel):
@@ -44,33 +45,141 @@ class AuthOptionalUser(BaseModel):
     is_authenticated: bool = False
 
 
-def get_jwks() -> dict:
+class JWKSCache:
+    """
+    JWKS cache with TTL and background refresh.
+
+    Features:
+    - Caches JWKS keys for 1 hour (TTL=3600s)
+    - Triggers background refresh 5 minutes before expiry (REFRESH_BEFORE=300s)
+    - Uses asyncio.Lock to prevent concurrent fetches
+    - Keeps old keys if background refresh fails
+    """
+
+    TTL: int = 3600  # 1 hour in seconds
+    REFRESH_BEFORE: int = 300  # 5 minutes before expiry
+
+    def __init__(self) -> None:
+        self._keys: Optional[dict] = None
+        self._fetched_at: Optional[float] = None
+        self._refresh_task: Optional[asyncio.Task] = None
+        self._lock: Optional[asyncio.Lock] = None  # Lazy init to avoid event loop issues
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Get or create the asyncio lock (lazy initialization)."""
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
+
+    async def get_keys(self) -> dict:
+        """
+        Get JWKS keys, fetching or refreshing as needed.
+
+        Returns cached keys if fresh, triggers background refresh if
+        within refresh window, or does synchronous fetch if expired.
+        """
+        now = time.time()
+
+        # Case 1: Fresh cache - return immediately
+        if self._is_fresh(now):
+            assert self._keys is not None  # Guaranteed by _is_fresh check
+            return self._keys
+
+        # Case 2: Within refresh window - return old keys, refresh in background
+        if self._should_refresh_in_background(now):
+            self._schedule_background_refresh()
+            assert self._keys is not None  # Guaranteed by _should_refresh_in_background check
+            return self._keys
+
+        # Case 3: Expired or empty - synchronous fetch
+        async with self._get_lock():
+            # Double-check after acquiring lock (another task may have fetched)
+            if self._is_fresh(time.time()):
+                assert self._keys is not None  # Guaranteed by _is_fresh check
+                return self._keys
+
+            self._keys = await self._fetch_keys()
+            self._fetched_at = time.time()
+            return self._keys
+
+    def _is_fresh(self, now: float) -> bool:
+        """Check if cache is fresh (within TTL)."""
+        if self._keys is None or self._fetched_at is None:
+            return False
+        age = now - self._fetched_at
+        return age < (self.TTL - self.REFRESH_BEFORE)
+
+    def _should_refresh_in_background(self, now: float) -> bool:
+        """Check if we're within the refresh window (old but not expired)."""
+        if self._keys is None or self._fetched_at is None:
+            return False
+        age = now - self._fetched_at
+        # Within refresh window: TTL - REFRESH_BEFORE <= age < TTL
+        return (self.TTL - self.REFRESH_BEFORE) <= age < self.TTL
+
+    def _schedule_background_refresh(self) -> None:
+        """Spawn a background task to refresh keys."""
+        # Don't spawn if there's already a refresh in progress
+        if self._refresh_task is not None and not self._refresh_task.done():
+            return
+
+        # Log if previous task failed (for debugging)
+        if self._refresh_task is not None and self._refresh_task.done():
+            exc = self._refresh_task.exception()
+            if exc is not None:
+                logger.debug(f"Previous background refresh failed: {exc}")
+
+        self._refresh_task = asyncio.create_task(self._background_refresh())
+
+    async def _background_refresh(self) -> None:
+        """Refresh keys in the background, keeping old keys on failure."""
+        try:
+            async with self._get_lock():
+                new_keys = await self._fetch_keys()
+                self._keys = new_keys
+                self._fetched_at = time.time()
+                logger.info("JWKS cache refreshed in background")
+        except Exception as e:
+            # Keep old keys on failure
+            logger.warning(f"Background JWKS refresh failed, keeping old keys: {e}")
+
+    async def _fetch_keys(self) -> dict:
+        """Fetch JWKS from Supabase's well-known endpoint."""
+        jwks_url = f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(jwks_url, timeout=10.0)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Failed to fetch JWKS: {str(e)}",
+            )
+
+    def invalidate(self) -> None:
+        """Invalidate the cache, forcing a fresh fetch on next access."""
+        self._keys = None
+        self._fetched_at = None
+
+
+# Global JWKS cache instance
+_jwks_cache = JWKSCache()
+
+
+async def get_jwks() -> dict:
     """
     Fetch JWKS (JSON Web Key Set) from Supabase's well-known endpoint.
-    Keys are cached to avoid repeated network calls.
+    Keys are cached with TTL and background refresh.
     """
-    global _jwks_cache
-    if _jwks_cache is not None:
-        return _jwks_cache
-
-    jwks_url = f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
-    try:
-        response = httpx.get(jwks_url, timeout=10.0)
-        response.raise_for_status()
-        _jwks_cache = response.json()
-        return _jwks_cache
-    except httpx.HTTPError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Failed to fetch JWKS: {str(e)}",
-        )
+    return await _jwks_cache.get_keys()
 
 
-def get_signing_key(token: str) -> dict:
+async def get_signing_key(token: str) -> dict:
     """
     Get the signing key from JWKS that matches the token's key ID (kid).
     """
-    jwks = get_jwks()
+    jwks = await get_jwks()
 
     # Get the key ID from the token header
     try:
@@ -100,7 +209,7 @@ def get_signing_key(token: str) -> dict:
     )
 
 
-def decode_supabase_token(token: str) -> dict:
+async def decode_supabase_token(token: str) -> dict:
     """
     Decode and validate a Supabase JWT token using JWKS.
 
@@ -111,7 +220,7 @@ def decode_supabase_token(token: str) -> dict:
     - role: "authenticated" or "anon"
     """
     try:
-        signing_key = get_signing_key(token)
+        signing_key = await get_signing_key(token)
 
         # Decode using the public key from JWKS
         payload = jwt.decode(
@@ -147,7 +256,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    payload = decode_supabase_token(credentials.credentials)
+    payload = await decode_supabase_token(credentials.credentials)
 
     # Extract user info from JWT claims
     auth_id = payload.get("sub")
@@ -183,7 +292,7 @@ async def get_optional_user(
         return AuthOptionalUser(is_authenticated=False)
 
     try:
-        payload = decode_supabase_token(credentials.credentials)
+        payload = await decode_supabase_token(credentials.credentials)
         auth_id = payload.get("sub")
         email = payload.get("email")
 

@@ -278,12 +278,22 @@ def mock_bearer_credentials_expired(expired_jwt_token):
 
 @pytest.fixture(autouse=True)
 def reset_jwks_cache():
-    """Reset JWKS cache before each test to ensure isolation."""
-    import app.core.auth as auth_module
+    """Reset JWKS cache before each test to ensure isolation.
 
-    auth_module._jwks_cache = None
+    We recreate the JWKSCache instance to ensure clean state between tests.
+    The lock is lazily initialized on first use, so no event loop binding
+    issues occur at creation time.
+    """
+    import app.core.auth as auth_module
+    from app.core.auth import JWKSCache
+
+    # Create fresh instance for test isolation
+    auth_module._jwks_cache = JWKSCache()
+
     yield
-    auth_module._jwks_cache = None
+
+    # Restore and reset for next test
+    auth_module._jwks_cache = JWKSCache()
 
 
 @pytest.fixture(autouse=True)

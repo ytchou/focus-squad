@@ -784,22 +784,81 @@
 ### Integration Testing
 - [ ] Integration Testing, as we are done with the core features
 
+---
 
+## Phase 5: Production Hardening & Alpha Readiness
+
+> **Source:** [output/progress-review/full-project-review-2026-02-13.md](output/progress-review/full-project-review-2026-02-13.md)
+
+### [P0] Blocking - Must fix before alpha launch
+- [x] Add startup secret validation in `config.py` (prevent app starting with missing credentials)
+- [x] Implement JWKS cache TTL (1-hour expiration with background refresh)
+- [x] Test Redis connection during init (`await redis.ping()`)
+- [x] Validate rating sessionId in rating-store (prevent wrong-session ratings)
+
+### [P1] High Priority - First sprint
+- [ ] Add request correlation ID middleware for distributed tracing
+- [ ] Fix shop-store `giftItem()` to refresh inventory after gifting
+- [ ] Tune per-endpoint rate limits (15/min for expensive operations)
+- [ ] Add Celery task to cleanup expired pending_ratings (>90 days)
+
+### [P2] Medium Priority - Second sprint
+- [ ] Add analytics retention policy (1-year TTL via Celery)
+- [ ] Serialize essence purchases (SELECT FOR UPDATE)
+- [ ] Cache partner lists for RLS performance
+- [ ] Reset message cursors on conversation switch in message-store
+
+### Security Hardening
+- [ ] Add explicit ENVIRONMENT check for webhook signature validation (`webhooks.py`)
+- [ ] Validate CORS origins in production (`config.py`)
+- [ ] Use HTTPBearer class for bearer token extraction (`middleware.py`)
+- [ ] Add token revocation check for deleted users (`auth.py`)
+- [ ] Add retry logic for referral code collision (`user_service.py`)
+- [ ] Sanitize ban timestamp in error messages (generic "temporarily suspended")
+
+### Scalability Improvements
+- [ ] Optimize session page polling (increase interval or use WebSocket)
+- [ ] Add analytics table TTL (1-year retention via Celery)
+- [ ] Optimize RLS partner subqueries (cache or denormalize)
+
+### Test Coverage Gaps
+- [x] Add tests for JWKS cache expiration scenario
+- [x] Add tests for Redis connection failure during startup
+- [x] Add tests for missing environment secrets startup behavior
+- [ ] Add tests for essence purchase race condition
+- [ ] Add tests for message pagination cursor reset
+
+### Standard Hardening
+- [ ] Security audit (OWASP top 10, use [shannon](https://github.com/KeygraphHQ/shannon))
+- [x] Convert JWKS fetch to async (`httpx.AsyncClient`)
+- [ ] Performance testing
+- [ ] Mobile responsiveness check
+- [ ] Accessibility audit (basic)
+
+### Analytics Integration
+- [ ] Integrate PostHog (or Amplitude/Mixpanel)
+- [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.)
+- [ ] Add user identification and properties
+
+### Legal & Compliance
+- [ ] Legal audit (any legality issues?)
+- [ ] Taiwan PDPA compliance review
+- [ ] End-to-end flow testing
+
+### Admin Tools (Basic)
+- [ ] Create admin moderation queue (view/action on reports)
+- [ ] Basic user lookup tool (search by email/username)
+- [ ] Credit adjustment tool (add/deduct credits for support)
 
 ---
 
-## Phase 5: MVP Launch Prep
+## Phase 6: MVP Launch Features
 
 ### Notifications
 - [ ] Set up email service (Resend/SendGrid)
 - [ ] Implement browser push notifications
 - [ ] Create notification preferences settings
 - [ ] Send notifications for: session start, match found, credit refresh, Red rating
-
-### Analytics
-- [ ] Integrate PostHog
-- [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.)
-- [ ] Add user identification and properties
 
 ### Payment Integration
 - [ ] Research Taiwan payment gateways (ECPay, LINE Pay, NewebPay) or international (Stripe, LemonSqueezy)
@@ -812,29 +871,17 @@
 - [ ] Web app manifest for installation
 - [ ] Push notification support (Web Push API)
 
-### Admin Tools & Operations
-- [ ] Create admin moderation queue (basic)
+### Admin Dashboard (Full)
 - [ ] Admin dashboard for user management
-- [ ] Set up operation tools, such as add/deduct credits, etc. Need to brainstorm a bit more (this is for the operation team)
-
-### Legal & Compliance
-- [ ] Legal audit (any legality issues?)
-- [ ] Taiwan PDPA compliance review
-- [ ] End-to-end flow testing
+- [ ] Set up operation tools (bulk operations, session management)
 
 ### Marketing
-- [ ] Landing page (need to be SEO-friendly)
-- [ ] Content marketing (for SEO)
-  - [ ] "Body doubling" research as marketing assets, or some built in prompts in the system
-  - [ ] Comments about attention span issues, how to regain focus, etc.
+- [ ] Landing page (SEO-friendly)
+- [ ] Content marketing
+  - [ ] "Body doubling" research as marketing assets
+  - [ ] Content about attention span, focus regaining
 
-### Production Hardening
-- [ ] Security audit (OWASP top 10, use [shannon](https://github.com/KeygraphHQ/shannon))
-- [ ] Add JWKS cache TTL (1-hour expiration with background refresh)
-- [ ] Convert JWKS fetch to async (`httpx.AsyncClient`)
-- [ ] Performance testing
-- [ ] Mobile responsiveness check
-- [ ] Accessibility audit (basic)
+### Railway Deployment
 
 ---
 
