@@ -379,7 +379,7 @@ class TestQuickMatch:
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
     async def test_banned_user_returns_403(self, mock_schedule) -> None:
-        """Banned user (banned_until in the future) raises 403."""
+        """Banned user (banned_until in the future) raises 403 with sanitized message."""
         future = datetime.now(timezone.utc) + timedelta(hours=48)
         profile = _make_mock_profile(banned_until=future)
         mocks = self._setup_mocks(profile=profile)
@@ -387,7 +387,12 @@ class TestQuickMatch:
         with pytest.raises(HTTPException) as exc_info:
             await quick_match(**mocks)
         assert exc_info.value.status_code == 403
-        assert "suspended" in str(exc_info.value.detail).lower()
+        error_detail = str(exc_info.value.detail)
+        # Should contain generic message
+        assert "suspended" in error_detail.lower()
+        # Should NOT contain ISO timestamp format (year-month-day or time)
+        assert str(future.year) not in error_detail
+        assert future.isoformat() not in error_detail
 
     @pytest.mark.unit
     @pytest.mark.asyncio

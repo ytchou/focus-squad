@@ -408,3 +408,78 @@ class TestCancelAccountDeletion:
 
         with pytest.raises(UserNotFoundError):
             user_service.cancel_account_deletion("nonexistent")
+
+
+class TestCreditsRetryLogic:
+    """Tests for referral code collision retry logic."""
+
+    @pytest.mark.unit
+    def test_credits_created_on_first_attempt(self, user_service, mock_supabase) -> None:
+        """Credits created successfully on first attempt."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+        mock_table.insert.return_value.execute.return_value.data = [{"id": "cred-1"}]
+
+        # Should not raise
+        user_service._create_credits_with_retry("user-123")
+
+        mock_table.insert.assert_called_once()
+
+    @pytest.mark.unit
+    def test_credits_retry_on_referral_code_collision(self, user_service, mock_supabase) -> None:
+        """Credits created after retry when referral code collision occurs."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        # First 2 attempts fail with unique constraint, 3rd succeeds
+        call_count = 0
+
+        def mock_insert_execute():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise Exception("unique constraint violation on referral_code")
+            result = MagicMock()
+            result.data = [{"id": "cred-1"}]
+            return result
+
+        mock_table.insert.return_value.execute = mock_insert_execute
+
+        user_service._create_credits_with_retry("user-123")
+
+        assert mock_table.insert.call_count == 3
+
+    @pytest.mark.unit
+    def test_credits_raises_after_max_attempts(self, user_service, mock_supabase) -> None:
+        """UserServiceError raised after max retry attempts."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        # All attempts fail with unique constraint
+        mock_table.insert.return_value.execute.side_effect = Exception(
+            "unique constraint violation on referral_code"
+        )
+
+        with pytest.raises(UserServiceError, match="referral code collision"):
+            user_service._create_credits_with_retry("user-123", max_attempts=3)
+
+        assert mock_table.insert.call_count == 3
+
+    @pytest.mark.unit
+    def test_credits_raises_immediately_on_non_collision_error(
+        self, user_service, mock_supabase
+    ) -> None:
+        """Non-collision errors raised immediately without retry."""
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        # Error is not a referral code collision
+        mock_table.insert.return_value.execute.side_effect = Exception(
+            "foreign key constraint violation"
+        )
+
+        with pytest.raises(Exception, match="foreign key constraint"):
+            user_service._create_credits_with_retry("user-123")
+
+        # Should only try once - no retry for non-collision errors
+        assert mock_table.insert.call_count == 1

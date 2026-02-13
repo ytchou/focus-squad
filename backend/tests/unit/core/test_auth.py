@@ -343,10 +343,12 @@ class TestRequireAuthFromState:
     @pytest.mark.asyncio
     async def test_returns_auth_user_when_authenticated(self, mock_request_authenticated) -> None:
         """Returns AuthUser when request has authenticated user."""
-        result = await require_auth_from_state(mock_request_authenticated)
+        with patch("app.core.auth._deleted_user_cache") as mock_cache:
+            mock_cache.is_deleted.return_value = False  # Not deleted
+            result = await require_auth_from_state(mock_request_authenticated)
 
-        assert isinstance(result, AuthUser)
-        assert result.auth_id == "auth-user-uuid-12345"
+            assert isinstance(result, AuthUser)
+            assert result.auth_id == "auth-user-uuid-12345"
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -423,3 +425,143 @@ class TestAuthOptionalUserModel:
         assert user.is_authenticated is True
         assert user.auth_id == "123"
         assert user.email == "test@example.com"
+
+
+class TestDeletedUserCache:
+    """Test the deleted user cache."""
+
+    @pytest.mark.unit
+    def test_cache_returns_none_for_unknown_user(self) -> None:
+        """Cache returns None for users not in cache."""
+        from app.core.auth import DeletedUserCache
+
+        cache = DeletedUserCache()
+        assert cache.is_deleted("unknown-user") is None
+
+    @pytest.mark.unit
+    def test_cache_stores_deleted_status(self) -> None:
+        """Cache stores and returns deleted status."""
+        from app.core.auth import DeletedUserCache
+
+        cache = DeletedUserCache()
+        cache.set("user-123", is_deleted=True)
+        assert cache.is_deleted("user-123") is True
+
+    @pytest.mark.unit
+    def test_cache_stores_not_deleted_status(self) -> None:
+        """Cache stores and returns not-deleted status."""
+        from app.core.auth import DeletedUserCache
+
+        cache = DeletedUserCache()
+        cache.set("user-456", is_deleted=False)
+        assert cache.is_deleted("user-456") is False
+
+    @pytest.mark.unit
+    def test_cache_expires_after_ttl(self) -> None:
+        """Cache entries expire after TTL."""
+        import time as time_module
+
+        from app.core.auth import DeletedUserCache
+
+        cache = DeletedUserCache(ttl_seconds=1)
+        cache.set("user-789", is_deleted=True)
+        assert cache.is_deleted("user-789") is True
+        time_module.sleep(1.1)
+        assert cache.is_deleted("user-789") is None
+
+
+class TestRequireAuthDeletedUser:
+    """Test that deleted users are rejected."""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_deleted_user_rejected(self) -> None:
+        """Deleted user gets 401 even with valid token."""
+        mock_request = MagicMock()
+        mock_user = MagicMock()
+        mock_user.is_authenticated = True
+        mock_user.auth_id = "auth-123"
+        mock_user.email = "test@example.com"
+        mock_request.state.user = mock_user
+        mock_request.state.token_error = None
+
+        mock_supabase = MagicMock()
+        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+            {"deleted_at": "2026-01-01T00:00:00+00:00"}
+        ]
+
+        with patch("app.core.auth.get_supabase", return_value=mock_supabase):
+            with patch("app.core.auth._deleted_user_cache") as mock_cache:
+                mock_cache.is_deleted.return_value = None
+                with pytest.raises(HTTPException) as exc_info:
+                    await require_auth_from_state(mock_request)
+                assert exc_info.value.status_code == 401
+                assert "account" in exc_info.value.detail.lower()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_active_user_allowed(self) -> None:
+        """Active (not deleted) user is allowed through."""
+        mock_request = MagicMock()
+        mock_user = MagicMock()
+        mock_user.is_authenticated = True
+        mock_user.auth_id = "auth-456"
+        mock_user.email = "active@example.com"
+        mock_request.state.user = mock_user
+        mock_request.state.token_error = None
+
+        mock_supabase = MagicMock()
+        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+            {"deleted_at": None}
+        ]
+
+        with patch("app.core.auth.get_supabase", return_value=mock_supabase):
+            with patch("app.core.auth._deleted_user_cache") as mock_cache:
+                mock_cache.is_deleted.return_value = None
+                result = await require_auth_from_state(mock_request)
+                assert result.auth_id == "auth-456"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_uses_cache_when_available(self) -> None:
+        """Uses cache to avoid DB lookup when entry exists."""
+        mock_request = MagicMock()
+        mock_user = MagicMock()
+        mock_user.is_authenticated = True
+        mock_user.auth_id = "auth-789"
+        mock_user.email = "cached@example.com"
+        mock_request.state.user = mock_user
+        mock_request.state.token_error = None
+
+        mock_supabase = MagicMock()
+
+        with patch("app.core.auth.get_supabase", return_value=mock_supabase):
+            with patch("app.core.auth._deleted_user_cache") as mock_cache:
+                mock_cache.is_deleted.return_value = False
+                result = await require_auth_from_state(mock_request)
+                assert result.auth_id == "auth-789"
+                mock_supabase.table.assert_not_called()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_database_error_fails_open(self) -> None:
+        """Database error during deleted check fails open (allows request)."""
+        mock_request = MagicMock()
+        mock_user = MagicMock()
+        mock_user.is_authenticated = True
+        mock_user.auth_id = "auth-db-error"
+        mock_user.email = "dberror@example.com"
+        mock_request.state.user = mock_user
+        mock_request.state.token_error = None
+
+        mock_supabase = MagicMock()
+        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.side_effect = (
+            Exception("Database connection failed")
+        )
+
+        with patch("app.core.auth.get_supabase", return_value=mock_supabase):
+            with patch("app.core.auth._deleted_user_cache") as mock_cache:
+                mock_cache.is_deleted.return_value = None  # Cache miss
+                # Should NOT raise - fails open to allow request
+                result = await require_auth_from_state(mock_request)
+                assert result.auth_id == "auth-db-error"
