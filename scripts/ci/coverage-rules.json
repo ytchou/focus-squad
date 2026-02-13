@@ -5,14 +5,34 @@
       "core/middleware.py",
       "services/credit_service.py",
       "services/session_service.py",
-      "services/rating_service.py"
+      "services/rating_service.py",
+      "services/schedule_service.py",
+      "services/reflection_service.py"
     ],
-    "critical_threshold": 80,
-    "warning_threshold": 70
+    "critical_threshold": 89,
+    "default_threshold": 45,
+    "exclude_patterns": [
+      "main.py",
+      "**/conftest.py",
+      "**/__init__.py"
+    ]
   },
   "frontend": {
-    "critical_patterns": ["/Users/ytchou/Project/focus-squad/frontend/src/stores/*.ts"],
-    "critical_threshold": 80,
-    "warning_threshold": 70
+    "critical_patterns": [
+      "**/stores/*.ts"
+    ],
+    "critical_paths": [
+      "hooks/use-session-timer.ts",
+      "hooks/use-countdown.ts",
+      "lib/session/phase-utils.ts"
+    ],
+    "critical_threshold": 89,
+    "default_threshold": 45,
+    "exclude_patterns": [
+      "**/*.json",
+      "**/index.ts",
+      "**/*.d.ts",
+      "**/setup.ts"
+    ]
   }
 }

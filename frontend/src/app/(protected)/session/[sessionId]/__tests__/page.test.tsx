@@ -525,4 +525,133 @@ describe("SessionPage", () => {
     expect(screen.getByTestId("phase-label")).toBeInTheDocument();
     expect(screen.getByTestId("phase-label")).toHaveTextContent("work1");
   });
+
+  // -------------------------------------------------------------------------
+  // View mode tests
+  // -------------------------------------------------------------------------
+  describe("view modes", () => {
+    it("renders pixel session layout when view mode is pixel", async () => {
+      localStorage.setItem("sessionViewMode", "pixel");
+      setupSuccessfulApiMocks();
+      await renderAndSettle();
+
+      expect(screen.getByTestId("pixel-session-layout")).toBeInTheDocument();
+    });
+
+    it("renders classic layout when view mode is classic", async () => {
+      localStorage.setItem("sessionViewMode", "classic");
+      setupSuccessfulApiMocks();
+      await renderAndSettle();
+
+      expect(screen.getByTestId("session-layout")).toBeInTheDocument();
+      expect(screen.queryByTestId("pixel-session-layout")).not.toBeInTheDocument();
+    });
+
+    it("defaults to pixel layout when no view mode is set", async () => {
+      localStorage.removeItem("sessionViewMode");
+      setupSuccessfulApiMocks();
+      await renderAndSettle();
+
+      // The page defaults to pixel layout when no preference is set
+      expect(screen.getByTestId("pixel-session-layout")).toBeInTheDocument();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // LiveKit integration tests
+  // -------------------------------------------------------------------------
+  describe("LiveKit integration", () => {
+    it("renders LiveKit provider when token is available", async () => {
+      useSessionStore.setState({
+        sessionId: "test-session-123",
+        sessionStartTime: new Date(Date.now() - 8 * 60 * 1000),
+        livekitToken: "mock-token-abc123",
+        livekitServerUrl: "wss://livekit.example.com",
+        isQuietMode: false,
+        showEndModal: false,
+      });
+      setupSuccessfulApiMocks();
+      await renderAndSettle();
+
+      expect(screen.getByTestId("livekit-provider")).toBeInTheDocument();
+    });
+
+    it("renders without LiveKit provider when token is missing", async () => {
+      useSessionStore.setState({
+        sessionId: "test-session-123",
+        sessionStartTime: new Date(Date.now() - 8 * 60 * 1000),
+        livekitToken: null,
+        livekitServerUrl: null,
+        isQuietMode: false,
+        showEndModal: false,
+      });
+      setupSuccessfulApiMocks();
+      await renderAndSettle();
+
+      // Should render layout without LiveKit provider
+      expect(screen.getByTestId("session-layout")).toBeInTheDocument();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Quiet mode tests
+  // -------------------------------------------------------------------------
+  describe("quiet mode", () => {
+    it("sets quiet mode based on API response mode=quiet", async () => {
+      const quietModeResponse = { ...mockSessionResponse, mode: "quiet" };
+      mockApiGet.mockImplementation((path: string) => {
+        if (path.includes("/sessions/")) return Promise.resolve(quietModeResponse);
+        if (path.includes("/users/me")) return Promise.resolve(mockUserProfile);
+        return Promise.resolve({});
+      });
+      await renderAndSettle();
+
+      expect(screen.getByTestId("quiet-mode")).toHaveTextContent("quiet");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Control bar mute state
+  // -------------------------------------------------------------------------
+  describe("mute state", () => {
+    it("control bar shows muted state", async () => {
+      setupSuccessfulApiMocks();
+      await renderAndSettle();
+
+      // Default mock returns isMuted: true
+      expect(screen.getByTestId("muted-state")).toHaveTextContent("muted");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // AI companion display
+  // -------------------------------------------------------------------------
+  describe("AI companions", () => {
+    it("displays AI companion names in participant list", async () => {
+      setupSuccessfulApiMocks();
+      await renderAndSettle();
+
+      expect(screen.getByText("Study Buddy")).toBeInTheDocument();
+      expect(screen.getByText("Focus Friend")).toBeInTheDocument();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Session data fetching
+  // -------------------------------------------------------------------------
+  describe("session data", () => {
+    it("fetches session data on mount", async () => {
+      setupSuccessfulApiMocks();
+      await renderAndSettle();
+
+      expect(mockApiGet).toHaveBeenCalledWith("/sessions/test-session-123");
+    });
+
+    it("fetches user profile on mount", async () => {
+      setupSuccessfulApiMocks();
+      await renderAndSettle();
+
+      expect(mockApiGet).toHaveBeenCalledWith("/users/me");
+    });
+  });
 });

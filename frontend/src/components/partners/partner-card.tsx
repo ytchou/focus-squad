@@ -22,6 +22,7 @@ function getRelativeDays(isoDate: string, now: number): number {
 
 export function PartnerCard({ partner, onRemove, onMessage, onVisitRoom }: PartnerCardProps) {
   const t = useTranslations("partners");
+  const tCommon = useTranslations("common");
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   const [now] = useState(() => Date.now());
@@ -87,7 +88,7 @@ export function PartnerCard({ partner, onRemove, onMessage, onVisitRoom }: Partn
             className="flex-1"
             onClick={() => setConfirmRemove(false)}
           >
-            {t("cancel")}
+            {tCommon("cancel")}
           </Button>
         </div>
       ) : (
