@@ -49,8 +49,8 @@ class JWTValidationMiddleware(BaseHTTPMiddleware):
             token = auth_header[7:]  # Remove "Bearer " prefix
 
             try:
-                # Validate and decode token
-                user_info = self._validate_token(token)
+                # Validate and decode token (now async)
+                user_info = await self._validate_token(token)
                 if user_info:
                     request.state.user = AuthOptionalUser(
                         auth_id=user_info.get("sub"),
@@ -68,14 +68,14 @@ class JWTValidationMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         return response
 
-    def _validate_token(self, token: str) -> Optional[dict]:
+    async def _validate_token(self, token: str) -> Optional[dict]:
         """
         Validate JWT token and return payload if valid.
 
         Returns None if token is invalid or expired.
         """
         try:
-            signing_key = get_signing_key(token)
+            signing_key = await get_signing_key(token)
 
             payload = jwt.decode(
                 token, signing_key, algorithms=["RS256", "ES256"], audience="authenticated"

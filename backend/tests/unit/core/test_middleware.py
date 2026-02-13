@@ -1,7 +1,7 @@
 """Unit tests for JWT middleware (app/core/middleware.py)."""
 
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from jose import JWTError
@@ -31,6 +31,7 @@ class TestJWTValidationMiddleware:
         return call_next
 
     @pytest.mark.unit
+    @pytest.mark.asyncio
     async def test_initializes_unauthenticated_user_by_default(
         self, middleware, mock_call_next
     ) -> None:
@@ -45,6 +46,7 @@ class TestJWTValidationMiddleware:
         assert request.state.token_error is None
 
     @pytest.mark.unit
+    @pytest.mark.asyncio
     async def test_authenticates_valid_token(
         self, middleware, mock_call_next, valid_jwt_token, valid_jwt_claims
     ) -> None:
@@ -53,7 +55,9 @@ class TestJWTValidationMiddleware:
         request.state = MagicMock()
         request.headers = {"Authorization": f"Bearer {valid_jwt_token}"}
 
-        with patch.object(middleware, "_validate_token") as mock_validate:
+        with patch.object(
+            middleware, "_validate_token", new_callable=AsyncMock
+        ) as mock_validate:
             mock_validate.return_value = valid_jwt_claims
 
             await middleware.dispatch(request, mock_call_next)
@@ -63,6 +67,7 @@ class TestJWTValidationMiddleware:
             assert request.state.user.email == valid_jwt_claims["email"]
 
     @pytest.mark.unit
+    @pytest.mark.asyncio
     async def test_handles_jwt_error_gracefully(
         self, middleware, mock_call_next, valid_jwt_token
     ) -> None:
@@ -71,7 +76,9 @@ class TestJWTValidationMiddleware:
         request.state = MagicMock()
         request.headers = {"Authorization": f"Bearer {valid_jwt_token}"}
 
-        with patch.object(middleware, "_validate_token") as mock_validate:
+        with patch.object(
+            middleware, "_validate_token", new_callable=AsyncMock
+        ) as mock_validate:
             mock_validate.side_effect = JWTError("Token expired")
 
             response = await middleware.dispatch(request, mock_call_next)
@@ -81,6 +88,7 @@ class TestJWTValidationMiddleware:
             assert response.status_code == 200  # Request continues
 
     @pytest.mark.unit
+    @pytest.mark.asyncio
     async def test_handles_non_jwt_error_gracefully(
         self, middleware, mock_call_next, valid_jwt_token
     ) -> None:
@@ -89,7 +97,9 @@ class TestJWTValidationMiddleware:
         request.state = MagicMock()
         request.headers = {"Authorization": f"Bearer {valid_jwt_token}"}
 
-        with patch.object(middleware, "_validate_token") as mock_validate:
+        with patch.object(
+            middleware, "_validate_token", new_callable=AsyncMock
+        ) as mock_validate:
             mock_validate.side_effect = Exception("Network error")
 
             response = await middleware.dispatch(request, mock_call_next)
@@ -99,6 +109,7 @@ class TestJWTValidationMiddleware:
             assert response.status_code == 200
 
     @pytest.mark.unit
+    @pytest.mark.asyncio
     async def test_ignores_non_bearer_auth_header(self, middleware, mock_call_next) -> None:
         """Ignores Authorization headers that are not Bearer."""
         request = MagicMock(spec=Request)
@@ -111,6 +122,7 @@ class TestJWTValidationMiddleware:
         assert request.state.token_error is None
 
     @pytest.mark.unit
+    @pytest.mark.asyncio
     async def test_continues_to_next_handler(self, middleware, valid_jwt_token) -> None:
         """Always calls next handler regardless of auth result."""
         request = MagicMock(spec=Request)
@@ -124,7 +136,9 @@ class TestJWTValidationMiddleware:
             call_next_called = True
             return Response(status_code=200)
 
-        with patch.object(middleware, "_validate_token") as mock_validate:
+        with patch.object(
+            middleware, "_validate_token", new_callable=AsyncMock
+        ) as mock_validate:
             mock_validate.return_value = {"sub": "123", "email": "test@test.com"}
 
             await middleware.dispatch(request, tracking_call_next)
@@ -133,7 +147,7 @@ class TestJWTValidationMiddleware:
 
 
 class TestValidateTokenMethod:
-    """Tests for _validate_token() method."""
+    """Tests for _validate_token() method (now async)."""
 
     @pytest.fixture
     def middleware(self):
@@ -142,43 +156,53 @@ class TestValidateTokenMethod:
         return JWTValidationMiddleware(app)
 
     @pytest.mark.unit
-    def test_returns_payload_for_valid_token(
+    @pytest.mark.asyncio
+    async def test_returns_payload_for_valid_token(
         self, middleware, valid_jwt_token, test_jwks, valid_jwt_claims
     ) -> None:
         """Returns decoded payload for valid token."""
-        with patch("app.core.middleware.get_signing_key") as mock_get_key:
+        with patch(
+            "app.core.middleware.get_signing_key", new_callable=AsyncMock
+        ) as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
 
-            result = middleware._validate_token(valid_jwt_token)
+            result = await middleware._validate_token(valid_jwt_token)
 
             assert result["sub"] == valid_jwt_claims["sub"]
             assert result["email"] == valid_jwt_claims["email"]
 
     @pytest.mark.unit
-    def test_raises_jwt_error_for_expired_token(
+    @pytest.mark.asyncio
+    async def test_raises_jwt_error_for_expired_token(
         self, middleware, expired_jwt_token, test_jwks
     ) -> None:
         """Raises JWTError for expired tokens."""
-        with patch("app.core.middleware.get_signing_key") as mock_get_key:
+        with patch(
+            "app.core.middleware.get_signing_key", new_callable=AsyncMock
+        ) as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
 
             # jose library raises JWTError for expired tokens
             with pytest.raises(JWTError):
-                middleware._validate_token(expired_jwt_token)
+                await middleware._validate_token(expired_jwt_token)
 
     @pytest.mark.unit
-    def test_raises_jwt_error_for_invalid_signature(
+    @pytest.mark.asyncio
+    async def test_raises_jwt_error_for_invalid_signature(
         self, middleware, wrong_signature_jwt_token, test_jwks
     ) -> None:
         """Raises JWTError for tokens with invalid signature."""
-        with patch("app.core.middleware.get_signing_key") as mock_get_key:
+        with patch(
+            "app.core.middleware.get_signing_key", new_callable=AsyncMock
+        ) as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
 
             with pytest.raises(JWTError):
-                middleware._validate_token(wrong_signature_jwt_token)
+                await middleware._validate_token(wrong_signature_jwt_token)
 
     @pytest.mark.unit
-    def test_checks_expiration_explicitly(
+    @pytest.mark.asyncio
+    async def test_checks_expiration_explicitly(
         self, middleware, valid_jwt_claims, rsa_private_key_pem, jwks_key_id, test_jwks
     ) -> None:
         """Explicitly checks exp claim even if jose passes."""
@@ -192,20 +216,27 @@ class TestValidateTokenMethod:
             claims, rsa_private_key_pem, algorithm="RS256", headers={"kid": jwks_key_id}
         )
 
-        with patch("app.core.middleware.get_signing_key") as mock_get_key:
+        with patch(
+            "app.core.middleware.get_signing_key", new_callable=AsyncMock
+        ) as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
 
             # Should raise JWTError due to expiration
             with pytest.raises(JWTError):
-                middleware._validate_token(token)
+                await middleware._validate_token(token)
 
     @pytest.mark.unit
-    def test_returns_none_on_general_exception(self, middleware, valid_jwt_token) -> None:
+    @pytest.mark.asyncio
+    async def test_returns_none_on_general_exception(
+        self, middleware, valid_jwt_token
+    ) -> None:
         """Returns None on non-JWT exceptions."""
-        with patch("app.core.middleware.get_signing_key") as mock_get_key:
+        with patch(
+            "app.core.middleware.get_signing_key", new_callable=AsyncMock
+        ) as mock_get_key:
             mock_get_key.side_effect = Exception("Unexpected error")
 
-            result = middleware._validate_token(valid_jwt_token)
+            result = await middleware._validate_token(valid_jwt_token)
 
             assert result is None
 
@@ -220,6 +251,7 @@ class TestRequestLoggingMiddleware:
         return RequestLoggingMiddleware(app)
 
     @pytest.mark.unit
+    @pytest.mark.asyncio
     async def test_continues_request_for_authenticated_user(self, middleware) -> None:
         """Continues request processing for authenticated users."""
         request = MagicMock(spec=Request)
@@ -236,6 +268,7 @@ class TestRequestLoggingMiddleware:
         assert response.status_code == 200
 
     @pytest.mark.unit
+    @pytest.mark.asyncio
     async def test_continues_request_for_unauthenticated_user(self, middleware) -> None:
         """Continues request processing for unauthenticated users."""
         request = MagicMock(spec=Request)
@@ -250,6 +283,7 @@ class TestRequestLoggingMiddleware:
         assert response.status_code == 200
 
     @pytest.mark.unit
+    @pytest.mark.asyncio
     async def test_handles_missing_user_state(self, middleware) -> None:
         """Handles requests without user in state gracefully."""
         request = MagicMock(spec=Request)
