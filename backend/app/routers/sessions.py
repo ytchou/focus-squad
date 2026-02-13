@@ -186,7 +186,7 @@ async def quick_match(
     if profile.banned_until and profile.banned_until > datetime.now(timezone.utc):
         raise HTTPException(
             status_code=403,
-            detail=f"Account suspended until {profile.banned_until.isoformat()}",
+            detail="Your account is temporarily suspended. Please try again later.",
         )
 
     # Check pending ratings (soft blocker)
@@ -435,7 +435,10 @@ async def create_private_table(
 
     # Check ban
     if profile.banned_until and profile.banned_until > datetime.now(timezone.utc):
-        raise HTTPException(status_code=403, detail="You are currently banned")
+        raise HTTPException(
+            status_code=403,
+            detail="Your account is temporarily suspended. Please try again later.",
+        )
 
     # Check pending ratings
     if rating_service.has_pending_ratings(profile.id):
@@ -908,7 +911,7 @@ async def respond_to_invitation(
         if profile.banned_until and profile.banned_until > datetime.now(timezone.utc):
             raise HTTPException(
                 status_code=403,
-                detail=f"Account suspended until {profile.banned_until.isoformat()}",
+                detail="Your account is temporarily suspended. Please try again later.",
             )
 
         # Check pending ratings
