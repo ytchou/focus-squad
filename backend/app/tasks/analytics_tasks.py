@@ -7,8 +7,7 @@ Handles:
 
 import logging
 
-from celery import shared_task
-
+from app.core.celery_app import celery_app
 from app.core.database import get_supabase
 
 logger = logging.getLogger(__name__)
@@ -17,7 +16,7 @@ RETENTION_INTERVAL = "1 year"
 BATCH_SIZE = 1000
 
 
-@shared_task(
+@celery_app.task(
     bind=True,
     max_retries=3,
     default_retry_delay=60,

@@ -60,3 +60,18 @@ class TestCleanupOldAnalytics:
         result = cleanup_old_analytics()
 
         assert result == {"deleted": 0}
+
+    @patch("app.tasks.analytics_tasks.get_supabase")
+    def test_retries_on_rpc_error(self, mock_get_supabase: MagicMock):
+        """Should trigger retry when RPC call fails."""
+        from app.tasks.analytics_tasks import cleanup_old_analytics
+
+        mock_supabase = MagicMock()
+        mock_get_supabase.return_value = mock_supabase
+        mock_supabase.rpc.return_value.execute.side_effect = Exception("RPC failed")
+
+        # The task is bound and should call self.retry()
+        # Since we can't easily test Celery retry mechanics in unit tests,
+        # we verify that it raises (which triggers retry)
+        with pytest.raises(Exception, match="RPC failed"):
+            cleanup_old_analytics()
