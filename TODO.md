@@ -797,10 +797,10 @@
 - [x] Validate rating sessionId in rating-store (prevent wrong-session ratings)
 
 ### [P1] High Priority - First sprint
-- [ ] Add request correlation ID middleware for distributed tracing
-- [ ] Fix shop-store `giftItem()` to refresh inventory after gifting
-- [ ] Tune per-endpoint rate limits (15/min for expensive operations)
-- [ ] Add Celery task to cleanup expired pending_ratings (>90 days)
+- [x] Add request correlation ID middleware for distributed tracing
+- [x] Fix shop-store `giftItem()` to refresh inventory after gifting
+- [x] Tune per-endpoint rate limits (15/min for expensive operations)
+- [x] Add Celery task to cleanup expired pending_ratings (48hr expiry, daily cleanup)
 
 ### [P2] Medium Priority - Second sprint
 - [ ] Add analytics retention policy (1-year TTL via Celery)
