@@ -176,9 +176,9 @@ class DeletedUserCache:
     DB lookup on every authenticated request.
     """
 
-    DEFAULT_TTL = 60  # 60 seconds
+    TTL: int = 60  # 60 seconds (matches JWKSCache naming pattern)
 
-    def __init__(self, ttl_seconds: int = DEFAULT_TTL):
+    def __init__(self, ttl_seconds: int = TTL):
         self._cache: dict[str, tuple[bool, float]] = {}
         self._ttl = ttl_seconds
 
@@ -195,7 +195,8 @@ class DeletedUserCache:
 
         is_deleted, expires_at = entry
         if time.time() > expires_at:
-            del self._cache[auth_id]
+            # Use pop() to avoid race condition if entry was already removed
+            self._cache.pop(auth_id, None)
             return None
 
         return is_deleted
@@ -398,15 +399,24 @@ async def require_auth_from_state(request: Request) -> AuthUser:
 
     if cached_deleted is None:
         # Cache miss - check database
-        supabase = get_supabase()
-        result = supabase.table("users").select("deleted_at").eq("auth_id", user.auth_id).execute()
+        try:
+            supabase = get_supabase()
+            result = (
+                supabase.table("users").select("deleted_at").eq("auth_id", user.auth_id).execute()
+            )
 
-        is_deleted = False
-        if result.data and result.data[0].get("deleted_at"):
-            is_deleted = True
+            is_deleted = False
+            # Explicit length check for clarity (empty list is falsy, but be explicit)
+            if result.data and len(result.data) > 0 and result.data[0].get("deleted_at"):
+                is_deleted = True
 
-        _deleted_user_cache.set(user.auth_id, is_deleted)
-        cached_deleted = is_deleted
+            _deleted_user_cache.set(user.auth_id, is_deleted)
+            cached_deleted = is_deleted
+        except Exception as e:
+            # On database error, log and fail-open (allow request)
+            # This prevents auth outage during transient DB issues
+            logger.warning(f"Failed to check deleted status for user {user.auth_id}: {e}")
+            cached_deleted = False
 
     if cached_deleted:
         raise HTTPException(

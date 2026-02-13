@@ -76,10 +76,12 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_cors_origins_in_production(self) -> "Settings":
         """Validate CORS origins are safe in production."""
+        from urllib.parse import urlparse
+
         if self.environment != "production":
             return self
 
-        unsafe_patterns = ["localhost", "127.0.0.1", "0.0.0.0"]
+        unsafe_hostnames = {"localhost", "127.0.0.1", "0.0.0.0"}
 
         for origin in self.cors_origins:
             # Check for wildcard
@@ -89,13 +91,19 @@ class Settings(BaseSettings):
                     "Specify exact origins instead."
                 )
 
-            # Check for unsafe patterns
-            for pattern in unsafe_patterns:
-                if pattern in origin:
-                    raise ValueError(
-                        f"CORS origin '{origin}' contains '{pattern}' which is not "
-                        f"allowed in production. Use HTTPS production URLs instead."
-                    )
+            # Parse URL and check hostname exactly (not substring)
+            try:
+                parsed = urlparse(origin)
+                hostname = parsed.hostname or ""
+            except Exception:
+                hostname = origin  # Fall back to raw string if parsing fails
+
+            # Check for exact unsafe hostname matches
+            if hostname in unsafe_hostnames:
+                raise ValueError(
+                    f"CORS origin '{origin}' uses hostname '{hostname}' which is not "
+                    f"allowed in production. Use HTTPS production URLs instead."
+                )
 
         return self
 

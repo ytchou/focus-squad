@@ -163,8 +163,14 @@ async def livekit_webhook(
     # Get raw body for signature verification
     body = await request.body()
 
-    # Skip signature validation only in development
-    if settings.environment == "development":
+    # Skip signature validation only in development with placeholder API key
+    # Defense-in-depth: require BOTH development environment AND placeholder key
+    is_dev_mode = settings.environment == "development"
+    has_placeholder_key = (
+        not settings.livekit_api_key or settings.livekit_api_key == "your-livekit-api-key"
+    )
+
+    if is_dev_mode and has_placeholder_key:
         logger.warning("LiveKit webhook received in dev mode - signature not validated")
         try:
             event_data = json.loads(body)

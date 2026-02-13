@@ -269,7 +269,6 @@ describe("usePictureInPicture", () => {
 
     it("toggle function is stable across renders", async () => {
       const usePictureInPicture = await importHook();
-      type SessionPhase = "idle" | "setup" | "work1" | "break" | "work2" | "social" | "completed";
       const { result, rerender } = renderHook(
         ({ timeRemaining }: { timeRemaining: number }) =>
           usePictureInPicture({ ...defaultHookProps, timeRemaining }),
@@ -281,8 +280,8 @@ describe("usePictureInPicture", () => {
       // Rerender with different props
       rerender({ timeRemaining: 200 });
 
-      // togglePiP should be memoized
-      expect(typeof result.current.togglePiP).toBe("function");
+      // togglePiP should be memoized (same reference)
+      expect(result.current.togglePiP).toBe(firstToggle);
     });
   });
 

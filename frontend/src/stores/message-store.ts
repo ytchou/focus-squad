@@ -108,6 +108,20 @@ export const useMessageStore = create<MessageState>()((set, get) => ({
   },
 
   openConversation: async (id: string) => {
+    const prevId = get().activeConversationId;
+
+    // Store previous state for restoration on failure
+    const prevCursor = prevId ? get().cursors[prevId] : null;
+    const prevHasMore = prevId ? get().hasMore[prevId] : true;
+
+    // Clear pagination state for previous conversation to ensure fresh data on return
+    if (prevId && prevId !== id) {
+      set((state) => ({
+        cursors: { ...state.cursors, [prevId]: null },
+        hasMore: { ...state.hasMore, [prevId]: true },
+      }));
+    }
+
     set({ activeConversationId: id, isLoadingMessages: true });
 
     try {
@@ -127,7 +141,14 @@ export const useMessageStore = create<MessageState>()((set, get) => ({
       await get().markRead(id);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load messages";
-      set({ error: message, isLoadingMessages: false });
+      // Restore previous conversation state on failure
+      set((state) => ({
+        error: message,
+        isLoadingMessages: false,
+        activeConversationId: prevId,
+        cursors: prevId ? { ...state.cursors, [prevId]: prevCursor } : state.cursors,
+        hasMore: prevId ? { ...state.hasMore, [prevId]: prevHasMore } : state.hasMore,
+      }));
     }
   },
 

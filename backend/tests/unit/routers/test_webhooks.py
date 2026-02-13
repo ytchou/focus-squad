@@ -36,21 +36,38 @@ class TestWebhookSignatureValidation:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_webhook_skips_signature_in_development(self) -> None:
-        """Signature validation skipped in development environment."""
+    async def test_webhook_skips_signature_in_development_with_placeholder_key(self) -> None:
+        """Signature validation skipped only when BOTH dev mode AND placeholder key."""
         mock_request = MagicMock()
         mock_request.body = AsyncMock(return_value=b'{"event": "test"}')
 
         mock_settings = MagicMock()
         mock_settings.environment = "development"
-        mock_settings.livekit_api_key = "real-key"
-        mock_settings.livekit_api_secret = "real-secret"
+        mock_settings.livekit_api_key = "your-livekit-api-key"  # Placeholder
+        mock_settings.livekit_api_secret = "your-livekit-api-secret"
 
         with patch("app.routers.webhooks.get_settings", return_value=mock_settings):
             with patch("app.routers.webhooks.logger") as mock_logger:
                 result = await livekit_webhook(mock_request, authorization=None)
                 assert result == {"status": "ok"}
                 mock_logger.warning.assert_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_webhook_validates_in_development_with_real_key(self) -> None:
+        """Defense-in-depth: validates signature in dev mode if real API key is set."""
+        mock_request = MagicMock()
+        mock_request.body = AsyncMock(return_value=b'{"event": "test"}')
+
+        mock_settings = MagicMock()
+        mock_settings.environment = "development"
+        mock_settings.livekit_api_key = "real-key"  # Real key, not placeholder
+        mock_settings.livekit_api_secret = "real-secret"
+
+        with patch("app.routers.webhooks.get_settings", return_value=mock_settings):
+            with pytest.raises(HTTPException) as exc_info:
+                await livekit_webhook(mock_request, authorization="invalid-sig")
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     @pytest.mark.unit
@@ -89,12 +106,13 @@ class TestWebhookSignatureValidation:
     @pytest.mark.asyncio
     @pytest.mark.unit
     async def test_webhook_rejects_invalid_json_in_development(self) -> None:
-        """Returns 400 for invalid JSON even in development."""
+        """Returns 400 for invalid JSON even in development with placeholder key."""
         mock_request = MagicMock()
         mock_request.body = AsyncMock(return_value=b"not valid json")
 
         mock_settings = MagicMock()
         mock_settings.environment = "development"
+        mock_settings.livekit_api_key = "your-livekit-api-key"  # Placeholder
 
         with patch("app.routers.webhooks.get_settings", return_value=mock_settings):
             with pytest.raises(HTTPException) as exc_info:
