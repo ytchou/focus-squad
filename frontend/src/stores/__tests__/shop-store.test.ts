@@ -73,6 +73,8 @@ describe("Shop Store", () => {
       const state = useShopStore.getState();
       expect(state.error).toBe("Gift failed");
       expect(state.isPurchasing).toBe(false);
+      expect(state.isGifting).toBe(false);
+      expect(state.selectedRecipientId).toBeNull();
     });
   });
 

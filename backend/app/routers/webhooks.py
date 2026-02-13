@@ -8,9 +8,12 @@ Endpoints:
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
+
+if TYPE_CHECKING:
+    from supabase import Client
 from livekit import api
 
 from app.core.config import get_settings
@@ -27,7 +30,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-def _create_pending_ratings(supabase, session_id: str, participants: list[dict]) -> int:
+def _create_pending_ratings(supabase: "Client", session_id: str, participants: list[dict]) -> int:
     """
     Create pending_ratings records for all human participants.
 

@@ -127,7 +127,12 @@ export const useShopStore = create<ShopStoreState>()((set, get) => ({
       set({ isPurchasing: false, isGifting: false, selectedRecipientId: null });
       return result;
     } catch {
-      set({ error: "Gift failed", isPurchasing: false });
+      set({
+        error: "Gift failed",
+        isPurchasing: false,
+        isGifting: false,
+        selectedRecipientId: null,
+      });
       return null;
     }
   },
