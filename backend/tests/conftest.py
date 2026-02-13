@@ -287,8 +287,7 @@ def reset_jwks_cache():
     import app.core.auth as auth_module
     from app.core.auth import JWKSCache
 
-    # Save original and create fresh instance
-    original_cache = auth_module._jwks_cache
+    # Create fresh instance for test isolation
     auth_module._jwks_cache = JWKSCache()
 
     yield

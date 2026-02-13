@@ -1,6 +1,5 @@
 """Tests for Redis connection validation with retry."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -31,9 +30,7 @@ class TestRedisInitWithRetry:
     async def test_success_on_second_retry(self):
         """Success on retry 2 logs warning and continues."""
         mock_redis = AsyncMock()
-        mock_redis.ping = AsyncMock(
-            side_effect=[RedisConnectionError("Connection refused"), True]
-        )
+        mock_redis.ping = AsyncMock(side_effect=[RedisConnectionError("Connection refused"), True])
 
         with patch("app.core.redis.Redis", return_value=mock_redis):
             with patch("app.core.redis.ConnectionPool") as mock_pool:
@@ -53,9 +50,7 @@ class TestRedisInitWithRetry:
     async def test_failure_after_three_attempts(self):
         """Failure after 3 attempts raises RuntimeError."""
         mock_redis = AsyncMock()
-        mock_redis.ping = AsyncMock(
-            side_effect=RedisConnectionError("Connection refused")
-        )
+        mock_redis.ping = AsyncMock(side_effect=RedisConnectionError("Connection refused"))
 
         with patch("app.core.redis.Redis", return_value=mock_redis):
             with patch("app.core.redis.ConnectionPool") as mock_pool:
@@ -75,9 +70,7 @@ class TestRedisInitWithRetry:
     async def test_retry_delays_are_exponential(self):
         """Retry delays follow exponential backoff (1s, 2s, 4s)."""
         mock_redis = AsyncMock()
-        mock_redis.ping = AsyncMock(
-            side_effect=RedisConnectionError("Connection refused")
-        )
+        mock_redis.ping = AsyncMock(side_effect=RedisConnectionError("Connection refused"))
 
         with patch("app.core.redis.Redis", return_value=mock_redis):
             with patch("app.core.redis.ConnectionPool") as mock_pool:

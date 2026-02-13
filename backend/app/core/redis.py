@@ -62,9 +62,7 @@ async def init_redis() -> None:
                 )
                 await asyncio.sleep(delay)
 
-    raise RuntimeError(
-        f"Redis connection failed after {MAX_RETRIES} attempts: {last_error}"
-    )
+    raise RuntimeError(f"Redis connection failed after {MAX_RETRIES} attempts: {last_error}")
 
 
 async def close_redis() -> None:

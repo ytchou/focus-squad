@@ -2,7 +2,6 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -147,13 +146,9 @@ class TestDecodeSupabaseToken:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_decodes_valid_token(
-        self, valid_jwt_token, test_jwks, valid_jwt_claims
-    ) -> None:
+    async def test_decodes_valid_token(self, valid_jwt_token, test_jwks, valid_jwt_claims) -> None:
         """Successfully decodes a valid JWT token."""
-        with patch(
-            "app.core.auth.get_signing_key", new_callable=AsyncMock
-        ) as mock_get_key:
+        with patch("app.core.auth.get_signing_key", new_callable=AsyncMock) as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
 
             result = await decode_supabase_token(valid_jwt_token)
@@ -165,9 +160,7 @@ class TestDecodeSupabaseToken:
     @pytest.mark.asyncio
     async def test_raises_401_on_expired_token(self, expired_jwt_token, test_jwks) -> None:
         """Raises 401 for expired tokens."""
-        with patch(
-            "app.core.auth.get_signing_key", new_callable=AsyncMock
-        ) as mock_get_key:
+        with patch("app.core.auth.get_signing_key", new_callable=AsyncMock) as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
 
             with pytest.raises(HTTPException) as exc_info:
@@ -178,13 +171,9 @@ class TestDecodeSupabaseToken:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_raises_401_on_wrong_audience(
-        self, wrong_audience_jwt_token, test_jwks
-    ) -> None:
+    async def test_raises_401_on_wrong_audience(self, wrong_audience_jwt_token, test_jwks) -> None:
         """Raises 401 for tokens with wrong audience."""
-        with patch(
-            "app.core.auth.get_signing_key", new_callable=AsyncMock
-        ) as mock_get_key:
+        with patch("app.core.auth.get_signing_key", new_callable=AsyncMock) as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
 
             with pytest.raises(HTTPException) as exc_info:
@@ -198,9 +187,7 @@ class TestDecodeSupabaseToken:
         self, wrong_signature_jwt_token, test_jwks
     ) -> None:
         """Raises 401 for tokens with invalid signature."""
-        with patch(
-            "app.core.auth.get_signing_key", new_callable=AsyncMock
-        ) as mock_get_key:
+        with patch("app.core.auth.get_signing_key", new_callable=AsyncMock) as mock_get_key:
             mock_get_key.return_value = test_jwks["keys"][0]
 
             with pytest.raises(HTTPException) as exc_info:
@@ -218,9 +205,7 @@ class TestGetCurrentUser:
         self, mock_bearer_credentials, valid_jwt_claims
     ) -> None:
         """Returns AuthUser for valid credentials."""
-        with patch(
-            "app.core.auth.decode_supabase_token", new_callable=AsyncMock
-        ) as mock_decode:
+        with patch("app.core.auth.decode_supabase_token", new_callable=AsyncMock) as mock_decode:
             mock_decode.return_value = valid_jwt_claims
 
             result = await get_current_user(mock_bearer_credentials)
@@ -243,9 +228,7 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_raises_401_when_token_missing_sub(self, mock_bearer_credentials) -> None:
         """Raises 401 when token is missing 'sub' claim."""
-        with patch(
-            "app.core.auth.decode_supabase_token", new_callable=AsyncMock
-        ) as mock_decode:
+        with patch("app.core.auth.decode_supabase_token", new_callable=AsyncMock) as mock_decode:
             mock_decode.return_value = {"email": "test@example.com"}  # No 'sub'
 
             with pytest.raises(HTTPException) as exc_info:
@@ -258,9 +241,7 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_handles_missing_email_gracefully(self, mock_bearer_credentials) -> None:
         """Returns empty email when email claim is missing."""
-        with patch(
-            "app.core.auth.decode_supabase_token", new_callable=AsyncMock
-        ) as mock_decode:
+        with patch("app.core.auth.decode_supabase_token", new_callable=AsyncMock) as mock_decode:
             mock_decode.return_value = {"sub": "user-123"}  # No email
 
             result = await get_current_user(mock_bearer_credentials)
@@ -278,9 +259,7 @@ class TestGetOptionalUser:
         self, mock_bearer_credentials, valid_jwt_claims
     ) -> None:
         """Returns authenticated user for valid credentials."""
-        with patch(
-            "app.core.auth.decode_supabase_token", new_callable=AsyncMock
-        ) as mock_decode:
+        with patch("app.core.auth.decode_supabase_token", new_callable=AsyncMock) as mock_decode:
             mock_decode.return_value = valid_jwt_claims
 
             result = await get_optional_user(mock_bearer_credentials)
@@ -301,13 +280,9 @@ class TestGetOptionalUser:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_returns_unauthenticated_on_invalid_token(
-        self, mock_bearer_credentials
-    ) -> None:
+    async def test_returns_unauthenticated_on_invalid_token(self, mock_bearer_credentials) -> None:
         """Returns unauthenticated user when token is invalid."""
-        with patch(
-            "app.core.auth.decode_supabase_token", new_callable=AsyncMock
-        ) as mock_decode:
+        with patch("app.core.auth.decode_supabase_token", new_callable=AsyncMock) as mock_decode:
             mock_decode.side_effect = HTTPException(status_code=401, detail="Invalid")
 
             result = await get_optional_user(mock_bearer_credentials)
@@ -316,13 +291,9 @@ class TestGetOptionalUser:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_returns_unauthenticated_when_missing_sub(
-        self, mock_bearer_credentials
-    ) -> None:
+    async def test_returns_unauthenticated_when_missing_sub(self, mock_bearer_credentials) -> None:
         """Returns unauthenticated when token missing 'sub'."""
-        with patch(
-            "app.core.auth.decode_supabase_token", new_callable=AsyncMock
-        ) as mock_decode:
+        with patch("app.core.auth.decode_supabase_token", new_callable=AsyncMock) as mock_decode:
             mock_decode.return_value = {"email": "test@example.com"}  # No sub
 
             result = await get_optional_user(mock_bearer_credentials)
@@ -370,9 +341,7 @@ class TestRequireAuthFromState:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_returns_auth_user_when_authenticated(
-        self, mock_request_authenticated
-    ) -> None:
+    async def test_returns_auth_user_when_authenticated(self, mock_request_authenticated) -> None:
         """Returns AuthUser when request has authenticated user."""
         result = await require_auth_from_state(mock_request_authenticated)
 
@@ -381,9 +350,7 @@ class TestRequireAuthFromState:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_raises_401_when_not_authenticated(
-        self, mock_request_unauthenticated
-    ) -> None:
+    async def test_raises_401_when_not_authenticated(self, mock_request_unauthenticated) -> None:
         """Raises 401 when user is not authenticated."""
         with pytest.raises(HTTPException) as exc_info:
             await require_auth_from_state(mock_request_unauthenticated)
@@ -404,9 +371,7 @@ class TestRequireAuthFromState:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_includes_token_error_in_detail(
-        self, mock_request_with_token_error
-    ) -> None:
+    async def test_includes_token_error_in_detail(self, mock_request_with_token_error) -> None:
         """Includes token error message in 401 detail."""
         with pytest.raises(HTTPException) as exc_info:
             await require_auth_from_state(mock_request_with_token_error)
