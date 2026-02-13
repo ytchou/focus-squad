@@ -310,5 +310,88 @@ describe("usePictureInPicture", () => {
       expect(result.current.isPiPActive).toBe(false);
       expect(result.current.isPiPSupported).toBe(false);
     });
+
+    it("handles rapid phase transitions through session", async () => {
+      const usePictureInPicture = await importHook();
+      type SessionPhase = "idle" | "setup" | "work1" | "break" | "work2" | "social" | "completed";
+      const { result, rerender } = renderHook(
+        ({ phase }: { phase: SessionPhase }) => usePictureInPicture({ ...defaultHookProps, phase }),
+        { initialProps: { phase: "setup" as SessionPhase } }
+      );
+
+      // Rapidly transition through all phases
+      const phases: SessionPhase[] = ["work1", "break", "work2", "social", "completed"];
+      for (const phase of phases) {
+        rerender({ phase });
+        expect(result.current.isPiPActive).toBe(false);
+      }
+    });
+
+    it("handles participant list changes", async () => {
+      // PresenceState = "active" | "grace" | "away" | "ghosting"
+      type PresenceState = "active" | "grace" | "away" | "ghosting";
+      const usePictureInPicture = await importHook();
+      const { result, rerender } = renderHook(
+        ({
+          participants,
+        }: {
+          participants: Array<{ displayName: string | null; presenceState: PresenceState }>;
+        }) => usePictureInPicture({ ...defaultHookProps, participants }),
+        {
+          initialProps: {
+            participants: [{ displayName: "Alice", presenceState: "active" as PresenceState }],
+          },
+        }
+      );
+
+      // Add more participants
+      rerender({
+        participants: [
+          { displayName: "Alice", presenceState: "active" as PresenceState },
+          { displayName: "Bob", presenceState: "away" as PresenceState },
+        ],
+      });
+
+      // Should handle updates without error
+      expect(result.current.isPiPActive).toBe(false);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Additional cleanup scenarios
+  // -------------------------------------------------------------------------
+  describe("additional cleanup", () => {
+    it("handles cleanup with Document PiP API available", async () => {
+      vi.stubGlobal("documentPictureInPicture", {
+        requestWindow: vi.fn().mockRejectedValue(new Error("User cancelled")),
+      });
+
+      const usePictureInPicture = await importHook();
+      const { result, unmount } = renderHook(() => usePictureInPicture(defaultHookProps));
+
+      expect(result.current.isPiPSupported).toBe(true);
+
+      // Unmount should clean up without errors
+      expect(() => unmount()).not.toThrow();
+    });
+
+    it("handles completed phase transition with API available", async () => {
+      vi.stubGlobal("documentPictureInPicture", {
+        requestWindow: vi.fn().mockRejectedValue(new Error("Test")),
+      });
+
+      const usePictureInPicture = await importHook();
+      type SessionPhase = "idle" | "setup" | "work1" | "break" | "work2" | "social" | "completed";
+      const { result, rerender } = renderHook(
+        ({ phase }: { phase: SessionPhase }) => usePictureInPicture({ ...defaultHookProps, phase }),
+        { initialProps: { phase: "social" as SessionPhase } }
+      );
+
+      // Change to completed
+      rerender({ phase: "completed" });
+
+      // Should remain inactive
+      expect(result.current.isPiPActive).toBe(false);
+    });
   });
 });
