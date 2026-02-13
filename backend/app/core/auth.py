@@ -12,7 +12,7 @@ Two modes of operation:
 import asyncio
 import logging
 import time
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 import httpx
 from fastapi import Depends, HTTPException, Request, status
@@ -21,6 +21,7 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 
 from app.core.config import get_settings
+from app.core.database import get_supabase
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -165,6 +166,48 @@ class JWKSCache:
 
 # Global JWKS cache instance
 _jwks_cache = JWKSCache()
+
+
+class DeletedUserCache:
+    """
+    Simple in-memory cache for deleted user status.
+
+    Caches whether a user's account is deleted to avoid
+    DB lookup on every authenticated request.
+    """
+
+    DEFAULT_TTL = 60  # 60 seconds
+
+    def __init__(self, ttl_seconds: int = DEFAULT_TTL):
+        self._cache: Dict[str, Tuple[bool, float]] = {}
+        self._ttl = ttl_seconds
+
+    def is_deleted(self, auth_id: str) -> Optional[bool]:
+        """
+        Check if user is deleted (from cache).
+
+        Returns:
+            True if deleted, False if not deleted, None if not in cache
+        """
+        entry = self._cache.get(auth_id)
+        if entry is None:
+            return None
+
+        is_deleted, expires_at = entry
+        if time.time() > expires_at:
+            del self._cache[auth_id]
+            return None
+
+        return is_deleted
+
+    def set(self, auth_id: str, is_deleted: bool) -> None:
+        """Cache the deleted status for a user."""
+        expires_at = time.time() + self._ttl
+        self._cache[auth_id] = (is_deleted, expires_at)
+
+
+# Global deleted user cache instance
+_deleted_user_cache = DeletedUserCache()
 
 
 async def get_jwks() -> dict:
@@ -328,7 +371,7 @@ async def require_auth_from_state(request: Request) -> AuthUser:
     """
     Require authenticated user from request.state (populated by middleware).
 
-    Raises 401 if user is not authenticated.
+    Raises 401 if user is not authenticated or if account is deleted.
 
     Usage:
         @router.get("/protected")
@@ -347,6 +390,33 @@ async def require_auth_from_state(request: Request) -> AuthUser:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=detail,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Check if user's account is deleted (with cache)
+    cached_deleted = _deleted_user_cache.is_deleted(user.auth_id)
+
+    if cached_deleted is None:
+        # Cache miss - check database
+        supabase = get_supabase()
+        result = (
+            supabase.table("users")
+            .select("deleted_at")
+            .eq("auth_id", user.auth_id)
+            .execute()
+        )
+
+        is_deleted = False
+        if result.data and result.data[0].get("deleted_at"):
+            is_deleted = True
+
+        _deleted_user_cache.set(user.auth_id, is_deleted)
+        cached_deleted = is_deleted
+
+    if cached_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This account has been deactivated",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

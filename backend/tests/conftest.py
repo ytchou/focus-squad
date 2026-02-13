@@ -297,6 +297,21 @@ def reset_jwks_cache():
 
 
 @pytest.fixture(autouse=True)
+def reset_deleted_user_cache():
+    """Reset deleted user cache before each test to ensure isolation."""
+    import app.core.auth as auth_module
+    from app.core.auth import DeletedUserCache
+
+    # Create fresh instance for test isolation
+    auth_module._deleted_user_cache = DeletedUserCache()
+
+    yield
+
+    # Restore and reset for next test
+    auth_module._deleted_user_cache = DeletedUserCache()
+
+
+@pytest.fixture(autouse=True)
 def disable_rate_limiter():
     """Disable slowapi rate limiter during tests."""
     from app.core.rate_limit import limiter
