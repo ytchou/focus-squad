@@ -135,4 +135,29 @@ describe("LanguageToggle", () => {
     expect(mockRefresh).not.toHaveBeenCalled();
     expect(mockApiPatch).not.toHaveBeenCalled();
   });
+
+  it("handles API error gracefully - still sets cookie and refreshes", async () => {
+    // API call will reject with an error
+    mockApiPatch.mockRejectedValueOnce(new Error("Network error"));
+    render(<LanguageToggle />);
+
+    const zhButton = screen.getByRole("button", { name: "繁中" });
+    fireEvent.click(zhButton);
+
+    // Despite API failure, cookie should still be set (fire-and-forget)
+    await waitFor(() => {
+      expect(document.cookie).toContain("NEXT_LOCALE=zh-TW");
+    });
+
+    // Router should still refresh
+    await waitFor(() => {
+      expect(mockRefresh).toHaveBeenCalled();
+    });
+
+    // API was called but failed
+    expect(mockApiPatch).toHaveBeenCalledWith("/users/me", { preferred_language: "zh-TW" });
+
+    // User store should NOT be updated on error
+    expect(mockSetUser).not.toHaveBeenCalled();
+  });
 });

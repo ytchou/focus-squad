@@ -8,6 +8,7 @@ Runs hourly via Celery beat.
 import logging
 
 from app.core.celery_app import celery_app
+from app.services.schedule_service import ScheduleService
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +25,6 @@ def create_scheduled_sessions() -> dict:
     Returns:
         Summary dict with sessions_created and invitations_sent counts
     """
-    from app.services.schedule_service import ScheduleService
-
     service = ScheduleService()
     result = service.create_scheduled_sessions()
 

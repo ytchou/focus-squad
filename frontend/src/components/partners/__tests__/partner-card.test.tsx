@@ -78,9 +78,9 @@ describe("PartnerCard", () => {
 
     // Confirm and cancel buttons should appear
     // partners.confirmRemove = "Confirm Remove"
-    // partners.cancel = "Cancel Request" (but in this context it's just "Cancel Request" for requests)
+    // common.cancel = "Cancel" (generic cancel button)
     expect(screen.getByRole("button", { name: /Confirm Remove/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Cancel Request/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Cancel$/i })).toBeInTheDocument();
   });
 
   it("calls onRemove when confirmed", () => {
@@ -100,7 +100,7 @@ describe("PartnerCard", () => {
 
     // Click remove, then cancel
     fireEvent.click(screen.getByRole("button", { name: /Remove/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Cancel Request/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Cancel$/i }));
 
     // Should go back to showing the remove button
     expect(screen.getByRole("button", { name: /Remove/i })).toBeInTheDocument();
@@ -143,5 +143,60 @@ describe("PartnerCard", () => {
     // Avatar initial should be 'F' (from 'fallbackuser')
     expect(screen.getByText("fallbackuser")).toBeInTheDocument();
     expect(screen.getByText("F")).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
+  // Relative time display tests
+  // -------------------------------------------------------------------------
+  describe("relative time display", () => {
+    it("displays 'today' when last session was today", () => {
+      // Create a date that's earlier today (a few hours ago)
+      const today = new Date();
+      today.setHours(today.getHours() - 2);
+      const partner = createMockPartner({
+        last_session_together: today.toISOString(),
+      });
+      render(<PartnerCard partner={partner} onRemove={mockOnRemove} />);
+
+      // partners.today = "Today" (from en.json)
+      expect(screen.getByText("Today")).toBeInTheDocument();
+    });
+
+    it("displays 'yesterday' when last session was yesterday", () => {
+      // Create a date that's exactly 1 day ago
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const partner = createMockPartner({
+        last_session_together: yesterday.toISOString(),
+      });
+      render(<PartnerCard partner={partner} onRemove={mockOnRemove} />);
+
+      // partners.yesterday = "Yesterday"
+      expect(screen.getByText("Yesterday")).toBeInTheDocument();
+    });
+
+    it("displays 'X days ago' for sessions more than 1 day ago", () => {
+      // Create a date that's 5 days ago
+      const fiveDaysAgo = new Date();
+      fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+      const partner = createMockPartner({
+        last_session_together: fiveDaysAgo.toISOString(),
+      });
+      render(<PartnerCard partner={partner} onRemove={mockOnRemove} />);
+
+      // partners.daysAgo = "{count} days ago" - mock returns key with params
+      // The mock translator will return "partners.daysAgo" for nested keys
+      expect(screen.getByText(/days ago/i)).toBeInTheDocument();
+    });
+
+    it("displays 'never studied' when no last session", () => {
+      const partner = createMockPartner({
+        last_session_together: null,
+      });
+      render(<PartnerCard partner={partner} onRemove={mockOnRemove} />);
+
+      // partners.neverStudied = "Haven't studied together yet"
+      expect(screen.getByText(/studied together yet/i)).toBeInTheDocument();
+    });
   });
 });

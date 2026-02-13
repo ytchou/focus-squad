@@ -3,10 +3,11 @@
 Tests the Celery task that auto-creates private sessions from recurring schedules.
 """
 
-import importlib
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from app.tasks.schedule_tasks import create_scheduled_sessions
 
 
 class TestCreateScheduledSessions:
@@ -22,14 +23,10 @@ class TestCreateScheduledSessions:
         }
 
         with patch(
-            "app.services.schedule_service.ScheduleService",
+            "app.tasks.schedule_tasks.ScheduleService",
             return_value=mock_service,
         ):
-            # Re-import to get fresh function that uses our mock
-            import app.tasks.schedule_tasks as schedule_tasks_module
-
-            importlib.reload(schedule_tasks_module)
-            result = schedule_tasks_module.create_scheduled_sessions()
+            result = create_scheduled_sessions()
 
         assert result == {"sessions_created": 2, "invitations_sent": 4}
 
@@ -43,13 +40,10 @@ class TestCreateScheduledSessions:
         }
 
         with patch(
-            "app.services.schedule_service.ScheduleService",
+            "app.tasks.schedule_tasks.ScheduleService",
             return_value=mock_service,
         ):
-            import app.tasks.schedule_tasks as schedule_tasks_module
-
-            importlib.reload(schedule_tasks_module)
-            schedule_tasks_module.create_scheduled_sessions()
+            create_scheduled_sessions()
 
         mock_service.create_scheduled_sessions.assert_called_once()
 
@@ -62,19 +56,16 @@ class TestCreateScheduledSessions:
             "invitations_sent": 3,
         }
 
-        with patch(
-            "app.services.schedule_service.ScheduleService",
-            return_value=mock_service,
+        with (
+            patch(
+                "app.tasks.schedule_tasks.ScheduleService",
+                return_value=mock_service,
+            ),
+            patch("app.tasks.schedule_tasks.logger") as mock_logger,
         ):
-            import app.tasks.schedule_tasks as schedule_tasks_module
+            create_scheduled_sessions()
 
-            importlib.reload(schedule_tasks_module)
-
-            # Patch logger after reload so we capture actual logger reference
-            with patch.object(schedule_tasks_module, "logger") as mock_logger:
-                schedule_tasks_module.create_scheduled_sessions()
-
-                mock_logger.info.assert_called_once()
+            mock_logger.info.assert_called_once()
 
     @pytest.mark.unit
     def test_handles_zero_schedules(self) -> None:
@@ -86,13 +77,10 @@ class TestCreateScheduledSessions:
         }
 
         with patch(
-            "app.services.schedule_service.ScheduleService",
+            "app.tasks.schedule_tasks.ScheduleService",
             return_value=mock_service,
         ):
-            import app.tasks.schedule_tasks as schedule_tasks_module
-
-            importlib.reload(schedule_tasks_module)
-            result = schedule_tasks_module.create_scheduled_sessions()
+            result = create_scheduled_sessions()
 
         assert result["sessions_created"] == 0
         assert result["invitations_sent"] == 0
@@ -104,15 +92,11 @@ class TestCreateScheduledSessions:
         mock_service.create_scheduled_sessions.side_effect = Exception("DB error")
 
         with patch(
-            "app.services.schedule_service.ScheduleService",
+            "app.tasks.schedule_tasks.ScheduleService",
             return_value=mock_service,
         ):
-            import app.tasks.schedule_tasks as schedule_tasks_module
-
-            importlib.reload(schedule_tasks_module)
-
             with pytest.raises(Exception) as exc_info:
-                schedule_tasks_module.create_scheduled_sessions()
+                create_scheduled_sessions()
 
             assert "DB error" in str(exc_info.value)
 
@@ -125,11 +109,11 @@ class TestCreateScheduledSessions:
             "invitations_sent": 0,
         }
 
-        with patch("app.services.schedule_service.ScheduleService", mock_service_class):
-            import app.tasks.schedule_tasks as schedule_tasks_module
-
-            importlib.reload(schedule_tasks_module)
-            schedule_tasks_module.create_scheduled_sessions()
-            schedule_tasks_module.create_scheduled_sessions()
+        with patch(
+            "app.tasks.schedule_tasks.ScheduleService",
+            mock_service_class,
+        ):
+            create_scheduled_sessions()
+            create_scheduled_sessions()
 
         assert mock_service_class.call_count == 2

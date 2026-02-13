@@ -130,12 +130,37 @@ describe("usePictureInPicture", () => {
   // Cleanup on unmount
   // -------------------------------------------------------------------------
   describe("cleanup", () => {
-    it("cleans up on unmount", async () => {
+    it("cleans up on unmount without throwing", async () => {
       const usePictureInPicture = await importHook();
       const { unmount } = renderHook(() => usePictureInPicture(defaultHookProps));
 
       // Unmount should not throw
       expect(() => unmount()).not.toThrow();
+    });
+
+    it("handles cleanup gracefully when canvas strategy is available", async () => {
+      // Mock the canvas PiP API
+      Object.defineProperty(document, "pictureInPictureEnabled", {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
+
+      const usePictureInPicture = await importHook();
+      const { result, unmount } = renderHook(() => usePictureInPicture(defaultHookProps));
+
+      // Verify we're in canvas strategy mode (isPiPSupported should be true)
+      expect(result.current.isPiPSupported).toBe(true);
+
+      // Unmount - cleanup should handle any potential streams gracefully
+      expect(() => unmount()).not.toThrow();
+
+      // Clean up
+      Object.defineProperty(document, "pictureInPictureEnabled", {
+        value: false,
+        writable: true,
+        configurable: true,
+      });
     });
   });
 
