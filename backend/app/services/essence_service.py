@@ -8,6 +8,7 @@ Handles:
 - User inventory retrieval
 """
 
+import logging
 from typing import Optional
 
 from supabase import Client
@@ -24,6 +25,8 @@ from app.models.room import (
     SelfGiftError,
     ShopItem,
 )
+
+logger = logging.getLogger(__name__)
 
 TIER_ORDER = {"basic": 0, "standard": 1, "premium": 2}
 
@@ -104,30 +107,40 @@ class EssenceService:
         if not deduct_result.data or not deduct_result.data.get("success", False):
             raise InsufficientEssenceError(f"Insufficient essence to purchase item costing {cost}")
 
-        self.supabase.table("essence_transactions").insert(
-            {
-                "user_id": user_id,
-                "amount": -cost,
-                "transaction_type": "item_purchase",
-                "description": f"Purchased {item_data['name']}",
-                "related_item_id": item_id,
-            }
-        ).execute()
-
-        inventory_result = (
-            self.supabase.table("user_items")
-            .insert(
+        try:
+            self.supabase.table("essence_transactions").insert(
                 {
                     "user_id": user_id,
-                    "item_id": item_id,
-                    "acquisition_type": "purchased",
+                    "amount": -cost,
+                    "transaction_type": "item_purchase",
+                    "description": f"Purchased {item_data['name']}",
+                    "related_item_id": item_id,
                 }
+            ).execute()
+        except Exception:
+            logger.exception(
+                "Failed to log purchase transaction for user=%s item=%s", user_id, item_id
             )
-            .execute()
-        )
+
+        try:
+            inventory_result = (
+                self.supabase.table("user_items")
+                .insert(
+                    {
+                        "user_id": user_id,
+                        "item_id": item_id,
+                        "acquisition_type": "purchased",
+                    }
+                )
+                .execute()
+            )
+        except Exception:
+            self._refund_essence(user_id, cost, item_id, "item_purchase")
+            raise EssenceServiceError("Failed to add item to inventory — essence refunded")
 
         if not inventory_result.data:
-            raise EssenceServiceError("Failed to add item to inventory")
+            self._refund_essence(user_id, cost, item_id, "item_purchase")
+            raise EssenceServiceError("Failed to add item to inventory — essence refunded")
 
         row = inventory_result.data[0]
         return InventoryItem(
@@ -201,15 +214,20 @@ class EssenceService:
             raise InsufficientEssenceError(f"Insufficient essence to gift item costing {cost}")
 
         # Log transaction for sender
-        self.supabase.table("essence_transactions").insert(
-            {
-                "user_id": sender_id,
-                "amount": -cost,
-                "transaction_type": "item_gift",
-                "description": f"Gifted {item_data['name']} to {recipient_name}",
-                "related_item_id": item_id,
-            }
-        ).execute()
+        try:
+            self.supabase.table("essence_transactions").insert(
+                {
+                    "user_id": sender_id,
+                    "amount": -cost,
+                    "transaction_type": "item_gift",
+                    "description": f"Gifted {item_data['name']} to {recipient_name}",
+                    "related_item_id": item_id,
+                }
+            ).execute()
+        except Exception:
+            logger.exception(
+                "Failed to log gift transaction for sender=%s item=%s", sender_id, item_id
+            )
 
         # Insert item into recipient's inventory
         insert_data: dict = {
@@ -221,10 +239,19 @@ class EssenceService:
         if gift_message:
             insert_data["gift_message"] = gift_message
 
-        inventory_result = self.supabase.table("user_items").insert(insert_data).execute()
+        try:
+            inventory_result = self.supabase.table("user_items").insert(insert_data).execute()
+        except Exception:
+            self._refund_essence(sender_id, cost, item_id, "item_gift")
+            raise EssenceServiceError(
+                "Failed to add gift to recipient's inventory — essence refunded"
+            )
 
         if not inventory_result.data:
-            raise EssenceServiceError("Failed to add gift to recipient's inventory")
+            self._refund_essence(sender_id, cost, item_id, "item_gift")
+            raise EssenceServiceError(
+                "Failed to add gift to recipient's inventory — essence refunded"
+            )
 
         return GiftPurchaseResponse(
             inventory_item_id=inventory_result.data[0]["id"],
@@ -263,7 +290,38 @@ class EssenceService:
                     item=items_map.get(row["item_id"]),
                     acquired_at=row["acquired_at"],
                     acquisition_type=row["acquisition_type"],
+                    gifted_by=row.get("gifted_by"),
+                    gift_seen=row.get("gift_seen", True),
                 )
             )
 
         return inventory
+
+    def _refund_essence(self, user_id: str, amount: int, item_id: str, original_type: str) -> None:
+        """Compensating refund when inventory insert fails after essence deduction."""
+        try:
+            self.supabase.rpc("add_essence", {"p_user_id": user_id, "p_amount": amount}).execute()
+            self.supabase.table("essence_transactions").insert(
+                {
+                    "user_id": user_id,
+                    "amount": amount,
+                    "transaction_type": f"{original_type}_refund",
+                    "description": f"Refund: inventory insert failed for item {item_id}",
+                    "related_item_id": item_id,
+                }
+            ).execute()
+            logger.warning(
+                "Refunded %d essence to user=%s after failed %s for item=%s",
+                amount,
+                user_id,
+                original_type,
+                item_id,
+            )
+        except Exception:
+            logger.critical(
+                "REFUND FAILED: user=%s amount=%d item=%s type=%s — requires manual reconciliation",
+                user_id,
+                amount,
+                item_id,
+                original_type,
+            )

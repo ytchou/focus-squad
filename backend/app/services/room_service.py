@@ -86,7 +86,10 @@ class RoomService:
 
         inventory_result = (
             self.supabase.table("user_items")
-            .select("id, item_id, acquired_at, acquisition_type, items(*)")
+            .select(
+                "id, item_id, acquired_at, acquisition_type, "
+                "gifted_by, gift_message, gift_seen, items(*)"
+            )
             .eq("user_id", user_id)
             .execute()
         )
@@ -103,6 +106,8 @@ class RoomService:
                     item=shop_item,
                     acquired_at=row["acquired_at"],
                     acquisition_type=row.get("acquisition_type", "purchased"),
+                    gifted_by=row.get("gifted_by"),
+                    gift_seen=row.get("gift_seen", True),
                 )
             )
             inventory_raw.append({**row, "_shop_item": item_data})
@@ -337,7 +342,10 @@ class RoomService:
 
         inventory_result = (
             self.supabase.table("user_items")
-            .select("id, item_id, acquired_at, acquisition_type, gifted_by, items(*)")
+            .select(
+                "id, item_id, acquired_at, acquisition_type, "
+                "gifted_by, gift_message, gift_seen, items(*)"
+            )
             .eq("user_id", owner_id)
             .execute()
         )
@@ -354,6 +362,7 @@ class RoomService:
                     acquired_at=row["acquired_at"],
                     acquisition_type=row.get("acquisition_type", "purchased"),
                     gifted_by=row.get("gifted_by"),
+                    gift_seen=row.get("gift_seen", True),
                 )
             )
 
