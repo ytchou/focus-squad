@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { useMessageStore } from "../message-store";
+import { useMessageStore, MessageInfo } from "../message-store";
 
 // Mock the API client
 vi.mock("@/lib/api/client", () => ({
@@ -41,7 +41,7 @@ describe("message-store", () => {
       // Setup: conversation A has messages and cursor
       useMessageStore.setState({
         activeConversationId: "conv-a",
-        messages: { "conv-a": [{ id: "msg-1" }] as any },
+        messages: { "conv-a": [{ id: "msg-1" }] as MessageInfo[] },
         cursors: { "conv-a": "cursor-a" },
         hasMore: { "conv-a": false },
       });
