@@ -40,6 +40,7 @@ from app.models.partner import (
 logger = logging.getLogger(__name__)
 
 PARTNER_CACHE_TTL = 300  # 5 minutes
+PARTNER_CACHE_LOCK_TTL = 5  # Lock expires after 5 seconds to prevent deadlocks
 
 
 class PartnerService:
@@ -71,36 +72,54 @@ class PartnerService:
 
         Uses Redis SET for O(1) membership checks.
         TTL of 5 minutes handles missed invalidations.
+        Uses lock to prevent cache stampede on concurrent misses.
         """
         cache_key = f"partners:{user_id}:accepted"
+        lock_key = f"partners:{user_id}:lock"
 
         # Try cache first
         cached = await self.redis.smembers(cache_key)
         if cached:
             return cached
 
-        # Cache miss - query DB
-        result = (
-            self.supabase.table("partnerships")
-            .select("requester_id, addressee_id")
-            .or_(f"requester_id.eq.{user_id},addressee_id.eq.{user_id}")
-            .eq("status", "accepted")
-            .execute()
-        )
+        # Cache miss - try to acquire lock to prevent stampede
+        # SETNX returns True if lock acquired, False if another request has it
+        acquired = await self.redis.set(lock_key, "1", nx=True, ex=PARTNER_CACHE_LOCK_TTL)
 
-        partner_ids: set[str] = set()
-        for row in result.data or []:
-            other_id = (
-                row["addressee_id"] if row["requester_id"] == user_id else row["requester_id"]
+        if not acquired:
+            # Another request is populating the cache - wait briefly and retry cache
+            await asyncio.sleep(0.1)
+            cached = await self.redis.smembers(cache_key)
+            if cached:
+                return cached
+            # Still no cache after wait - proceed anyway (lock may have expired)
+
+        try:
+            # Query DB
+            result = (
+                self.supabase.table("partnerships")
+                .select("requester_id, addressee_id")
+                .or_(f"requester_id.eq.{user_id},addressee_id.eq.{user_id}")
+                .eq("status", "accepted")
+                .execute()
             )
-            partner_ids.add(other_id)
 
-        # Cache result (only if non-empty)
-        if partner_ids:
-            await self.redis.sadd(cache_key, *partner_ids)
-            await self.redis.expire(cache_key, PARTNER_CACHE_TTL)
+            partner_ids: set[str] = set()
+            for row in result.data or []:
+                other_id = (
+                    row["addressee_id"] if row["requester_id"] == user_id else row["requester_id"]
+                )
+                partner_ids.add(other_id)
 
-        return partner_ids
+            # Cache result (only if non-empty)
+            if partner_ids:
+                await self.redis.sadd(cache_key, *partner_ids)
+                await self.redis.expire(cache_key, PARTNER_CACHE_TTL)
+
+            return partner_ids
+        finally:
+            # Release lock
+            await self.redis.delete(lock_key)
 
     async def _invalidate_partner_cache(self, user_id: str) -> None:
         """Invalidate partner cache for a user."""

@@ -90,5 +90,28 @@ describe("message-store", () => {
       const state = useMessageStore.getState();
       expect(state.cursors["conv-a"]).toBe("cursor-a-new");
     });
+
+    it("should restore previous state on API failure", async () => {
+      // Setup: conversation A has messages and cursor
+      useMessageStore.setState({
+        activeConversationId: "conv-a",
+        messages: { "conv-a": [{ id: "msg-1" }] as MessageInfo[] },
+        cursors: { "conv-a": "cursor-a" },
+        hasMore: { "conv-a": false },
+      });
+
+      // Mock API failure for new conversation
+      vi.mocked(api.get).mockRejectedValueOnce(new Error("Network error"));
+
+      // Act: try to switch to conversation B
+      await useMessageStore.getState().openConversation("conv-b");
+
+      // Assert: should restore previous conversation state
+      const state = useMessageStore.getState();
+      expect(state.activeConversationId).toBe("conv-a");
+      expect(state.cursors["conv-a"]).toBe("cursor-a");
+      expect(state.hasMore["conv-a"]).toBe(false);
+      expect(state.error).toBe("Network error");
+    });
   });
 });

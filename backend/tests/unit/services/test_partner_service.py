@@ -673,6 +673,7 @@ class TestPartnerCache:
         redis.sadd = AsyncMock()
         redis.expire = AsyncMock()
         redis.delete = AsyncMock()
+        redis.set = AsyncMock(return_value=True)  # Lock acquired
         return redis
 
     @pytest.mark.asyncio
