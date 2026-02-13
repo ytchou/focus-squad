@@ -24,6 +24,7 @@ celery_app = Celery(
         "app.tasks.session_tasks",
         "app.tasks.schedule_tasks",
         "app.tasks.rating_tasks",
+        "app.tasks.analytics_tasks",
     ],
 )
 
@@ -62,6 +63,10 @@ celery_app.conf.update(
         "cleanup-expired-pending-ratings": {
             "task": "app.tasks.rating_tasks.cleanup_expired_pending_ratings",
             "schedule": crontab(hour=1, minute=0),  # Daily at 01:00 UTC
+        },
+        "cleanup-old-analytics": {
+            "task": "app.tasks.analytics_tasks.cleanup_old_analytics",
+            "schedule": crontab(hour=2, minute=0),  # Daily at 02:00 UTC
         },
     },
 )

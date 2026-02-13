@@ -85,70 +85,54 @@ class EssenceService:
         return items
 
     def buy_item(self, user_id: str, item_id: str) -> InventoryItem:
-        item_result = self.supabase.table("items").select("*").eq("id", item_id).execute()
+        """
+        Purchase an item using atomic RPC.
 
-        if not item_result.data:
-            raise ItemNotFoundError(f"Item {item_id} not found")
+        The purchase_item_atomic RPC handles:
+        - Item lookup and availability check
+        - Balance check with row lock (FOR UPDATE)
+        - Essence deduction
+        - Inventory insertion
+        - Transaction logging
 
-        item_data = item_result.data[0]
-
-        if not item_data.get("is_available") or not item_data.get("is_purchasable"):
-            raise ItemNotFoundError(f"Item {item_id} is not available for purchase")
-
-        cost = item_data["essence_cost"]
-
-        # Atomic balance deduction via RPC — prevents race conditions from
-        # concurrent purchases by using UPDATE ... WHERE balance >= cost
-        deduct_result = self.supabase.rpc(
-            "deduct_essence",
-            {"p_user_id": user_id, "p_cost": cost},
+        All in a single atomic transaction - if any step fails, nothing is committed.
+        """
+        result = self.supabase.rpc(
+            "purchase_item_atomic",
+            {
+                "p_user_id": user_id,
+                "p_item_id": item_id,
+                "p_is_gift": False,
+                "p_recipient_id": None,
+                "p_gift_message": None,
+            },
         ).execute()
 
-        if not deduct_result.data or not deduct_result.data.get("success", False):
-            raise InsufficientEssenceError(f"Insufficient essence to purchase item costing {cost}")
+        if not result.data:
+            raise EssenceServiceError("Purchase failed: no response from database")
 
-        try:
-            self.supabase.table("essence_transactions").insert(
-                {
-                    "user_id": user_id,
-                    "amount": -cost,
-                    "transaction_type": "item_purchase",
-                    "description": f"Purchased {item_data['name']}",
-                    "related_item_id": item_id,
-                }
-            ).execute()
-        except Exception:
-            logger.exception(
-                "Failed to log purchase transaction for user=%s item=%s", user_id, item_id
-            )
+        data = result.data
+        if not data.get("success"):
+            error = data.get("error", "unknown_error")
+            if error == "item_not_found":
+                raise ItemNotFoundError(f"Item {item_id} not found or unavailable")
+            elif error == "insufficient_essence":
+                raise InsufficientEssenceError("Insufficient essence for this purchase")
+            elif error == "no_essence_record":
+                raise InsufficientEssenceError("No essence balance found")
+            else:
+                raise EssenceServiceError(f"Purchase failed: {error}")
 
-        try:
-            inventory_result = (
-                self.supabase.table("user_items")
-                .insert(
-                    {
-                        "user_id": user_id,
-                        "item_id": item_id,
-                        "acquisition_type": "purchased",
-                    }
-                )
-                .execute()
-            )
-        except Exception:
-            self._refund_essence(user_id, cost, item_id, "item_purchase")
-            raise EssenceServiceError("Failed to add item to inventory — essence refunded")
+        # Fetch item details for response (RPC returns minimal data)
+        item_result = self.supabase.table("items").select("*").eq("id", item_id).execute()
+        item_data = item_result.data[0] if item_result.data else {}
 
-        if not inventory_result.data:
-            self._refund_essence(user_id, cost, item_id, "item_purchase")
-            raise EssenceServiceError("Failed to add item to inventory — essence refunded")
-
-        row = inventory_result.data[0]
         return InventoryItem(
-            id=row["id"],
-            item_id=row["item_id"],
-            item=ShopItem(**item_data),
-            acquired_at=row["acquired_at"],
-            acquisition_type=row["acquisition_type"],
+            id=data["inventory_id"],
+            item_id=item_id,
+            item=ShopItem(**item_data) if item_data else None,
+            acquired_at=None,  # Will be set by DB default
+            acquisition_type="purchased",
         )
 
     def gift_item(
@@ -158,24 +142,16 @@ class EssenceService:
         item_id: str,
         gift_message: Optional[str] = None,
     ) -> GiftPurchaseResponse:
-        """Buy an item as a gift for a partner.
+        """
+        Gift an item to a partner using atomic RPC.
 
-        Flow: validate self-gift → look up item → check partnership →
-        deduct sender essence → log transaction → insert inventory for recipient.
+        Validates partnership first, then uses purchase_item_atomic RPC for
+        atomic essence deduction and inventory insertion.
         """
         if sender_id == recipient_id:
             raise SelfGiftError("Cannot gift an item to yourself.")
 
-        # Look up item
-        item_result = self.supabase.table("items").select("*").eq("id", item_id).execute()
-        if not item_result.data:
-            raise ItemNotFoundError(f"Item {item_id} not found")
-
-        item_data = item_result.data[0]
-        if not item_data.get("is_available") or not item_data.get("is_purchasable"):
-            raise ItemNotFoundError(f"Item {item_id} is not available for purchase")
-
-        # Verify accepted partnership
+        # Verify accepted partnership (must check before RPC)
         partnership_result = (
             self.supabase.table("partnerships")
             .select("id")
@@ -202,62 +178,38 @@ class EssenceService:
             "username", "Unknown"
         )
 
-        cost = item_data["essence_cost"]
-
-        # Atomic deduction from sender's balance
-        deduct_result = self.supabase.rpc(
-            "deduct_essence",
-            {"p_user_id": sender_id, "p_cost": cost},
+        # Atomic purchase via RPC
+        result = self.supabase.rpc(
+            "purchase_item_atomic",
+            {
+                "p_user_id": sender_id,
+                "p_item_id": item_id,
+                "p_is_gift": True,
+                "p_recipient_id": recipient_id,
+                "p_gift_message": gift_message,
+            },
         ).execute()
 
-        if not deduct_result.data or not deduct_result.data.get("success", False):
-            raise InsufficientEssenceError(f"Insufficient essence to gift item costing {cost}")
+        if not result.data:
+            raise EssenceServiceError("Gift purchase failed: no response from database")
 
-        # Log transaction for sender
-        try:
-            self.supabase.table("essence_transactions").insert(
-                {
-                    "user_id": sender_id,
-                    "amount": -cost,
-                    "transaction_type": "item_gift",
-                    "description": f"Gifted {item_data['name']} to {recipient_name}",
-                    "related_item_id": item_id,
-                }
-            ).execute()
-        except Exception:
-            logger.exception(
-                "Failed to log gift transaction for sender=%s item=%s", sender_id, item_id
-            )
-
-        # Insert item into recipient's inventory
-        insert_data: dict = {
-            "user_id": recipient_id,
-            "item_id": item_id,
-            "acquisition_type": "gift",
-            "gifted_by": sender_id,
-        }
-        if gift_message:
-            insert_data["gift_message"] = gift_message
-
-        try:
-            inventory_result = self.supabase.table("user_items").insert(insert_data).execute()
-        except Exception:
-            self._refund_essence(sender_id, cost, item_id, "item_gift")
-            raise EssenceServiceError(
-                "Failed to add gift to recipient's inventory — essence refunded"
-            )
-
-        if not inventory_result.data:
-            self._refund_essence(sender_id, cost, item_id, "item_gift")
-            raise EssenceServiceError(
-                "Failed to add gift to recipient's inventory — essence refunded"
-            )
+        data = result.data
+        if not data.get("success"):
+            error = data.get("error", "unknown_error")
+            if error == "item_not_found":
+                raise ItemNotFoundError(f"Item {item_id} not found or unavailable")
+            elif error == "insufficient_essence":
+                raise InsufficientEssenceError("Insufficient essence to gift this item")
+            elif error == "no_essence_record":
+                raise InsufficientEssenceError("No essence balance found")
+            else:
+                raise EssenceServiceError(f"Gift purchase failed: {error}")
 
         return GiftPurchaseResponse(
-            inventory_item_id=inventory_result.data[0]["id"],
-            item_name=item_data["name"],
+            inventory_item_id=data["inventory_id"],
+            item_name=data.get("item_name", "Item"),
             recipient_name=recipient_name,
-            essence_spent=cost,
+            essence_spent=data.get("cost", 0),
         )
 
     def get_inventory(self, user_id: str) -> list[InventoryItem]:
@@ -296,32 +248,3 @@ class EssenceService:
             )
 
         return inventory
-
-    def _refund_essence(self, user_id: str, amount: int, item_id: str, original_type: str) -> None:
-        """Compensating refund when inventory insert fails after essence deduction."""
-        try:
-            self.supabase.rpc("add_essence", {"p_user_id": user_id, "p_amount": amount}).execute()
-            self.supabase.table("essence_transactions").insert(
-                {
-                    "user_id": user_id,
-                    "amount": amount,
-                    "transaction_type": f"{original_type}_refund",
-                    "description": f"Refund: inventory insert failed for item {item_id}",
-                    "related_item_id": item_id,
-                }
-            ).execute()
-            logger.warning(
-                "Refunded %d essence to user=%s after failed %s for item=%s",
-                amount,
-                user_id,
-                original_type,
-                item_id,
-            )
-        except Exception:
-            logger.critical(
-                "REFUND FAILED: user=%s amount=%d item=%s type=%s — requires manual reconciliation",
-                user_id,
-                amount,
-                item_id,
-                original_type,
-            )
