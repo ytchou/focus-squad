@@ -107,7 +107,7 @@ class InventoryItem(BaseModel):
     id: str  # user_items.id (unique per copy)
     item_id: str
     item: Optional[ShopItem] = None  # joined catalog data
-    acquired_at: datetime
+    acquired_at: Optional[datetime] = None  # Set by DB on insert, may be None on fresh purchase
     acquisition_type: str = "purchased"
     gifted_by: Optional[str] = None
     gifted_by_name: Optional[str] = None

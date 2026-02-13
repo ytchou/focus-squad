@@ -245,42 +245,38 @@ class TestGetShopItems:
 
 
 # =============================================================================
-# TestBuyItem
+# TestBuyItem (uses atomic purchase_item_atomic RPC)
 # =============================================================================
 
 
 class TestBuyItem:
-    """Tests for buy_item() method."""
+    """Tests for buy_item() method using atomic RPC."""
 
     @pytest.mark.unit
     def test_successful_purchase(self, service, mock_supabase) -> None:
-        """Purchases item: deducts balance via atomic RPC, logs transaction, adds to inventory."""
-        tables = _setup_tables(
-            mock_supabase,
-            ["items", "essence_transactions", "user_items"],
-        )
-
-        item = _sample_item(item_id="item-1", cost=5)
-        tables["items"].execute.return_value = MagicMock(data=[item])
-
-        # Mock atomic RPC deduction
+        """Purchases item via atomic RPC: single call handles deduction, inventory, logging."""
+        # Mock atomic RPC success first (called before table access)
         rpc_mock = MagicMock()
-        rpc_mock.execute.return_value = MagicMock(data={"success": True})
+        rpc_mock.execute.return_value = MagicMock(
+            data={
+                "success": True,
+                "inventory_id": "inv-new",
+                "new_balance": 95,
+                "item_name": "Cozy Lamp",
+                "cost": 5,
+            }
+        )
         mock_supabase.rpc.return_value = rpc_mock
 
-        tables["essence_transactions"].execute.return_value = MagicMock(data=[{}])
-
-        inv_row = {
-            "id": "inv-new",
-            "item_id": "item-1",
-            "acquired_at": "2026-02-12T00:00:00Z",
-            "acquisition_type": "purchased",
-        }
-        tables["user_items"].execute.return_value = MagicMock(data=[inv_row])
+        # Setup table mock for item fetch after RPC
+        tables = _setup_tables(mock_supabase, ["items"])
+        item = _sample_item(item_id="item-1", cost=5)
+        tables["items"].execute.return_value = MagicMock(data=[item])
 
         result = service.buy_item("user-123", "item-1")
 
         assert isinstance(result, InventoryItem)
+        assert result.id == "inv-new"
         assert result.item_id == "item-1"
         assert result.acquisition_type == "purchased"
         assert result.item is not None
@@ -288,73 +284,76 @@ class TestBuyItem:
 
         # Verify atomic RPC was called with correct params
         mock_supabase.rpc.assert_called_once_with(
-            "deduct_essence",
-            {"p_user_id": "user-123", "p_cost": 5},
+            "purchase_item_atomic",
+            {
+                "p_user_id": "user-123",
+                "p_item_id": "item-1",
+                "p_is_gift": False,
+                "p_recipient_id": None,
+                "p_gift_message": None,
+            },
         )
 
-        # Verify transaction was logged
-        tables["essence_transactions"].insert.assert_called_once()
-        tx_data = tables["essence_transactions"].insert.call_args.args[0]
-        assert tx_data["user_id"] == "user-123"
-        assert tx_data["amount"] == -5
-        assert tx_data["transaction_type"] == "item_purchase"
-        assert tx_data["related_item_id"] == "item-1"
-
     @pytest.mark.unit
-    def test_item_not_found(self, service, mock_supabase) -> None:
-        """Raises ItemNotFoundError when item does not exist."""
-        tables = _setup_tables(mock_supabase, ["items"])
-        tables["items"].execute.return_value = MagicMock(data=[])
+    def test_item_not_found_from_rpc(self, service, mock_supabase) -> None:
+        """Raises ItemNotFoundError when RPC returns item_not_found error."""
+        rpc_mock = MagicMock()
+        rpc_mock.execute.return_value = MagicMock(
+            data={"success": False, "error": "item_not_found"}
+        )
+        mock_supabase.rpc.return_value = rpc_mock
 
         with pytest.raises(ItemNotFoundError, match="not found"):
             service.buy_item("user-123", "nonexistent-item")
 
     @pytest.mark.unit
-    def test_item_not_available(self, service, mock_supabase) -> None:
-        """Raises ItemNotFoundError when item is not available for purchase."""
-        tables = _setup_tables(mock_supabase, ["items"])
-        item = _sample_item(is_available=False)
-        tables["items"].execute.return_value = MagicMock(data=[item])
-
-        with pytest.raises(ItemNotFoundError, match="not available"):
-            service.buy_item("user-123", "item-1")
-
-    @pytest.mark.unit
-    def test_item_not_purchasable(self, service, mock_supabase) -> None:
-        """Raises ItemNotFoundError when item is not purchasable."""
-        tables = _setup_tables(mock_supabase, ["items"])
-        item = _sample_item(is_purchasable=False)
-        tables["items"].execute.return_value = MagicMock(data=[item])
-
-        with pytest.raises(ItemNotFoundError, match="not available"):
-            service.buy_item("user-123", "item-1")
-
-    @pytest.mark.unit
-    def test_insufficient_essence_rpc_fails(self, service, mock_supabase) -> None:
-        """Raises InsufficientEssenceError when RPC returns success=false."""
-        tables = _setup_tables(mock_supabase, ["items"])
-        tables["items"].execute.return_value = MagicMock(data=[_sample_item(cost=10)])
-
-        # RPC returns failure (insufficient balance)
+    def test_insufficient_essence_from_rpc(self, service, mock_supabase) -> None:
+        """Raises InsufficientEssenceError when RPC returns insufficient_essence."""
         rpc_mock = MagicMock()
-        rpc_mock.execute.return_value = MagicMock(data={"success": False})
+        rpc_mock.execute.return_value = MagicMock(
+            data={"success": False, "error": "insufficient_essence"}
+        )
         mock_supabase.rpc.return_value = rpc_mock
 
         with pytest.raises(InsufficientEssenceError, match="Insufficient essence"):
             service.buy_item("user-123", "item-1")
 
     @pytest.mark.unit
-    def test_insufficient_essence_rpc_no_data(self, service, mock_supabase) -> None:
-        """Raises InsufficientEssenceError when RPC returns no data."""
-        tables = _setup_tables(mock_supabase, ["items"])
-        tables["items"].execute.return_value = MagicMock(data=[_sample_item(cost=5)])
+    def test_no_essence_record_from_rpc(self, service, mock_supabase) -> None:
+        """Raises InsufficientEssenceError when RPC returns no_essence_record."""
+        rpc_mock = MagicMock()
+        rpc_mock.execute.return_value = MagicMock(
+            data={"success": False, "error": "no_essence_record"}
+        )
+        mock_supabase.rpc.return_value = rpc_mock
 
-        # RPC returns empty data (no balance row for user)
+        with pytest.raises(InsufficientEssenceError, match="No essence balance"):
+            service.buy_item("user-123", "item-1")
+
+    @pytest.mark.unit
+    def test_rpc_no_data_raises_error(self, service, mock_supabase) -> None:
+        """Raises EssenceServiceError when RPC returns no data."""
+        from app.models.room import EssenceServiceError
+
         rpc_mock = MagicMock()
         rpc_mock.execute.return_value = MagicMock(data=None)
         mock_supabase.rpc.return_value = rpc_mock
 
-        with pytest.raises(InsufficientEssenceError, match="Insufficient essence"):
+        with pytest.raises(EssenceServiceError, match="no response"):
+            service.buy_item("user-123", "item-1")
+
+    @pytest.mark.unit
+    def test_unknown_error_from_rpc(self, service, mock_supabase) -> None:
+        """Raises EssenceServiceError with message when RPC returns unknown error."""
+        from app.models.room import EssenceServiceError
+
+        rpc_mock = MagicMock()
+        rpc_mock.execute.return_value = MagicMock(
+            data={"success": False, "error": "database_error"}
+        )
+        mock_supabase.rpc.return_value = rpc_mock
+
+        with pytest.raises(EssenceServiceError, match="database_error"):
             service.buy_item("user-123", "item-1")
 
 
@@ -464,19 +463,12 @@ def _sample_recipient_profile(
 
 
 class TestGiftItem:
-    """Tests for gift_item() method (TDD - method not yet implemented)."""
+    """Tests for gift_item() method using atomic RPC."""
 
     @pytest.mark.unit
     def test_gift_successful(self, service, mock_supabase) -> None:
-        """Happy path: item exists, partnership valid, sender has enough essence."""
-        tables = _setup_tables(
-            mock_supabase,
-            ["items", "partnerships", "users", "essence_transactions", "user_items"],
-        )
-
-        # Item lookup
-        item = _sample_item(item_id="item-gift", name="Cozy Lamp", cost=5)
-        tables["items"].execute.return_value = MagicMock(data=[item])
+        """Happy path: partnership valid, atomic RPC handles deduction and inventory."""
+        tables = _setup_tables(mock_supabase, ["partnerships", "users"])
 
         # Partnership check: accepted partnership between sender and recipient
         tables["partnerships"].execute.return_value = MagicMock(
@@ -494,24 +486,18 @@ class TestGiftItem:
             data=[_sample_recipient_profile(user_id="user-recipient", display_name="Recipient")]
         )
 
-        # Atomic RPC deduction succeeds
+        # Atomic RPC succeeds with all data
         rpc_mock = MagicMock()
-        rpc_mock.execute.return_value = MagicMock(data={"success": True})
+        rpc_mock.execute.return_value = MagicMock(
+            data={
+                "success": True,
+                "inventory_id": "inv-gift-1",
+                "new_balance": 95,
+                "item_name": "Cozy Lamp",
+                "cost": 5,
+            }
+        )
         mock_supabase.rpc.return_value = rpc_mock
-
-        # Transaction insert
-        tables["essence_transactions"].execute.return_value = MagicMock(data=[{}])
-
-        # Inventory insert for recipient
-        inv_row = {
-            "id": "inv-gift-1",
-            "item_id": "item-gift",
-            "user_id": "user-recipient",
-            "acquired_at": "2026-02-12T00:00:00Z",
-            "acquisition_type": "gift",
-            "gifted_by": "user-sender",
-        }
-        tables["user_items"].execute.return_value = MagicMock(data=[inv_row])
 
         result = service.gift_item(
             sender_id="user-sender",
@@ -527,27 +513,17 @@ class TestGiftItem:
         assert result.recipient_name == "Recipient"
         assert result.essence_spent == 5
 
-        # Verify atomic RPC was called with sender_id and cost
+        # Verify atomic RPC was called with gift params
         mock_supabase.rpc.assert_called_once_with(
-            "deduct_essence",
-            {"p_user_id": "user-sender", "p_cost": 5},
+            "purchase_item_atomic",
+            {
+                "p_user_id": "user-sender",
+                "p_item_id": "item-gift",
+                "p_is_gift": True,
+                "p_recipient_id": "user-recipient",
+                "p_gift_message": "Enjoy this lamp!",
+            },
         )
-
-        # Verify transaction was logged with type="item_gift"
-        tables["essence_transactions"].insert.assert_called_once()
-        tx_data = tables["essence_transactions"].insert.call_args.args[0]
-        assert tx_data["user_id"] == "user-sender"
-        assert tx_data["amount"] == -5
-        assert tx_data["transaction_type"] == "item_gift"
-        assert tx_data["related_item_id"] == "item-gift"
-
-        # Verify inventory insert with recipient_id, gift metadata
-        tables["user_items"].insert.assert_called_once()
-        ui_data = tables["user_items"].insert.call_args.args[0]
-        assert ui_data["user_id"] == "user-recipient"
-        assert ui_data["item_id"] == "item-gift"
-        assert ui_data["acquisition_type"] == "gift"
-        assert ui_data["gifted_by"] == "user-sender"
 
     @pytest.mark.unit
     def test_gift_to_self_fails(self, service, mock_supabase) -> None:
@@ -562,12 +538,7 @@ class TestGiftItem:
     @pytest.mark.unit
     def test_gift_to_non_partner_fails(self, service, mock_supabase) -> None:
         """Raises NotPartnerError when no accepted partnership exists."""
-        tables = _setup_tables(mock_supabase, ["items", "partnerships"])
-
-        # Item exists
-        tables["items"].execute.return_value = MagicMock(
-            data=[_sample_item(item_id="item-1", cost=5)]
-        )
+        tables = _setup_tables(mock_supabase, ["partnerships"])
 
         # No partnership found
         tables["partnerships"].execute.return_value = MagicMock(data=[])
@@ -580,14 +551,9 @@ class TestGiftItem:
             )
 
     @pytest.mark.unit
-    def test_gift_insufficient_essence(self, service, mock_supabase) -> None:
-        """Raises InsufficientEssenceError when RPC returns success=False."""
-        tables = _setup_tables(mock_supabase, ["items", "partnerships", "users"])
-
-        # Item exists
-        tables["items"].execute.return_value = MagicMock(
-            data=[_sample_item(item_id="item-1", cost=50)]
-        )
+    def test_gift_insufficient_essence_from_rpc(self, service, mock_supabase) -> None:
+        """Raises InsufficientEssenceError when RPC returns insufficient_essence."""
+        tables = _setup_tables(mock_supabase, ["partnerships", "users"])
 
         # Partnership exists
         tables["partnerships"].execute.return_value = MagicMock(
@@ -605,7 +571,9 @@ class TestGiftItem:
 
         # RPC returns failure (insufficient balance)
         rpc_mock = MagicMock()
-        rpc_mock.execute.return_value = MagicMock(data={"success": False})
+        rpc_mock.execute.return_value = MagicMock(
+            data={"success": False, "error": "insufficient_essence"}
+        )
         mock_supabase.rpc.return_value = rpc_mock
 
         with pytest.raises(InsufficientEssenceError):
@@ -616,16 +584,67 @@ class TestGiftItem:
             )
 
     @pytest.mark.unit
-    def test_gift_item_not_found(self, service, mock_supabase) -> None:
-        """Raises ItemNotFoundError when item doesn't exist."""
-        tables = _setup_tables(mock_supabase, ["items"])
+    def test_gift_item_not_found_from_rpc(self, service, mock_supabase) -> None:
+        """Raises ItemNotFoundError when RPC returns item_not_found."""
+        tables = _setup_tables(mock_supabase, ["partnerships", "users"])
 
-        # Item not found
-        tables["items"].execute.return_value = MagicMock(data=[])
+        # Partnership exists
+        tables["partnerships"].execute.return_value = MagicMock(
+            data=[
+                _sample_partnership(
+                    requester_id="user-sender",
+                    addressee_id="user-recipient",
+                    status="accepted",
+                )
+            ]
+        )
+
+        # Recipient profile
+        tables["users"].execute.return_value = MagicMock(data=[_sample_recipient_profile()])
+
+        # RPC returns item not found
+        rpc_mock = MagicMock()
+        rpc_mock.execute.return_value = MagicMock(
+            data={"success": False, "error": "item_not_found"}
+        )
+        mock_supabase.rpc.return_value = rpc_mock
 
         with pytest.raises(ItemNotFoundError):
             service.gift_item(
                 sender_id="user-sender",
                 recipient_id="user-recipient",
                 item_id="nonexistent-item",
+            )
+
+    @pytest.mark.unit
+    def test_gift_no_rpc_data_raises_error(self, service, mock_supabase) -> None:
+        """Raises EssenceServiceError when RPC returns no data."""
+        from app.models.room import EssenceServiceError
+
+        tables = _setup_tables(mock_supabase, ["partnerships", "users"])
+
+        # Partnership exists
+        tables["partnerships"].execute.return_value = MagicMock(
+            data=[
+                _sample_partnership(
+                    requester_id="user-sender",
+                    addressee_id="user-recipient",
+                    status="accepted",
+                )
+            ]
+        )
+
+        # Recipient profile
+        tables["users"].execute.return_value = MagicMock(data=[_sample_recipient_profile()])
+
+        # RPC returns no data
+        rpc_mock = MagicMock()
+        rpc_mock.execute.return_value = MagicMock(data=None)
+        mock_supabase.rpc.return_value = rpc_mock
+
+        with pytest.raises(EssenceServiceError, match="no response"):
+            service.gift_item(
+                sender_id="user-sender",
+                recipient_id="user-recipient",
+                item_id="item-1",
             )
