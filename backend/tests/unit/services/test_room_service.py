@@ -4,6 +4,9 @@ Tests:
 - ensure_room() - existing room found, new room created
 - update_layout() - empty placements, valid placement, not owned, out of bounds, overlaps
 - _check_visitors() - no placed items, below threshold, meets threshold, already discovered, past cooldown
+- get_partner_room() - happy path, not partners error
+- get_unseen_gifts() - returns gift notifications
+- mark_gifts_seen() - marks gifts as seen
 """
 
 from datetime import datetime, timedelta, timezone
@@ -11,6 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from app.models.partner import NotPartnerError
 from app.models.room import (
     InvalidPlacementError,
     RoomPlacement,
@@ -47,6 +51,8 @@ def _make_table_mock():
     mock.is_.return_value = mock
     mock.not_ = MagicMock()
     mock.not_.is_.return_value = mock
+    mock.or_.return_value = mock
+    mock.limit.return_value = mock
     mock.order.return_value = mock
     mock.insert.return_value = mock
     mock.upsert.return_value = mock
@@ -481,3 +487,120 @@ class TestCheckVisitors:
 
         turtle_results = [r for r in result if r.companion_type == "turtle"]
         assert len(turtle_results) == 0
+
+
+# =============================================================================
+# get_partner_room()
+# =============================================================================
+
+
+class TestGetPartnerRoom:
+    """Tests for get_partner_room()."""
+
+    @pytest.mark.unit
+    def test_happy_path(self, service, mock_supabase) -> None:
+        """Returns partner room when partnership is accepted."""
+        tables = _setup_tables(
+            mock_supabase,
+            ["partnerships", "user_room", "user_items", "user_companions", "users"],
+        )
+
+        # Partnership exists
+        tables["partnerships"].execute.return_value = MagicMock(data=[{"id": "p-1"}])
+
+        # Room exists
+        tables["user_room"].execute.return_value = MagicMock(
+            data=[_sample_room_row(user_id="owner-1")]
+        )
+
+        # Inventory empty
+        tables["user_items"].execute.return_value = MagicMock(data=[])
+
+        # No companions
+        tables["user_companions"].execute.return_value = MagicMock(data=[])
+
+        # Owner profile
+        tables["users"].execute.return_value = MagicMock(
+            data=[{"display_name": "Alice", "username": "alice", "pixel_avatar_id": None}]
+        )
+
+        result = service.get_partner_room(viewer_id="viewer-1", owner_id="owner-1")
+
+        assert result.owner_name == "Alice"
+        assert result.owner_username == "alice"
+        assert result.room.user_id == "owner-1"
+
+    @pytest.mark.unit
+    def test_not_partners_raises(self, service, mock_supabase) -> None:
+        """Raises NotPartnerError when no accepted partnership exists."""
+        tables = _setup_tables(mock_supabase, ["partnerships"])
+
+        tables["partnerships"].execute.return_value = MagicMock(data=[])
+
+        with pytest.raises(NotPartnerError):
+            service.get_partner_room(viewer_id="viewer-1", owner_id="owner-1")
+
+    @pytest.mark.unit
+    def test_self_visit_raises(self, service, mock_supabase) -> None:
+        """Raises RoomServiceError when visiting own room."""
+        with pytest.raises(RoomServiceError):
+            service.get_partner_room(viewer_id="user-1", owner_id="user-1")
+
+
+# =============================================================================
+# get_unseen_gifts() / mark_gifts_seen()
+# =============================================================================
+
+
+class TestGiftNotifications:
+    """Tests for gift notification methods."""
+
+    @pytest.mark.unit
+    def test_get_unseen_gifts_returns_gifts(self, service, mock_supabase) -> None:
+        """Returns gift notifications with sender and item info."""
+        tables = _setup_tables(mock_supabase, ["user_items"])
+
+        tables["user_items"].execute.return_value = MagicMock(
+            data=[
+                {
+                    "id": "inv-1",
+                    "gifted_by": "sender-1",
+                    "gift_message": "Enjoy!",
+                    "items": {"name": "Cozy Lamp", "name_zh": None},
+                    "users": {"display_name": "Bob", "username": "bob"},
+                }
+            ]
+        )
+
+        result = service.get_unseen_gifts(user_id="user-1")
+
+        assert len(result) == 1
+        assert result[0].inventory_item_id == "inv-1"
+        assert result[0].item_name == "Cozy Lamp"
+        assert result[0].gifted_by_name == "Bob"
+        assert result[0].gift_message == "Enjoy!"
+
+    @pytest.mark.unit
+    def test_get_unseen_gifts_empty(self, service, mock_supabase) -> None:
+        """Returns empty list when no unseen gifts."""
+        tables = _setup_tables(mock_supabase, ["user_items"])
+        tables["user_items"].execute.return_value = MagicMock(data=[])
+
+        result = service.get_unseen_gifts(user_id="user-1")
+        assert result == []
+
+    @pytest.mark.unit
+    def test_mark_gifts_seen(self, service, mock_supabase) -> None:
+        """Calls update with gift_seen=True for given ids."""
+        tables = _setup_tables(mock_supabase, ["user_items"])
+
+        service.mark_gifts_seen(user_id="user-1", inventory_ids=["inv-1", "inv-2"])
+
+        tables["user_items"].update.assert_called_once_with({"gift_seen": True})
+
+    @pytest.mark.unit
+    def test_mark_gifts_seen_empty_noop(self, service, mock_supabase) -> None:
+        """Does nothing when inventory_ids is empty."""
+        service.mark_gifts_seen(user_id="user-1", inventory_ids=[])
+        # Should not call supabase at all
+        mock_supabase.table.assert_not_called()

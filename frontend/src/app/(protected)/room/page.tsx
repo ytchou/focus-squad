@@ -14,6 +14,7 @@ import { EditToolbar } from "@/components/room/edit-toolbar";
 import { EssenceBadge } from "@/components/room/essence-badge";
 import { StreakProgressBar } from "@/components/room/streak-progress-bar";
 import { VisitorNotification } from "@/components/room/visitor-notification";
+import { GiftNotificationToast } from "@/components/room/gift-notification-toast";
 import { captureRoomSnapshot } from "@/lib/room/capture-snapshot";
 import { toast } from "sonner";
 import type { VisitorResult } from "@/stores/room-store";
@@ -187,6 +188,9 @@ export default function RoomPage() {
       {pendingVisitor && (
         <VisitorNotification visitor={pendingVisitor} onDismiss={() => setPendingVisitor(null)} />
       )}
+
+      {/* Gift toast notifications */}
+      <GiftNotificationToast />
     </AppShell>
   );
 }

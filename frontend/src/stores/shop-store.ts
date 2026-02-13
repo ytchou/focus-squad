@@ -13,6 +13,17 @@ export interface EssenceBalance {
 }
 
 // =============================================================================
+// Gift response
+// =============================================================================
+
+export interface GiftPurchaseResponse {
+  inventory_item_id: string;
+  item_name: string;
+  recipient_name: string;
+  essence_spent: number;
+}
+
+// =============================================================================
 // Store
 // =============================================================================
 
@@ -24,10 +35,20 @@ interface ShopStoreState {
   isPurchasing: boolean;
   error: string | null;
 
+  // Gift mode
+  isGifting: boolean;
+  selectedRecipientId: string | null;
+
   fetchShop: (category?: string, tier?: string) => Promise<void>;
   fetchInventory: () => Promise<void>;
   fetchBalance: () => Promise<void>;
   buyItem: (itemId: string) => Promise<InventoryItem | null>;
+  giftItem: (
+    itemId: string,
+    recipientId: string,
+    message?: string
+  ) => Promise<GiftPurchaseResponse | null>;
+  setGiftingMode: (recipientId: string | null) => void;
   reset: () => void;
 }
 
@@ -38,6 +59,8 @@ const initialState = {
   isLoading: false,
   isPurchasing: false,
   error: null as string | null,
+  isGifting: false,
+  selectedRecipientId: null as string | null,
 };
 
 export const useShopStore = create<ShopStoreState>()((set, get) => ({
@@ -91,6 +114,29 @@ export const useShopStore = create<ShopStoreState>()((set, get) => ({
       return null;
     }
   },
+
+  giftItem: async (itemId: string, recipientId: string, message?: string) => {
+    set({ isPurchasing: true, error: null });
+    try {
+      const result = await api.post<GiftPurchaseResponse>("/api/v1/essence/gift", {
+        item_id: itemId,
+        recipient_id: recipientId,
+        gift_message: message || null,
+      });
+      await get().fetchBalance();
+      set({ isPurchasing: false, isGifting: false, selectedRecipientId: null });
+      return result;
+    } catch {
+      set({ error: "Gift failed", isPurchasing: false });
+      return null;
+    }
+  },
+
+  setGiftingMode: (recipientId: string | null) =>
+    set({
+      isGifting: recipientId !== null,
+      selectedRecipientId: recipientId || null,
+    }),
 
   reset: () => set(initialState),
 }));

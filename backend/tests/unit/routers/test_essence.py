@@ -7,6 +7,7 @@ Endpoints tested:
 - GET /balance - get_essence_balance()
 - GET /shop - get_shop_catalog()
 - POST /buy - purchase_item()
+- POST /gift - gift_item()
 - GET /inventory - get_user_inventory()
 """
 
@@ -16,15 +17,19 @@ import pytest
 from fastapi import HTTPException
 
 from app.core.auth import AuthUser
+from app.models.partner import NotPartnerError
 from app.models.room import (
+    GiftPurchaseRequest,
     InsufficientEssenceError,
     ItemNotFoundError,
     PurchaseRequest,
+    SelfGiftError,
 )
 from app.routers.essence import (
     get_essence_balance,
     get_shop_catalog,
     get_user_inventory,
+    gift_item,
     purchase_item,
 )
 
@@ -321,3 +326,158 @@ class TestGetUserInventory:
         assert exc_info.value.status_code == 404
         assert "User not found" in exc_info.value.detail
         essence_service.get_inventory.assert_not_called()
+
+
+# =============================================================================
+# POST /gift - gift_item()
+# =============================================================================
+
+
+class TestGiftItem:
+    """Tests for the gift_item endpoint."""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_gift_success(
+        self, mock_request, mock_user, essence_service, user_service, mock_profile
+    ) -> None:
+        """Happy path: item gifted and GiftPurchaseResponse returned."""
+        expected_response = MagicMock()
+        essence_service.gift_item.return_value = expected_response
+        gift_req = GiftPurchaseRequest(
+            item_id="item-lamp-001",
+            recipient_id="partner-uuid-789",
+            gift_message="Enjoy this lamp!",
+        )
+
+        result = await gift_item(
+            request=mock_request,
+            gift_request=gift_req,
+            user=mock_user,
+            user_service=user_service,
+            essence_service=essence_service,
+        )
+
+        assert result is expected_response
+        user_service.get_user_by_auth_id.assert_called_once_with(mock_user.auth_id)
+        essence_service.gift_item.assert_called_once_with(
+            sender_id=mock_profile.id,
+            recipient_id="partner-uuid-789",
+            item_id="item-lamp-001",
+            gift_message="Enjoy this lamp!",
+        )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_gift_no_message(
+        self, mock_request, mock_user, essence_service, user_service, mock_profile
+    ) -> None:
+        """Gift without message passes None."""
+        expected_response = MagicMock()
+        essence_service.gift_item.return_value = expected_response
+        gift_req = GiftPurchaseRequest(
+            item_id="item-lamp-001",
+            recipient_id="partner-uuid-789",
+        )
+
+        result = await gift_item(
+            request=mock_request,
+            gift_request=gift_req,
+            user=mock_user,
+            user_service=user_service,
+            essence_service=essence_service,
+        )
+
+        assert result is expected_response
+        essence_service.gift_item.assert_called_once_with(
+            sender_id=mock_profile.id,
+            recipient_id="partner-uuid-789",
+            item_id="item-lamp-001",
+            gift_message=None,
+        )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_user_not_found_raises_404(
+        self, mock_request, mock_user, essence_service, user_service_no_profile
+    ) -> None:
+        """Sender not in database raises HTTPException 404."""
+        gift_req = GiftPurchaseRequest(
+            item_id="item-lamp-001",
+            recipient_id="partner-uuid-789",
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await gift_item(
+                request=mock_request,
+                gift_request=gift_req,
+                user=mock_user,
+                user_service=user_service_no_profile,
+                essence_service=essence_service,
+            )
+
+        assert exc_info.value.status_code == 404
+        essence_service.gift_item.assert_not_called()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_self_gift_error_propagates(
+        self, mock_request, mock_user, essence_service, user_service
+    ) -> None:
+        """SelfGiftError from service propagates directly."""
+        essence_service.gift_item.side_effect = SelfGiftError("Cannot gift to yourself")
+        gift_req = GiftPurchaseRequest(
+            item_id="item-lamp-001",
+            recipient_id="user-uuid-456",
+        )
+
+        with pytest.raises(SelfGiftError):
+            await gift_item(
+                request=mock_request,
+                gift_request=gift_req,
+                user=mock_user,
+                user_service=user_service,
+                essence_service=essence_service,
+            )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_not_partner_error_propagates(
+        self, mock_request, mock_user, essence_service, user_service
+    ) -> None:
+        """NotPartnerError from service propagates directly."""
+        essence_service.gift_item.side_effect = NotPartnerError("Not partners")
+        gift_req = GiftPurchaseRequest(
+            item_id="item-lamp-001",
+            recipient_id="stranger-uuid",
+        )
+
+        with pytest.raises(NotPartnerError):
+            await gift_item(
+                request=mock_request,
+                gift_request=gift_req,
+                user=mock_user,
+                user_service=user_service,
+                essence_service=essence_service,
+            )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_insufficient_essence_propagates(
+        self, mock_request, mock_user, essence_service, user_service
+    ) -> None:
+        """InsufficientEssenceError from service propagates directly."""
+        essence_service.gift_item.side_effect = InsufficientEssenceError("Not enough")
+        gift_req = GiftPurchaseRequest(
+            item_id="item-lamp-001",
+            recipient_id="partner-uuid-789",
+        )
+
+        with pytest.raises(InsufficientEssenceError):
+            await gift_item(
+                request=mock_request,
+                gift_request=gift_req,
+                user=mock_user,
+                user_service=user_service,
+                essence_service=essence_service,
+            )

@@ -109,6 +109,9 @@ class InventoryItem(BaseModel):
     item: Optional[ShopItem] = None  # joined catalog data
     acquired_at: datetime
     acquisition_type: str = "purchased"
+    gifted_by: Optional[str] = None
+    gifted_by_name: Optional[str] = None
+    gift_seen: bool = True
 
 
 class RoomPlacement(BaseModel):
@@ -184,6 +187,50 @@ class RoomResponse(BaseModel):
 # ===========================================
 # Request Models
 # ===========================================
+
+
+class GiftPurchaseRequest(BaseModel):
+    """Buy an item as a gift for a partner."""
+
+    item_id: str
+    recipient_id: str
+    gift_message: Optional[str] = Field(None, max_length=200)
+
+
+class GiftPurchaseResponse(BaseModel):
+    """Response after gifting an item."""
+
+    inventory_item_id: str
+    item_name: str
+    recipient_name: str
+    essence_spent: int
+
+
+class PartnerRoomResponse(BaseModel):
+    """Read-only partner room state (no visitors, no essence balance)."""
+
+    room: RoomState
+    inventory: list[InventoryItem]
+    companions: list[CompanionInfo]
+    owner_name: str
+    owner_username: str
+    owner_pixel_avatar_id: Optional[str] = None
+
+
+class GiftNotification(BaseModel):
+    """Unseen gift info for toast display on room load."""
+
+    inventory_item_id: str
+    item_name: str
+    item_name_zh: Optional[str] = None
+    gifted_by_name: str
+    gift_message: Optional[str] = None
+
+
+class MarkGiftsSeenRequest(BaseModel):
+    """Request to mark gift items as seen."""
+
+    inventory_ids: list[str]
 
 
 class PurchaseRequest(BaseModel):
@@ -265,5 +312,11 @@ class InvalidStarterError(CompanionServiceError):
 
 class VisitorNotFoundError(CompanionServiceError):
     """No visiting companion of this type exists."""
+
+    pass
+
+
+class SelfGiftError(EssenceServiceError):
+    """Cannot gift an item to yourself."""
 
     pass

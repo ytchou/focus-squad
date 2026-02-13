@@ -1,7 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Camera, Star, Users, BookOpen, Sparkles, Flame, Lightbulb } from "lucide-react";
+import { Camera, Star, Users, BookOpen, Sparkles, Flame, Lightbulb, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useUIStore } from "@/stores";
 import type { RoomSnapshot } from "@/stores/gamification-store";
 
 const MILESTONE_ICONS: Record<string, React.ReactNode> = {
@@ -20,6 +22,7 @@ interface TimelineCardProps {
 
 export function TimelineCard({ snapshot }: TimelineCardProps) {
   const t = useTranslations("timeline");
+  const openModal = useUIStore((s) => s.openModal);
 
   const icon = MILESTONE_ICONS[snapshot.milestone_type] ?? <Camera className="h-4 w-4" />;
 
@@ -65,6 +68,16 @@ export function TimelineCard({ snapshot }: TimelineCardProps) {
             &ldquo;{snapshot.diary_excerpt}&rdquo;
           </p>
         )}
+
+        <Button
+          variant="ghost"
+          size="xs"
+          className="w-full mt-1"
+          onClick={() => openModal("milestoneShare", { snapshot })}
+        >
+          <Share2 className="h-3.5 w-3.5" />
+          {t("share")}
+        </Button>
       </div>
     </div>
   );

@@ -6,6 +6,9 @@ mocking AuthUser, RoomService, and UserService dependencies.
 Endpoints tested:
 - GET / - get_room_state()
 - PUT /layout - update_room_layout()
+- GET /gifts - get_unseen_gifts()
+- POST /gifts/seen - mark_gifts_seen()
+- GET /partner/{user_id} - get_partner_room()
 """
 
 from unittest.mock import MagicMock
@@ -14,8 +17,20 @@ import pytest
 from fastapi import HTTPException
 
 from app.core.auth import AuthUser
-from app.models.room import InvalidPlacementError, LayoutUpdate, RoomPlacement
-from app.routers.room import get_room_state, update_room_layout
+from app.models.partner import NotPartnerError
+from app.models.room import (
+    InvalidPlacementError,
+    LayoutUpdate,
+    MarkGiftsSeenRequest,
+    RoomPlacement,
+)
+from app.routers.room import (
+    get_partner_room,
+    get_room_state,
+    get_unseen_gifts,
+    mark_gifts_seen,
+    update_room_layout,
+)
 
 # =============================================================================
 # Fixtures
@@ -214,3 +229,203 @@ class TestUpdateRoomLayout:
 
         assert result is expected_state
         room_service.update_layout.assert_called_once_with(user_id=mock_profile.id, placements=[])
+
+
+# =============================================================================
+# GET /gifts - get_unseen_gifts()
+# =============================================================================
+
+
+class TestGetUnseenGifts:
+    """Tests for the get_unseen_gifts endpoint."""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_returns_gifts(
+        self, mock_request, mock_user, room_service, user_service, mock_profile
+    ) -> None:
+        """Happy path: returns list of GiftNotification from service."""
+        expected_gifts = [MagicMock(), MagicMock()]
+        room_service.get_unseen_gifts.return_value = expected_gifts
+
+        result = await get_unseen_gifts(
+            request=mock_request,
+            user=mock_user,
+            user_service=user_service,
+            room_service=room_service,
+        )
+
+        assert result is expected_gifts
+        user_service.get_user_by_auth_id.assert_called_once_with(mock_user.auth_id)
+        room_service.get_unseen_gifts.assert_called_once_with(mock_profile.id)
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_returns_empty_list(
+        self, mock_request, mock_user, room_service, user_service, mock_profile
+    ) -> None:
+        """No unseen gifts returns empty list."""
+        room_service.get_unseen_gifts.return_value = []
+
+        result = await get_unseen_gifts(
+            request=mock_request,
+            user=mock_user,
+            user_service=user_service,
+            room_service=room_service,
+        )
+
+        assert result == []
+        room_service.get_unseen_gifts.assert_called_once_with(mock_profile.id)
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_user_not_found_raises_404(
+        self, mock_request, mock_user, room_service, user_service_no_profile
+    ) -> None:
+        """User not in database raises HTTPException 404."""
+        with pytest.raises(HTTPException) as exc_info:
+            await get_unseen_gifts(
+                request=mock_request,
+                user=mock_user,
+                user_service=user_service_no_profile,
+                room_service=room_service,
+            )
+
+        assert exc_info.value.status_code == 404
+        room_service.get_unseen_gifts.assert_not_called()
+
+
+# =============================================================================
+# POST /gifts/seen - mark_gifts_seen()
+# =============================================================================
+
+
+class TestMarkGiftsSeen:
+    """Tests for the mark_gifts_seen endpoint."""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_marks_seen_success(
+        self, mock_request, mock_user, room_service, user_service, mock_profile
+    ) -> None:
+        """Happy path: marks gifts as seen and returns ok."""
+        body = MarkGiftsSeenRequest(inventory_ids=["inv-001", "inv-002"])
+
+        result = await mark_gifts_seen(
+            request=mock_request,
+            body=body,
+            user=mock_user,
+            user_service=user_service,
+            room_service=room_service,
+        )
+
+        assert result == {"ok": True}
+        room_service.mark_gifts_seen.assert_called_once_with(
+            mock_profile.id, ["inv-001", "inv-002"]
+        )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_empty_ids(
+        self, mock_request, mock_user, room_service, user_service, mock_profile
+    ) -> None:
+        """Empty inventory_ids list is a valid no-op call."""
+        body = MarkGiftsSeenRequest(inventory_ids=[])
+
+        result = await mark_gifts_seen(
+            request=mock_request,
+            body=body,
+            user=mock_user,
+            user_service=user_service,
+            room_service=room_service,
+        )
+
+        assert result == {"ok": True}
+        room_service.mark_gifts_seen.assert_called_once_with(mock_profile.id, [])
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_user_not_found_raises_404(
+        self, mock_request, mock_user, room_service, user_service_no_profile
+    ) -> None:
+        """User not in database raises HTTPException 404."""
+        body = MarkGiftsSeenRequest(inventory_ids=["inv-001"])
+
+        with pytest.raises(HTTPException) as exc_info:
+            await mark_gifts_seen(
+                request=mock_request,
+                body=body,
+                user=mock_user,
+                user_service=user_service_no_profile,
+                room_service=room_service,
+            )
+
+        assert exc_info.value.status_code == 404
+        room_service.mark_gifts_seen.assert_not_called()
+
+
+# =============================================================================
+# GET /partner/{user_id} - get_partner_room()
+# =============================================================================
+
+
+class TestGetPartnerRoom:
+    """Tests for the get_partner_room endpoint."""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_returns_partner_room(
+        self, mock_request, mock_user, room_service, user_service, mock_profile
+    ) -> None:
+        """Happy path: returns PartnerRoomResponse from service."""
+        expected_response = MagicMock()
+        room_service.get_partner_room.return_value = expected_response
+
+        result = await get_partner_room(
+            user_id="partner-uuid-789",
+            request=mock_request,
+            user=mock_user,
+            user_service=user_service,
+            room_service=room_service,
+        )
+
+        assert result is expected_response
+        user_service.get_user_by_auth_id.assert_called_once_with(mock_user.auth_id)
+        room_service.get_partner_room.assert_called_once_with(
+            viewer_id=mock_profile.id, owner_id="partner-uuid-789"
+        )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_user_not_found_raises_404(
+        self, mock_request, mock_user, room_service, user_service_no_profile
+    ) -> None:
+        """Viewer not in database raises HTTPException 404."""
+        with pytest.raises(HTTPException) as exc_info:
+            await get_partner_room(
+                user_id="partner-uuid-789",
+                request=mock_request,
+                user=mock_user,
+                user_service=user_service_no_profile,
+                room_service=room_service,
+            )
+
+        assert exc_info.value.status_code == 404
+        room_service.get_partner_room.assert_not_called()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_not_partner_error_propagates(
+        self, mock_request, mock_user, room_service, user_service
+    ) -> None:
+        """NotPartnerError from service propagates directly."""
+        room_service.get_partner_room.side_effect = NotPartnerError("Users are not partners")
+
+        with pytest.raises(NotPartnerError):
+            await get_partner_room(
+                user_id="stranger-uuid",
+                request=mock_request,
+                user=mock_user,
+                user_service=user_service,
+                room_service=room_service,
+            )

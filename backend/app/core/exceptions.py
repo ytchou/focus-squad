@@ -262,7 +262,9 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(NotPartnerError)
     async def _not_partner(request: Request, exc: NotPartnerError) -> JSONResponse:
-        return error_response(403, "You can only invite partners to private tables.", "NOT_PARTNER")
+        return error_response(
+            403, str(exc) or "This action requires an accepted partnership.", "NOT_PARTNER"
+        )
 
     @app.exception_handler(InvalidInterestTagError)
     async def _invalid_interest_tag(request: Request, exc: InvalidInterestTagError) -> JSONResponse:
@@ -370,6 +372,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         InvalidPlacementError,
         InvalidStarterError,
         ItemNotFoundError,
+        SelfGiftError,
         VisitorNotFoundError,
     )
 
@@ -398,6 +401,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(VisitorNotFoundError)
     async def _visitor_not_found(request: Request, exc: VisitorNotFoundError) -> JSONResponse:
         return error_response(404, str(exc), "VISITOR_NOT_FOUND")
+
+    @app.exception_handler(SelfGiftError)
+    async def _self_gift(request: Request, exc: SelfGiftError) -> JSONResponse:
+        return error_response(400, "Cannot gift an item to yourself.", "SELF_GIFT")
 
     # --- Gamification handlers ---
 

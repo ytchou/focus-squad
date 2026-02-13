@@ -5,6 +5,7 @@ Handles:
 - GET /balance - Get user's essence balance
 - GET /shop - Browse item catalog with filters
 - POST /buy - Purchase an item
+- POST /gift - Gift an item to a partner
 - GET /inventory - Get user's owned items
 """
 
@@ -17,6 +18,8 @@ from app.core.auth import AuthUser, require_auth_from_state
 from app.core.rate_limit import limiter
 from app.models.room import (
     EssenceBalance,
+    GiftPurchaseRequest,
+    GiftPurchaseResponse,
     InventoryItem,
     PurchaseRequest,
     ShopItem,
@@ -77,6 +80,27 @@ async def purchase_item(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
     return essence_service.buy_item(user_id=profile.id, item_id=purchase_request.item_id)
+
+
+@router.post("/gift", response_model=GiftPurchaseResponse)
+@limiter.limit("10/minute")
+async def gift_item(
+    request: Request,
+    gift_request: GiftPurchaseRequest,
+    user: AuthUser = Depends(require_auth_from_state),
+    user_service: UserService = Depends(get_user_service),
+    essence_service: EssenceService = Depends(get_essence_service),
+) -> GiftPurchaseResponse:
+    """Buy an item as a gift for a partner."""
+    profile = user_service.get_user_by_auth_id(user.auth_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return essence_service.gift_item(
+        sender_id=profile.id,
+        recipient_id=gift_request.recipient_id,
+        item_id=gift_request.item_id,
+        gift_message=gift_request.gift_message,
+    )
 
 
 @router.get("/inventory", response_model=list[InventoryItem])

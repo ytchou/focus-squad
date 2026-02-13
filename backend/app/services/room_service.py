@@ -20,10 +20,13 @@ from app.core.constants import (
     VISITOR_COOLDOWN_HOURS,
 )
 from app.core.database import get_supabase
+from app.models.partner import NotPartnerError
 from app.models.room import (
     CompanionInfo,
+    GiftNotification,
     InvalidPlacementError,
     InventoryItem,
+    PartnerRoomResponse,
     RoomPlacement,
     RoomResponse,
     RoomServiceError,
@@ -83,7 +86,10 @@ class RoomService:
 
         inventory_result = (
             self.supabase.table("user_items")
-            .select("id, item_id, acquired_at, acquisition_type, items(*)")
+            .select(
+                "id, item_id, acquired_at, acquisition_type, "
+                "gifted_by, gift_message, gift_seen, items(*)"
+            )
             .eq("user_id", user_id)
             .execute()
         )
@@ -100,6 +106,8 @@ class RoomService:
                     item=shop_item,
                     acquired_at=row["acquired_at"],
                     acquisition_type=row.get("acquisition_type", "purchased"),
+                    gifted_by=row.get("gifted_by"),
+                    gift_seen=row.get("gift_seen", True),
                 )
             )
             inventory_raw.append({**row, "_shop_item": item_data})
@@ -306,3 +314,124 @@ class RoomService:
                     )
 
         return results
+
+    def _verify_partnership(self, user_id_a: str, user_id_b: str) -> bool:
+        """Check if an accepted partnership exists between two users."""
+        result = (
+            self.supabase.table("partnerships")
+            .select("id")
+            .eq("status", "accepted")
+            .or_(
+                f"and(requester_id.eq.{user_id_a},addressee_id.eq.{user_id_b}),"
+                f"and(requester_id.eq.{user_id_b},addressee_id.eq.{user_id_a})"
+            )
+            .limit(1)
+            .execute()
+        )
+        return bool(result.data)
+
+    def get_partner_room(self, viewer_id: str, owner_id: str) -> PartnerRoomResponse:
+        """Get a partner's room state (read-only, no visitors or essence balance)."""
+        if viewer_id == owner_id:
+            raise RoomServiceError("Cannot visit your own room via partner view")
+
+        if not self._verify_partnership(viewer_id, owner_id):
+            raise NotPartnerError("You must be partners to visit their room.")
+
+        room = self.ensure_room(owner_id)
+
+        inventory_result = (
+            self.supabase.table("user_items")
+            .select(
+                "id, item_id, acquired_at, acquisition_type, "
+                "gifted_by, gift_message, gift_seen, items(*)"
+            )
+            .eq("user_id", owner_id)
+            .execute()
+        )
+
+        inventory: list[InventoryItem] = []
+        for row in inventory_result.data or []:
+            item_data = row.get("items")
+            shop_item = ShopItem(**item_data) if item_data else None
+            inventory.append(
+                InventoryItem(
+                    id=row["id"],
+                    item_id=row["item_id"],
+                    item=shop_item,
+                    acquired_at=row["acquired_at"],
+                    acquisition_type=row.get("acquisition_type", "purchased"),
+                    gifted_by=row.get("gifted_by"),
+                    gift_seen=row.get("gift_seen", True),
+                )
+            )
+
+        companions_result = (
+            self.supabase.table("user_companions")
+            .select(
+                "id, user_id, companion_type, is_starter, discovered_at, "
+                "visit_scheduled_at, adopted_at"
+            )
+            .eq("user_id", owner_id)
+            .execute()
+        )
+        companions = [CompanionInfo(**row) for row in (companions_result.data or [])]
+
+        owner_result = (
+            self.supabase.table("users")
+            .select("display_name, username, pixel_avatar_id")
+            .eq("id", owner_id)
+            .execute()
+        )
+        owner_data = owner_result.data[0] if owner_result.data else {}
+
+        return PartnerRoomResponse(
+            room=room,
+            inventory=inventory,
+            companions=companions,
+            owner_name=owner_data.get("display_name") or owner_data.get("username", ""),
+            owner_username=owner_data.get("username", ""),
+            owner_pixel_avatar_id=owner_data.get("pixel_avatar_id"),
+        )
+
+    def get_unseen_gifts(self, user_id: str) -> list[GiftNotification]:
+        """Get all unseen gift items for toast notifications on room load."""
+        result = (
+            self.supabase.table("user_items")
+            .select(
+                "id, gifted_by, gift_message, items(name, name_zh), users!gifted_by(display_name, username)"
+            )
+            .eq("user_id", user_id)
+            .eq("gift_seen", False)
+            .not_.is_("gifted_by", "null")
+            .execute()
+        )
+
+        notifications: list[GiftNotification] = []
+        for row in result.data or []:
+            item_data = row.get("items") or {}
+            sender_data = row.get("users") or {}
+            notifications.append(
+                GiftNotification(
+                    inventory_item_id=row["id"],
+                    item_name=item_data.get("name", "Item"),
+                    item_name_zh=item_data.get("name_zh"),
+                    gifted_by_name=sender_data.get("display_name")
+                    or sender_data.get("username", "Someone"),
+                    gift_message=row.get("gift_message"),
+                )
+            )
+
+        return notifications
+
+    def mark_gifts_seen(self, user_id: str, inventory_ids: list[str]) -> None:
+        """Mark specific gift items as seen (dismisses toast notifications)."""
+        if not inventory_ids:
+            return
+        (
+            self.supabase.table("user_items")
+            .update({"gift_seen": True})
+            .eq("user_id", user_id)
+            .in_("id", inventory_ids)
+            .execute()
+        )
