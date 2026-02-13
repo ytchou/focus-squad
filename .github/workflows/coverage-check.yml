@@ -89,13 +89,43 @@ jobs:
           commit: ${{ github.event.workflow_run.head_sha }}
         continue-on-error: true
 
+      - name: Check if both artifacts are available
+        id: artifacts-check
+        run: |
+          BACKEND_EXISTS=false
+          FRONTEND_EXISTS=false
+
+          if [ -f ./coverage-reports/coverage.xml ]; then
+            BACKEND_EXISTS=true
+            echo "Backend coverage artifact found"
+          else
+            echo "Backend coverage artifact NOT found"
+          fi
+
+          if [ -f ./coverage-reports/coverage-final.json ]; then
+            FRONTEND_EXISTS=true
+            echo "Frontend coverage artifact found"
+          else
+            echo "Frontend coverage artifact NOT found"
+          fi
+
+          if [ "$BACKEND_EXISTS" = true ] && [ "$FRONTEND_EXISTS" = true ]; then
+            echo "both_available=true" >> $GITHUB_OUTPUT
+            echo "Both artifacts available - proceeding with coverage check"
+          else
+            echo "both_available=false" >> $GITHUB_OUTPUT
+            echo "Waiting for both CI workflows to complete..."
+          fi
+
       - name: Setup Python
+        if: steps.artifacts-check.outputs.both_available == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
       - name: Run coverage check
         id: coverage
+        if: steps.artifacts-check.outputs.both_available == 'true'
         run: |
           python scripts/ci/coverage-check.py \
             --backend ./coverage-reports/coverage.xml \
@@ -106,6 +136,7 @@ jobs:
 
       - name: Read coverage summary
         id: read-summary
+        if: steps.artifacts-check.outputs.both_available == 'true'
         run: |
           if [ -f ./coverage-summary.md ]; then
             # Read file and escape for GitHub Actions output
@@ -127,18 +158,26 @@ jobs:
             const fs = require('fs');
             const checkId = ${{ steps.check.outputs.check_id }};
             const coverageResult = '${{ steps.coverage.outcome }}';
+            const bothArtifactsAvailable = '${{ steps.artifacts-check.outputs.both_available }}' === 'true';
 
             let summary = 'Coverage analysis completed.';
             let title = 'Coverage Report';
             let conclusion = 'success';
 
-            // Read the summary file if it exists
-            try {
-              summary = fs.readFileSync('./coverage-summary.md', 'utf8');
-            } catch (e) {
-              summary = 'Could not generate coverage report. Check if coverage artifacts were uploaded.';
+            // If we're still waiting for both artifacts, mark as neutral and skip
+            if (!bothArtifactsAvailable) {
+              summary = 'Waiting for both Backend CI and Frontend CI to complete. Coverage report will be generated when both are ready.';
               conclusion = 'neutral';
-              title = 'Coverage Report (No Data)';
+              title = 'Coverage Report (Pending)';
+            } else {
+              // Read the summary file if it exists
+              try {
+                summary = fs.readFileSync('./coverage-summary.md', 'utf8');
+              } catch (e) {
+                summary = 'Could not generate coverage report. Check if coverage artifacts were uploaded.';
+                conclusion = 'neutral';
+                title = 'Coverage Report (No Data)';
+              }
             }
 
             if (coverageResult === 'failure') {
@@ -161,7 +200,7 @@ jobs:
             console.log(`Updated check run ${checkId} with conclusion: ${conclusion}`);
 
       - name: Post PR comment
-        if: steps.pr.outputs.found == 'true' && steps.read-summary.outputs.has_summary == 'true'
+        if: steps.pr.outputs.found == 'true' && steps.read-summary.outputs.has_summary == 'true' && steps.artifacts-check.outputs.both_available == 'true'
         uses: actions/github-script@v7
         with:
           script: |

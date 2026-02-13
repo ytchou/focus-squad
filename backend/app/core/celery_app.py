@@ -23,6 +23,7 @@ celery_app = Celery(
         "app.tasks.credit_tasks",
         "app.tasks.session_tasks",
         "app.tasks.schedule_tasks",
+        "app.tasks.rating_tasks",
     ],
 )
 
@@ -57,6 +58,10 @@ celery_app.conf.update(
         "create-scheduled-sessions-hourly": {
             "task": "app.tasks.schedule_tasks.create_scheduled_sessions",
             "schedule": crontab(minute=0),  # Every hour at :00
+        },
+        "cleanup-expired-pending-ratings": {
+            "task": "app.tasks.rating_tasks.cleanup_expired_pending_ratings",
+            "schedule": crontab(hour=1, minute=0),  # Daily at 01:00 UTC
         },
     },
 )
