@@ -112,8 +112,9 @@ class UserService:
         """
         Create credits record with retry for referral code collision.
 
-        The DB trigger generates referral_code automatically. If a collision
-        occurs (unique constraint violation), we retry up to max_attempts times.
+        The DB trigger generates referral_code automatically using timestamp.
+        If a collision occurs (unique constraint violation), we add a small
+        delay before retrying to ensure a different timestamp is used.
 
         Args:
             user_id: User ID to create credits for
@@ -122,6 +123,7 @@ class UserService:
         Raises:
             UserServiceError: If unable to create credits after max attempts
         """
+        import time
         from datetime import datetime, timezone
 
         credits_data = {
@@ -142,6 +144,8 @@ class UserService:
                 # Check if it's a unique constraint violation on referral_code
                 if "unique" in error_str and "referral_code" in error_str:
                     last_error = e
+                    # Small delay to ensure DB trigger gets different timestamp
+                    time.sleep(0.01)  # 10ms delay
                     continue  # Retry - DB trigger will generate new code
                 raise  # Re-raise non-collision errors
 

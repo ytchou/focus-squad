@@ -541,3 +541,27 @@ class TestRequireAuthDeletedUser:
                 result = await require_auth_from_state(mock_request)
                 assert result.auth_id == "auth-789"
                 mock_supabase.table.assert_not_called()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_database_error_fails_open(self) -> None:
+        """Database error during deleted check fails open (allows request)."""
+        mock_request = MagicMock()
+        mock_user = MagicMock()
+        mock_user.is_authenticated = True
+        mock_user.auth_id = "auth-db-error"
+        mock_user.email = "dberror@example.com"
+        mock_request.state.user = mock_user
+        mock_request.state.token_error = None
+
+        mock_supabase = MagicMock()
+        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.side_effect = (
+            Exception("Database connection failed")
+        )
+
+        with patch("app.core.auth.get_supabase", return_value=mock_supabase):
+            with patch("app.core.auth._deleted_user_cache") as mock_cache:
+                mock_cache.is_deleted.return_value = None  # Cache miss
+                # Should NOT raise - fails open to allow request
+                result = await require_auth_from_state(mock_request)
+                assert result.auth_id == "auth-db-error"
