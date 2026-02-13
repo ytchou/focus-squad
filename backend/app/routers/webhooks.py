@@ -163,15 +163,15 @@ async def livekit_webhook(
     # Get raw body for signature verification
     body = await request.body()
 
-    # Skip signature validation in dev mode
-    if not settings.livekit_api_key or settings.livekit_api_key == "your-livekit-api-key":
+    # Skip signature validation only in development
+    if settings.environment == "development":
         logger.warning("LiveKit webhook received in dev mode - signature not validated")
         try:
             event_data = json.loads(body)
         except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail="Invalid JSON body")
     else:
-        # Validate webhook signature
+        # Validate webhook signature in staging/production
         try:
             receiver = api.WebhookReceiver(
                 settings.livekit_api_key,
