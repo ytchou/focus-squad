@@ -18,6 +18,9 @@ class Settings(BaseSettings):
         "livekit_url",
     ]
 
+    # Environment (development, staging, production)
+    environment: str = "development"
+
     # App
     app_name: str = "Focus Squad API"
     debug: bool = False

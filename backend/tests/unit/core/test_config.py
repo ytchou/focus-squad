@@ -74,3 +74,51 @@ class TestSecretValidation:
         with patch.dict("os.environ", env, clear=True):
             settings = Settings(_env_file=None)
             assert settings.jwt_secret == ""  # Default empty is OK
+
+
+class TestEnvironmentSetting:
+    """Test environment setting validation."""
+
+    def test_environment_defaults_to_development(self):
+        """Environment defaults to development when not set."""
+        env = {
+            "SUPABASE_URL": "https://test.supabase.co",
+            "SUPABASE_ANON_KEY": "test-anon-key",
+            "SUPABASE_SERVICE_ROLE_KEY": "test-service-key",
+            "LIVEKIT_API_KEY": "test-livekit-key",
+            "LIVEKIT_API_SECRET": "test-livekit-secret",
+            "LIVEKIT_URL": "wss://test.livekit.cloud",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            settings = Settings(_env_file=None)
+            assert settings.environment == "development"
+
+    def test_environment_can_be_set_to_production(self):
+        """Environment can be explicitly set to production."""
+        env = {
+            "SUPABASE_URL": "https://test.supabase.co",
+            "SUPABASE_ANON_KEY": "test-anon-key",
+            "SUPABASE_SERVICE_ROLE_KEY": "test-service-key",
+            "LIVEKIT_API_KEY": "test-livekit-key",
+            "LIVEKIT_API_SECRET": "test-livekit-secret",
+            "LIVEKIT_URL": "wss://test.livekit.cloud",
+            "ENVIRONMENT": "production",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            settings = Settings(_env_file=None)
+            assert settings.environment == "production"
+
+    def test_environment_can_be_set_to_staging(self):
+        """Environment can be set to staging."""
+        env = {
+            "SUPABASE_URL": "https://test.supabase.co",
+            "SUPABASE_ANON_KEY": "test-anon-key",
+            "SUPABASE_SERVICE_ROLE_KEY": "test-service-key",
+            "LIVEKIT_API_KEY": "test-livekit-key",
+            "LIVEKIT_API_SECRET": "test-livekit-secret",
+            "LIVEKIT_URL": "wss://test.livekit.cloud",
+            "ENVIRONMENT": "staging",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            settings = Settings(_env_file=None)
+            assert settings.environment == "staging"
