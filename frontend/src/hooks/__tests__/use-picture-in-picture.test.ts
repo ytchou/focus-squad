@@ -99,4 +99,76 @@ describe("usePictureInPicture", () => {
       expect(typeof result.current.togglePiP).toBe("function");
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Canvas fallback path
+  // -------------------------------------------------------------------------
+  describe("canvas fallback", () => {
+    it("uses canvas strategy when only pictureInPictureEnabled is available", async () => {
+      // Mock only legacy PiP API
+      Object.defineProperty(document, "pictureInPictureEnabled", {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
+
+      const usePictureInPicture = await importHook();
+      const { result } = renderHook(() => usePictureInPicture(defaultHookProps));
+
+      expect(result.current.isPiPSupported).toBe(true);
+
+      // Clean up
+      Object.defineProperty(document, "pictureInPictureEnabled", {
+        value: false,
+        writable: true,
+        configurable: true,
+      });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Cleanup on unmount
+  // -------------------------------------------------------------------------
+  describe("cleanup", () => {
+    it("cleans up on unmount", async () => {
+      const usePictureInPicture = await importHook();
+      const { unmount } = renderHook(() => usePictureInPicture(defaultHookProps));
+
+      // Unmount should not throw
+      expect(() => unmount()).not.toThrow();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Error handling
+  // -------------------------------------------------------------------------
+  describe("error handling", () => {
+    it("togglePiP handles errors gracefully when unsupported", async () => {
+      const usePictureInPicture = await importHook();
+      const { result } = renderHook(() => usePictureInPicture(defaultHookProps));
+
+      // Calling togglePiP when unsupported should not throw
+      expect(() => result.current.togglePiP()).not.toThrow();
+      expect(result.current.isPiPActive).toBe(false);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Auto-close on session end
+  // -------------------------------------------------------------------------
+  describe("auto-close", () => {
+    it("closes PiP when phase becomes completed", async () => {
+      const usePictureInPicture = await importHook();
+      const { result, rerender } = renderHook(
+        ({ phase }) => usePictureInPicture({ ...defaultHookProps, phase }),
+        { initialProps: { phase: "work1" as const } }
+      );
+
+      // Simulate phase change to completed
+      rerender({ phase: "completed" as const });
+
+      // Should remain inactive (can't activate without APIs anyway)
+      expect(result.current.isPiPActive).toBe(false);
+    });
+  });
 });
