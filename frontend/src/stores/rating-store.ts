@@ -132,7 +132,14 @@ export const useRatingStore = create<RatingState>()((set, get) => ({
     })),
 
   submitRatings: async (sessionId) => {
-    const { ratings } = get();
+    const { ratings, pendingSessionId } = get();
+
+    // Guard: prevent rating wrong session
+    if (pendingSessionId && sessionId !== pendingSessionId) {
+      set({ error: "Session mismatch: cannot rate a different session" });
+      return;
+    }
+
     set({ isSubmitting: true, error: null });
 
     try {
@@ -163,6 +170,14 @@ export const useRatingStore = create<RatingState>()((set, get) => ({
   },
 
   skipAll: async (sessionId) => {
+    const { pendingSessionId } = get();
+
+    // Guard: prevent skipping wrong session
+    if (pendingSessionId && sessionId !== pendingSessionId) {
+      set({ error: "Session mismatch: cannot rate a different session" });
+      return;
+    }
+
     set({ isSubmitting: true, error: null });
 
     try {
