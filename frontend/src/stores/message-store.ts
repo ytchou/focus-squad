@@ -108,6 +108,16 @@ export const useMessageStore = create<MessageState>()((set, get) => ({
   },
 
   openConversation: async (id: string) => {
+    const prevId = get().activeConversationId;
+
+    // Clear pagination state for previous conversation to ensure fresh data on return
+    if (prevId && prevId !== id) {
+      set((state) => ({
+        cursors: { ...state.cursors, [prevId]: null },
+        hasMore: { ...state.hasMore, [prevId]: true },
+      }));
+    }
+
     set({ activeConversationId: id, isLoadingMessages: true });
 
     try {
