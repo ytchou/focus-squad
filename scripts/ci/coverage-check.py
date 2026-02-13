@@ -10,15 +10,14 @@ Thresholds:
 """
 
 import argparse
+import fnmatch
 import json
 import os
 import sys
 import xml.etree.ElementTree as ET
-from typing import Dict, Tuple
-import fnmatch
 
 
-def parse_pytest_coverage(xml_path: str) -> Dict[str, Dict[str, float]]:
+def parse_pytest_coverage(xml_path: str) -> dict[str, dict[str, float]]:
     """
     Parse pytest coverage XML (Cobertura format).
 
@@ -44,9 +43,7 @@ def parse_pytest_coverage(xml_path: str) -> Dict[str, Dict[str, float]]:
                 if not lines:
                     continue
 
-                covered = len(
-                    [line for line in lines if int(line.get("hits", "0")) > 0]
-                )
+                covered = len([line for line in lines if int(line.get("hits", "0")) > 0])
                 total = len(lines)
                 coverage_pct = (covered / total * 100) if total > 0 else 0
 
@@ -63,7 +60,7 @@ def parse_pytest_coverage(xml_path: str) -> Dict[str, Dict[str, float]]:
         sys.exit(1)
 
 
-def parse_vitest_coverage(json_path: str) -> Dict[str, Dict[str, float]]:
+def parse_vitest_coverage(json_path: str) -> dict[str, dict[str, float]]:
     """
     Parse Vitest coverage JSON (v8 format).
 
@@ -74,7 +71,7 @@ def parse_vitest_coverage(json_path: str) -> Dict[str, Dict[str, float]]:
         return {}
 
     try:
-        with open(json_path, "r") as f:
+        with open(json_path) as f:
             data = json.load(f)
 
         file_coverage = {}
@@ -133,7 +130,7 @@ def should_exclude_file(filepath: str, rules: dict) -> bool:
     return False
 
 
-def classify_file(filepath: str, rules: dict) -> Tuple[str, int]:
+def classify_file(filepath: str, rules: dict) -> tuple[str, int]:
     """
     Classify file as 'critical' or 'default' and return threshold.
 
@@ -158,7 +155,9 @@ def classify_file(filepath: str, rules: dict) -> Tuple[str, int]:
     # Check exact path matches for critical files
     critical_paths = stack_rules.get("critical_paths", [])
     for critical_path in critical_paths:
-        if filepath.endswith(critical_path) or critical_path in filepath:
+        # Match if filepath ends with /critical_path or equals critical_path exactly
+        # This prevents false positives like "use-countdown.ts.backup" matching "use-countdown.ts"
+        if filepath.endswith("/" + critical_path) or filepath == critical_path:
             return "critical", stack_rules.get("critical_threshold", 90)
 
     # Check glob patterns for critical files
@@ -171,9 +170,7 @@ def classify_file(filepath: str, rules: dict) -> Tuple[str, int]:
     return "default", stack_rules.get("default_threshold", 50)
 
 
-def check_coverage(
-    file_coverage: Dict[str, Dict[str, float]], rules: dict
-) -> Tuple[dict, int]:
+def check_coverage(file_coverage: dict[str, dict[str, float]], rules: dict) -> tuple[dict, int]:
     """
     Check coverage against rules and categorize results.
 
@@ -210,9 +207,7 @@ def check_coverage(
                 results["default_passing"].append((filepath, cov_data, threshold))
 
     # Exit code: fail if ANY files below threshold (both critical and default are blocking)
-    has_failures = (
-        len(results["critical_failures"]) > 0 or len(results["default_failures"]) > 0
-    )
+    has_failures = len(results["critical_failures"]) > 0 or len(results["default_failures"]) > 0
     exit_code = 1 if has_failures else 0
 
     return results, exit_code
@@ -232,8 +227,8 @@ def shorten_path(filepath: str) -> str:
 
 def generate_markdown_summary(
     results: dict,
-    backend_coverage: Dict[str, Dict[str, float]],
-    frontend_coverage: Dict[str, Dict[str, float]],
+    backend_coverage: dict[str, dict[str, float]],
+    frontend_coverage: dict[str, dict[str, float]],
 ) -> str:
     """
     Generate concise markdown summary for PR comment.
@@ -244,9 +239,7 @@ def generate_markdown_summary(
     3. Table of files that fail (only failures, not all files)
     """
     # Count totals
-    critical_total = len(results["critical_failures"]) + len(
-        results["critical_passing"]
-    )
+    critical_total = len(results["critical_failures"]) + len(results["critical_passing"])
     critical_failed = len(results["critical_failures"])
 
     default_total = len(results["default_failures"]) + len(results["default_passing"])
@@ -258,17 +251,13 @@ def generate_markdown_summary(
     backend_total_lines = sum(f["total"] for f in backend_coverage.values())
     backend_covered_lines = sum(f["covered"] for f in backend_coverage.values())
     backend_pct = (
-        (backend_covered_lines / backend_total_lines * 100)
-        if backend_total_lines > 0
-        else 0
+        (backend_covered_lines / backend_total_lines * 100) if backend_total_lines > 0 else 0
     )
 
     frontend_total_lines = sum(f["total"] for f in frontend_coverage.values())
     frontend_covered_lines = sum(f["covered"] for f in frontend_coverage.values())
     frontend_pct = (
-        (frontend_covered_lines / frontend_total_lines * 100)
-        if frontend_total_lines > 0
-        else 0
+        (frontend_covered_lines / frontend_total_lines * 100) if frontend_total_lines > 0 else 0
     )
 
     # Determine status
@@ -319,9 +308,7 @@ def generate_markdown_summary(
         lines.append("")
         lines.append("---")
         lines.append("")
-        lines.append(
-            "**This PR is blocked.** All files must meet their coverage threshold."
-        )
+        lines.append("**This PR is blocked.** All files must meet their coverage threshold.")
     else:
         lines.append("All files meet coverage thresholds.")
 
@@ -332,12 +319,8 @@ def main():
     parser = argparse.ArgumentParser(description="Check test coverage against rules")
     parser.add_argument("--backend", help="Path to backend coverage XML file")
     parser.add_argument("--frontend", help="Path to frontend coverage JSON file")
-    parser.add_argument(
-        "--rules", required=True, help="Path to coverage rules JSON file"
-    )
-    parser.add_argument(
-        "--output", required=True, help="Path to output markdown summary file"
-    )
+    parser.add_argument("--rules", required=True, help="Path to coverage rules JSON file")
+    parser.add_argument("--output", required=True, help="Path to output markdown summary file")
 
     args = parser.parse_args()
 
@@ -346,7 +329,7 @@ def main():
         print(f"Rules file not found: {args.rules}", file=sys.stderr)
         sys.exit(1)
 
-    with open(args.rules, "r") as f:
+    with open(args.rules) as f:
         rules = json.load(f)
 
     # Parse coverage reports
@@ -397,12 +380,12 @@ def main():
 
     if critical_failed:
         print(f"\n{critical_failed} critical file(s) below 90% threshold:")
-        for filepath, cov_data, threshold in results["critical_failures"]:
+        for filepath, cov_data, _threshold in results["critical_failures"]:
             print(f"  - {shorten_path(filepath)}: {cov_data['percentage']}%")
 
     if default_failed:
         print(f"\n{default_failed} non-critical file(s) below 50% threshold:")
-        for filepath, cov_data, threshold in results["default_failures"]:
+        for filepath, cov_data, _threshold in results["default_failures"]:
             print(f"  - {shorten_path(filepath)}: {cov_data['percentage']}%")
 
     if not critical_failed and not default_failed:
