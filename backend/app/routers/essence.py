@@ -83,7 +83,7 @@ async def purchase_item(
 
 
 @router.post("/gift", response_model=GiftPurchaseResponse)
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 async def gift_item(
     request: Request,
     gift_request: GiftPurchaseRequest,

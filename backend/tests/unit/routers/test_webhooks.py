@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.routers.webhooks import (
+    _create_pending_ratings,
     _event_to_dict,
     _handle_participant_joined,
     _handle_participant_left,
@@ -606,3 +607,145 @@ class TestEventToDict:
         assert result["track"]["type"] == "audio"
         assert result["track"]["source"] == "microphone"
         assert result["track"]["sid"] == "TR_1"
+
+
+# =============================================================================
+# _create_pending_ratings Tests
+# =============================================================================
+
+
+class TestCreatePendingRatings:
+    """Tests for the _create_pending_ratings() helper."""
+
+    @pytest.mark.unit
+    def test_creates_pending_ratings_for_all_participants(self) -> None:
+        """Creates pending_ratings for each human participant."""
+        mock_supabase = MagicMock()
+        mock_table = MagicMock()
+        mock_table.insert.return_value.execute.return_value.data = [{}]
+        mock_supabase.table.return_value = mock_table
+
+        participants = [
+            {"user_id": "user-1", "participant_type": "human"},
+            {"user_id": "user-2", "participant_type": "human"},
+            {"user_id": "user-3", "participant_type": "human"},
+        ]
+
+        count = _create_pending_ratings(mock_supabase, "session-1", participants)
+
+        assert count == 3
+        assert mock_table.insert.call_count == 3
+
+    @pytest.mark.unit
+    def test_pending_ratings_excludes_self(self) -> None:
+        """Each pending_rating's rateable_user_ids excludes the user themselves."""
+        mock_supabase = MagicMock()
+        mock_table = MagicMock()
+        mock_table.insert.return_value.execute.return_value.data = [{}]
+        mock_supabase.table.return_value = mock_table
+
+        participants = [
+            {"user_id": "user-1", "participant_type": "human"},
+            {"user_id": "user-2", "participant_type": "human"},
+        ]
+
+        _create_pending_ratings(mock_supabase, "session-1", participants)
+
+        # Check insert calls
+        calls = mock_table.insert.call_args_list
+        assert len(calls) == 2
+
+        # First call should be for user-1 with rateable_user_ids = ["user-2"]
+        call1_data = calls[0].args[0]
+        assert call1_data["user_id"] == "user-1"
+        assert call1_data["rateable_user_ids"] == ["user-2"]
+
+        # Second call should be for user-2 with rateable_user_ids = ["user-1"]
+        call2_data = calls[1].args[0]
+        assert call2_data["user_id"] == "user-2"
+        assert call2_data["rateable_user_ids"] == ["user-1"]
+
+    @pytest.mark.unit
+    def test_pending_ratings_expires_in_48_hours(self) -> None:
+        """The expires_at is set to ~48 hours from now."""
+        mock_supabase = MagicMock()
+        mock_table = MagicMock()
+        mock_table.insert.return_value.execute.return_value.data = [{}]
+        mock_supabase.table.return_value = mock_table
+
+        participants = [
+            {"user_id": "user-1", "participant_type": "human"},
+            {"user_id": "user-2", "participant_type": "human"},
+        ]
+
+        _create_pending_ratings(mock_supabase, "session-1", participants)
+
+        call_data = mock_table.insert.call_args_list[0].args[0]
+        expires_at = datetime.fromisoformat(call_data["expires_at"])
+        now = datetime.now(timezone.utc)
+
+        # Should expire in approximately 48 hours (allow 1 minute tolerance)
+        delta = expires_at - now
+        assert timedelta(hours=47, minutes=59) < delta < timedelta(hours=48, minutes=1)
+
+    @pytest.mark.unit
+    def test_no_pending_ratings_for_solo_session(self) -> None:
+        """Does not create pending_ratings for sessions with only 1 human."""
+        mock_supabase = MagicMock()
+        mock_table = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        participants = [
+            {"user_id": "user-1", "participant_type": "human"},
+        ]
+
+        count = _create_pending_ratings(mock_supabase, "session-1", participants)
+
+        assert count == 0
+        mock_table.insert.assert_not_called()
+
+    @pytest.mark.unit
+    def test_excludes_ai_participants(self) -> None:
+        """Does not create pending_ratings for AI participants."""
+        mock_supabase = MagicMock()
+        mock_table = MagicMock()
+        mock_table.insert.return_value.execute.return_value.data = [{}]
+        mock_supabase.table.return_value = mock_table
+
+        participants = [
+            {"user_id": "user-1", "participant_type": "human"},
+            {"user_id": "user-2", "participant_type": "human"},
+            {"user_id": None, "participant_type": "ai", "ai_companion_name": "Buddy"},
+        ]
+
+        count = _create_pending_ratings(mock_supabase, "session-1", participants)
+
+        assert count == 2
+        # Only 2 humans should get pending_ratings
+        assert mock_table.insert.call_count == 2
+
+    @pytest.mark.unit
+    def test_handles_insert_failure_gracefully(self) -> None:
+        """Continues creating records even if one fails."""
+        mock_supabase = MagicMock()
+        mock_table = MagicMock()
+        # First insert succeeds, second fails, third succeeds
+        mock_table.insert.return_value.execute.side_effect = [
+            MagicMock(data=[{}]),
+            Exception("DB error"),
+            MagicMock(data=[{}]),
+        ]
+        mock_supabase.table.return_value = mock_table
+
+        participants = [
+            {"user_id": "user-1", "participant_type": "human"},
+            {"user_id": "user-2", "participant_type": "human"},
+            {"user_id": "user-3", "participant_type": "human"},
+        ]
+
+        count = _create_pending_ratings(mock_supabase, "session-1", participants)
+
+        # 2 successful inserts
+        assert count == 2
+        # 3 insert attempts
+        assert mock_table.insert.call_count == 3

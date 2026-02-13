@@ -23,6 +23,65 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# Pending Ratings Helper
+# =============================================================================
+
+
+def _create_pending_ratings(supabase, session_id: str, participants: list[dict]) -> int:
+    """
+    Create pending_ratings records for all human participants.
+
+    Each participant gets a record listing the other human participants
+    they need to rate. Only creates records if there are 2+ human participants.
+
+    Args:
+        supabase: Supabase client
+        session_id: The completed session ID
+        participants: List of session_participants records
+
+    Returns:
+        Number of pending_ratings records created
+    """
+    # Extract user_ids of human participants
+    human_user_ids = [
+        p.get("user_id")
+        for p in participants
+        if p.get("user_id") and p.get("participant_type") == "human"
+    ]
+
+    # Need at least 2 humans for peer rating
+    if len(human_user_ids) < 2:
+        logger.info(f"Session {session_id}: <2 humans, skipping pending_ratings")
+        return 0
+
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=48)
+    created_count = 0
+
+    for user_id in human_user_ids:
+        # Get other human participants this user can rate
+        rateable_ids = [uid for uid in human_user_ids if uid != user_id]
+
+        try:
+            supabase.table("pending_ratings").insert(
+                {
+                    "user_id": user_id,
+                    "session_id": session_id,
+                    "rateable_user_ids": rateable_ids,
+                    "expires_at": expires_at.isoformat(),
+                }
+            ).execute()
+            created_count += 1
+        except Exception as e:
+            logger.error(f"Failed to create pending_rating for user {user_id}: {e}")
+
+    logger.info(
+        f"Created {created_count} pending_ratings for session {session_id} "
+        f"({len(human_user_ids)} human participants)"
+    )
+    return created_count
+
+
+# =============================================================================
 # Session Completion Helper
 # =============================================================================
 
@@ -433,7 +492,10 @@ async def _handle_room_finished(event_data: dict) -> None:
 
     logger.info(f"Awarded essence to {essence_awarded} participants in session {session_id}")
 
-    # 3. Schedule cleanup task (handles stats + referrals)
+    # 3. Create pending_ratings for peer review
+    _create_pending_ratings(supabase, session_id, human_participants.data or [])
+
+    # 4. Schedule cleanup task (handles stats + referrals)
     try:
         from app.tasks.livekit_tasks import cleanup_ended_session
 

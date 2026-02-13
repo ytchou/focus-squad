@@ -17,6 +17,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
+from app.core.rate_limit import limiter
 from app.models.room import (
     GiftNotification,
     LayoutUpdate,
@@ -56,6 +57,7 @@ async def get_room_state(
 
 
 @router.put("/layout", response_model=RoomState)
+@limiter.limit("15/minute")
 async def update_room_layout(
     request: Request,
     layout_update: LayoutUpdate,

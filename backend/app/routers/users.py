@@ -76,7 +76,9 @@ async def update_my_profile(
 
 
 @router.delete("/me", response_model=DeleteAccountResponse)
+@limiter.limit("5/minute")
 async def delete_my_account(
+    request: Request,
     current_user: AuthUser = Depends(require_auth_from_state),
     user_service: UserService = Depends(get_user_service),
 ) -> DeleteAccountResponse:

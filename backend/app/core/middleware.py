@@ -1,12 +1,15 @@
 """
-JWT validation middleware for FastAPI.
+Middleware for FastAPI.
 
-Intercepts all requests, validates JWT tokens if present,
-and attaches user context to request.state for downstream use.
+Contains:
+- CorrelationIDMiddleware: Extracts/generates request correlation IDs
+- JWTValidationMiddleware: Validates JWT tokens and attaches user context
 """
 
 import logging
 import time
+import uuid
+from contextvars import ContextVar
 from typing import Optional
 
 from fastapi import Request
@@ -17,6 +20,55 @@ from starlette.responses import Response
 from app.core.auth import AuthOptionalUser, get_signing_key
 
 logger = logging.getLogger(__name__)
+
+# Context variable for correlation ID - accessible from any async context
+correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="")
+
+
+def get_correlation_id() -> str:
+    """Get the current correlation ID from context."""
+    return correlation_id_var.get()
+
+
+class CorrelationIDMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that extracts or generates a correlation ID for each request.
+
+    The correlation ID is:
+    1. Extracted from X-Request-ID or X-Correlation-ID header if present
+    2. Generated as a UUID if not present
+    3. Stored in request.state.correlation_id for route handlers
+    4. Stored in ContextVar for logging filter access
+    5. Returned in X-Request-ID response header
+
+    Usage in routes:
+        @router.get("/example")
+        async def example(request: Request):
+            return {"correlation_id": request.state.correlation_id}
+    """
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        # Extract from headers or generate
+        correlation_id = (
+            request.headers.get("X-Request-ID")
+            or request.headers.get("X-Correlation-ID")
+            or str(uuid.uuid4())
+        )
+
+        # Store in request state (for route handlers)
+        request.state.correlation_id = correlation_id
+
+        # Store in context var (for logging)
+        token = correlation_id_var.set(correlation_id)
+
+        try:
+            response = await call_next(request)
+            # Add to response headers
+            response.headers["X-Request-ID"] = correlation_id
+            return response
+        finally:
+            # Reset context var
+            correlation_id_var.reset(token)
 
 
 class JWTValidationMiddleware(BaseHTTPMiddleware):

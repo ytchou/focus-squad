@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import setup_logging
-from app.core.middleware import JWTValidationMiddleware
+from app.core.middleware import CorrelationIDMiddleware, JWTValidationMiddleware
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.redis import close_redis, init_redis
 from app.routers import (
@@ -64,6 +64,10 @@ app.add_middleware(
 
 # JWT validation middleware (runs after CORS, before routes)
 app.add_middleware(JWTValidationMiddleware)
+
+# Correlation ID middleware (runs before JWT, generates/extracts request IDs)
+# Note: Starlette middleware is LIFO, so this runs first despite being added after
+app.add_middleware(CorrelationIDMiddleware)
 
 # Rate limiting (slowapi + Redis)
 app.state.limiter = limiter

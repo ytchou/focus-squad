@@ -1,4 +1,4 @@
-"""Unit tests for JWT middleware (app/core/middleware.py)."""
+"""Unit tests for middleware (app/core/middleware.py)."""
 
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -9,7 +9,13 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.core.auth import AuthOptionalUser
-from app.core.middleware import JWTValidationMiddleware, RequestLoggingMiddleware
+from app.core.middleware import (
+    CorrelationIDMiddleware,
+    JWTValidationMiddleware,
+    RequestLoggingMiddleware,
+    correlation_id_var,
+    get_correlation_id,
+)
 
 
 class TestJWTValidationMiddleware:
@@ -276,3 +282,139 @@ class TestRequestLoggingMiddleware:
         response = await middleware.dispatch(request, call_next)
 
         assert response.status_code == 200
+
+
+class TestCorrelationIDMiddleware:
+    """Tests for CorrelationIDMiddleware."""
+
+    @pytest.fixture
+    def middleware(self):
+        """Create middleware instance."""
+        app = MagicMock()
+        return CorrelationIDMiddleware(app)
+
+    @pytest.fixture
+    def mock_call_next(self):
+        """Mock call_next function that returns a response."""
+
+        async def call_next(request):
+            return Response(status_code=200)
+
+        return call_next
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_generates_correlation_id_when_missing(self, middleware, mock_call_next) -> None:
+        """Generates UUID correlation ID when no header present."""
+        request = MagicMock(spec=Request)
+        request.state = MagicMock()
+        request.headers = {}
+
+        response = await middleware.dispatch(request, mock_call_next)
+
+        # Should be a valid UUID format
+        correlation_id = request.state.correlation_id
+        assert correlation_id is not None
+        assert len(correlation_id) == 36  # UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        assert "-" in correlation_id
+
+        # Should be in response header
+        assert response.headers["X-Request-ID"] == correlation_id
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_extracts_correlation_id_from_x_request_id(
+        self, middleware, mock_call_next
+    ) -> None:
+        """Extracts correlation ID from X-Request-ID header."""
+        request = MagicMock(spec=Request)
+        request.state = MagicMock()
+        request.headers = {"X-Request-ID": "test-request-123"}
+
+        response = await middleware.dispatch(request, mock_call_next)
+
+        assert request.state.correlation_id == "test-request-123"
+        assert response.headers["X-Request-ID"] == "test-request-123"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_extracts_correlation_id_from_x_correlation_id(
+        self, middleware, mock_call_next
+    ) -> None:
+        """Extracts correlation ID from X-Correlation-ID header."""
+        request = MagicMock(spec=Request)
+        request.state = MagicMock()
+        request.headers = {"X-Correlation-ID": "correlation-456"}
+
+        response = await middleware.dispatch(request, mock_call_next)
+
+        assert request.state.correlation_id == "correlation-456"
+        assert response.headers["X-Request-ID"] == "correlation-456"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_x_request_id_takes_precedence(self, middleware, mock_call_next) -> None:
+        """X-Request-ID takes precedence over X-Correlation-ID."""
+        request = MagicMock(spec=Request)
+        request.state = MagicMock()
+        request.headers = {
+            "X-Request-ID": "request-id",
+            "X-Correlation-ID": "correlation-id",
+        }
+
+        response = await middleware.dispatch(request, mock_call_next)
+
+        assert request.state.correlation_id == "request-id"
+        assert response.headers["X-Request-ID"] == "request-id"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_correlation_id_available_in_context_var(self, middleware) -> None:
+        """Correlation ID is available via ContextVar during request."""
+        request = MagicMock(spec=Request)
+        request.state = MagicMock()
+        request.headers = {"X-Request-ID": "context-test-789"}
+
+        captured_id = None
+
+        async def capturing_call_next(req):
+            nonlocal captured_id
+            captured_id = get_correlation_id()
+            return Response(status_code=200)
+
+        await middleware.dispatch(request, capturing_call_next)
+
+        assert captured_id == "context-test-789"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_context_var_reset_after_request(self, middleware, mock_call_next) -> None:
+        """ContextVar is reset after request completes."""
+        # Clear any existing value
+        correlation_id_var.set("")
+
+        request = MagicMock(spec=Request)
+        request.state = MagicMock()
+        request.headers = {"X-Request-ID": "temp-id"}
+
+        await middleware.dispatch(request, mock_call_next)
+
+        # After request, context var should be reset (empty or default)
+        assert get_correlation_id() == ""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_response_header_set_even_on_error(self, middleware) -> None:
+        """Response header is set even if handler raises (via finally)."""
+        request = MagicMock(spec=Request)
+        request.state = MagicMock()
+        request.headers = {"X-Request-ID": "error-test"}
+
+        async def error_call_next(req):
+            raise ValueError("Handler error")
+
+        with pytest.raises(ValueError):
+            await middleware.dispatch(request, error_call_next)
+
+        # Context var should still be reset
+        assert get_correlation_id() == ""

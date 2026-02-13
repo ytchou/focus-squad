@@ -123,7 +123,7 @@ export const useShopStore = create<ShopStoreState>()((set, get) => ({
         recipient_id: recipientId,
         gift_message: message || null,
       });
-      await get().fetchBalance();
+      await Promise.all([get().fetchBalance(), get().fetchInventory()]);
       set({ isPurchasing: false, isGifting: false, selectedRecipientId: null });
       return result;
     } catch {
