@@ -115,4 +115,152 @@ describe("Shop Store", () => {
       expect(state.selectedRecipientId).toBeNull();
     });
   });
+
+  describe("fetchShop", () => {
+    it("should fetch shop catalog successfully", async () => {
+      const mockCatalog = [
+        { id: "item-1", name: "Lamp", price: 10 },
+        { id: "item-2", name: "Chair", price: 20 },
+      ];
+      (api.get as Mock).mockResolvedValueOnce(mockCatalog);
+
+      const store = useShopStore.getState();
+      await store.fetchShop();
+
+      const state = useShopStore.getState();
+      expect(state.catalog).toEqual(mockCatalog);
+      expect(state.isLoading).toBe(false);
+      expect(api.get).toHaveBeenCalledWith("/api/v1/essence/shop");
+    });
+
+    it("should fetch shop with category filter", async () => {
+      const mockCatalog = [{ id: "item-1", name: "Lamp" }];
+      (api.get as Mock).mockResolvedValueOnce(mockCatalog);
+
+      const store = useShopStore.getState();
+      await store.fetchShop("furniture");
+
+      expect(api.get).toHaveBeenCalledWith("/api/v1/essence/shop?category=furniture");
+    });
+
+    it("should fetch shop with tier filter", async () => {
+      const mockCatalog = [{ id: "item-1", name: "Rare Lamp" }];
+      (api.get as Mock).mockResolvedValueOnce(mockCatalog);
+
+      const store = useShopStore.getState();
+      await store.fetchShop(undefined, "rare");
+
+      expect(api.get).toHaveBeenCalledWith("/api/v1/essence/shop?tier=rare");
+    });
+
+    it("should fetch shop with both filters", async () => {
+      const mockCatalog = [{ id: "item-1", name: "Rare Furniture" }];
+      (api.get as Mock).mockResolvedValueOnce(mockCatalog);
+
+      const store = useShopStore.getState();
+      await store.fetchShop("furniture", "rare");
+
+      expect(api.get).toHaveBeenCalledWith("/api/v1/essence/shop?category=furniture&tier=rare");
+    });
+
+    it("should handle fetch shop failure", async () => {
+      (api.get as Mock).mockRejectedValueOnce(new Error("Network error"));
+
+      const store = useShopStore.getState();
+      await store.fetchShop();
+
+      const state = useShopStore.getState();
+      expect(state.error).toBe("Failed to load shop");
+      expect(state.isLoading).toBe(false);
+    });
+  });
+
+  describe("fetchInventory", () => {
+    it("should fetch inventory successfully", async () => {
+      const mockInventory = [{ id: "inv-1", item_id: "item-1" }];
+      (api.get as Mock).mockResolvedValueOnce(mockInventory);
+
+      const store = useShopStore.getState();
+      await store.fetchInventory();
+
+      const state = useShopStore.getState();
+      expect(state.inventory).toEqual(mockInventory);
+    });
+
+    it("should handle fetch inventory failure", async () => {
+      (api.get as Mock).mockRejectedValueOnce(new Error("Network error"));
+
+      const store = useShopStore.getState();
+      await store.fetchInventory();
+
+      const state = useShopStore.getState();
+      expect(state.error).toBe("Failed to load inventory");
+    });
+  });
+
+  describe("fetchBalance", () => {
+    it("should fetch balance successfully", async () => {
+      const mockBalance = { balance: 50, total_earned: 100, total_spent: 50 };
+      (api.get as Mock).mockResolvedValueOnce(mockBalance);
+
+      const store = useShopStore.getState();
+      await store.fetchBalance();
+
+      const state = useShopStore.getState();
+      expect(state.essenceBalance).toEqual(mockBalance);
+    });
+
+    it("should handle fetch balance failure", async () => {
+      (api.get as Mock).mockRejectedValueOnce(new Error("Network error"));
+
+      const store = useShopStore.getState();
+      await store.fetchBalance();
+
+      const state = useShopStore.getState();
+      expect(state.error).toBe("Failed to load balance");
+    });
+  });
+
+  describe("buyItem error handling", () => {
+    it("should handle buy failure gracefully", async () => {
+      (api.post as Mock).mockRejectedValueOnce(new Error("Network error"));
+
+      const store = useShopStore.getState();
+      const result = await store.buyItem("item-1");
+
+      expect(result).toBeNull();
+      const state = useShopStore.getState();
+      expect(state.error).toBe("Purchase failed");
+      expect(state.isPurchasing).toBe(false);
+    });
+  });
+
+  describe("reset", () => {
+    it("should reset store to initial state", () => {
+      // Set some non-initial state
+      useShopStore.setState({
+        catalog: [{ id: "item-1" }] as never,
+        inventory: [{ id: "inv-1" }] as never,
+        essenceBalance: { balance: 500, total_earned: 600, total_spent: 100 },
+        isLoading: true,
+        isPurchasing: true,
+        error: "Some error",
+        isGifting: true,
+        selectedRecipientId: "recipient-123",
+      });
+
+      const store = useShopStore.getState();
+      store.reset();
+
+      const state = useShopStore.getState();
+      expect(state.catalog).toEqual([]);
+      expect(state.inventory).toEqual([]);
+      expect(state.essenceBalance).toEqual({ balance: 0, total_earned: 0, total_spent: 0 });
+      expect(state.isLoading).toBe(false);
+      expect(state.isPurchasing).toBe(false);
+      expect(state.error).toBeNull();
+      expect(state.isGifting).toBe(false);
+      expect(state.selectedRecipientId).toBeNull();
+    });
+  });
 });
