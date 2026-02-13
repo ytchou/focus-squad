@@ -90,7 +90,9 @@ class PartnerService:
 
         partner_ids: set[str] = set()
         for row in result.data or []:
-            other_id = row["addressee_id"] if row["requester_id"] == user_id else row["requester_id"]
+            other_id = (
+                row["addressee_id"] if row["requester_id"] == user_id else row["requester_id"]
+            )
             partner_ids.add(other_id)
 
         # Cache result (only if non-empty)

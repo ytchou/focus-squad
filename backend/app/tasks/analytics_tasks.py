@@ -35,7 +35,7 @@ def cleanup_old_analytics(self):
         try:
             result = supabase.rpc(
                 "delete_old_analytics",
-                {"cutoff_interval": RETENTION_INTERVAL, "batch_limit": BATCH_SIZE}
+                {"cutoff_interval": RETENTION_INTERVAL, "batch_limit": BATCH_SIZE},
             ).execute()
 
             deleted_count = result.data.get("deleted", 0) if result.data else 0
@@ -50,5 +50,7 @@ def cleanup_old_analytics(self):
             logger.error(f"Analytics cleanup failed after deleting {total_deleted}: {exc}")
             raise self.retry(exc=exc)
 
-    logger.info(f"Analytics cleanup complete: deleted {total_deleted} events older than {RETENTION_INTERVAL}")
+    logger.info(
+        f"Analytics cleanup complete: deleted {total_deleted} events older than {RETENTION_INTERVAL}"
+    )
     return {"deleted": total_deleted}

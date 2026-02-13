@@ -1,15 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PiPCanvasRenderer, type PiPRenderState } from "../pip-canvas-renderer";
-import {
-  PHASE_BG_COLORS,
-  PHASE_TEXT_COLORS,
-  PHASE_LABELS,
-  PRESENCE_BORDER_COLORS,
-  PIP_BG_DARK,
-  PIP_TEXT_LIGHT,
-  PIP_TEXT_DIM,
-  type PiPParticipant,
-} from "../pip-colors";
+import { PHASE_LABELS, type PiPParticipant } from "../pip-colors";
 import type { SessionPhase } from "@/stores/session-store";
 
 // ---------------------------------------------------------------------------

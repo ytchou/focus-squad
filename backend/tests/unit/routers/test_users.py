@@ -318,14 +318,18 @@ class TestDeleteMyAccount:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_successful_soft_delete(self) -> None:
+    async def test_successful_soft_delete(self, mock_request) -> None:
         """Returns 200 with deletion scheduled message."""
         current_user = AuthUser(auth_id="auth-abc-123", email="test@example.com")
         scheduled = datetime(2025, 1, 31, tzinfo=timezone.utc)
         user_service = MagicMock()
         user_service.soft_delete_user.return_value = scheduled
 
-        result = await delete_my_account(current_user=current_user, user_service=user_service)
+        result = await delete_my_account(
+            request=mock_request,
+            current_user=current_user,
+            user_service=user_service,
+        )
 
         assert result.deletion_scheduled_at == scheduled
         assert "30 days" in result.message
@@ -333,14 +337,18 @@ class TestDeleteMyAccount:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_user_not_found_raises_404(self) -> None:
+    async def test_user_not_found_raises_404(self, mock_request) -> None:
         """Raises 404 when user doesn't exist."""
         current_user = AuthUser(auth_id="auth-ghost", email="ghost@example.com")
         user_service = MagicMock()
         user_service.soft_delete_user.side_effect = UserNotFoundError("User not found")
 
         with pytest.raises(UserNotFoundError):
-            await delete_my_account(current_user=current_user, user_service=user_service)
+            await delete_my_account(
+                request=mock_request,
+                current_user=current_user,
+                user_service=user_service,
+            )
 
 
 # =============================================================================

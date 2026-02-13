@@ -7,6 +7,16 @@ import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 
+@pytest.fixture(autouse=True)
+def reset_redis_after_test():
+    """Reset Redis state after each test to prevent pollution."""
+    yield
+    # Cleanup after test
+    from app.core.redis import _reset_redis
+
+    _reset_redis()
+
+
 class TestRedisInitWithRetry:
     """Test Redis initialization with connection validation and retry."""
 

@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 class TestCleanupOldAnalytics:
@@ -14,16 +15,13 @@ class TestCleanupOldAnalytics:
         mock_get_supabase.return_value = mock_supabase
 
         # First call returns 500 deleted (less than 1000 batch)
-        mock_supabase.rpc.return_value.execute.return_value = MagicMock(
-            data={"deleted": 500}
-        )
+        mock_supabase.rpc.return_value.execute.return_value = MagicMock(data={"deleted": 500})
 
         result = cleanup_old_analytics()
 
         assert result == {"deleted": 500}
         mock_supabase.rpc.assert_called_once_with(
-            "delete_old_analytics",
-            {"cutoff_interval": "1 year", "batch_limit": 1000}
+            "delete_old_analytics", {"cutoff_interval": "1 year", "batch_limit": 1000}
         )
 
     @patch("app.tasks.analytics_tasks.get_supabase")
@@ -53,9 +51,7 @@ class TestCleanupOldAnalytics:
 
         mock_supabase = MagicMock()
         mock_get_supabase.return_value = mock_supabase
-        mock_supabase.rpc.return_value.execute.return_value = MagicMock(
-            data={"deleted": 0}
-        )
+        mock_supabase.rpc.return_value.execute.return_value = MagicMock(data={"deleted": 0})
 
         result = cleanup_old_analytics()
 
