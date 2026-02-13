@@ -165,4 +165,144 @@ describe("Session Store", () => {
       expect(state.timeRemaining).toBe(0);
     });
   });
+
+  describe("waiting room", () => {
+    it("should set waiting room state", () => {
+      const store = useSessionStore.getState();
+      const startTime = new Date("2026-02-13T10:00:00Z");
+      store.setWaitingRoom(startTime, 5, false);
+
+      const state = useSessionStore.getState();
+      expect(state.sessionStartTime).toEqual(startTime);
+      expect(state.waitMinutes).toBe(5);
+      expect(state.isWaiting).toBe(true);
+      expect(state.isImmediate).toBe(false);
+    });
+
+    it("should set immediate waiting room", () => {
+      const store = useSessionStore.getState();
+      const startTime = new Date("2026-02-13T10:00:00Z");
+      store.setWaitingRoom(startTime, 0, true);
+
+      const state = useSessionStore.getState();
+      expect(state.isImmediate).toBe(true);
+      expect(state.waitMinutes).toBe(0);
+    });
+
+    it("should clear waiting room but keep sessionStartTime", () => {
+      const store = useSessionStore.getState();
+      const startTime = new Date("2026-02-13T10:00:00Z");
+      store.setWaitingRoom(startTime, 5, false);
+      store.clearWaitingRoom();
+
+      const state = useSessionStore.getState();
+      // sessionStartTime is preserved (needed for timer calculation)
+      expect(state.sessionStartTime).toEqual(startTime);
+      // Waiting-specific flags are cleared
+      expect(state.waitMinutes).toBeNull();
+      expect(state.isWaiting).toBe(false);
+      expect(state.isImmediate).toBe(false);
+    });
+  });
+
+  describe("LiveKit connection", () => {
+    it("should set LiveKit connection details", () => {
+      const store = useSessionStore.getState();
+      store.setLiveKitConnection("token-abc123", "wss://livekit.example.com");
+
+      const state = useSessionStore.getState();
+      expect(state.livekitToken).toBe("token-abc123");
+      expect(state.livekitServerUrl).toBe("wss://livekit.example.com");
+    });
+
+    it("should clear LiveKit connection and reset connected state", () => {
+      const store = useSessionStore.getState();
+      store.setLiveKitConnection("token-abc123", "wss://livekit.example.com");
+      store.setConnected(true);
+      store.clearLiveKitConnection();
+
+      const state = useSessionStore.getState();
+      expect(state.livekitToken).toBeNull();
+      expect(state.livekitServerUrl).toBeNull();
+      expect(state.isConnected).toBe(false);
+    });
+  });
+
+  describe("connection state", () => {
+    it("should set connected to true", () => {
+      const store = useSessionStore.getState();
+      store.setConnected(true);
+
+      expect(useSessionStore.getState().isConnected).toBe(true);
+    });
+
+    it("should set connected to false", () => {
+      const store = useSessionStore.getState();
+      store.setConnected(true);
+      store.setConnected(false);
+
+      expect(useSessionStore.getState().isConnected).toBe(false);
+    });
+  });
+
+  describe("activity tracking", () => {
+    it("should enable activity tracking", () => {
+      const store = useSessionStore.getState();
+      store.setActivityTrackingEnabled(true);
+
+      expect(useSessionStore.getState().activityTrackingEnabled).toBe(true);
+    });
+
+    it("should disable activity tracking", () => {
+      const store = useSessionStore.getState();
+      store.setActivityTrackingEnabled(true);
+      store.setActivityTrackingEnabled(false);
+
+      expect(useSessionStore.getState().activityTrackingEnabled).toBe(false);
+    });
+  });
+
+  describe("end modal", () => {
+    it("should show end modal", () => {
+      const store = useSessionStore.getState();
+      store.setShowEndModal(true);
+
+      expect(useSessionStore.getState().showEndModal).toBe(true);
+    });
+
+    it("should hide end modal", () => {
+      const store = useSessionStore.getState();
+      store.setShowEndModal(true);
+      store.setShowEndModal(false);
+
+      expect(useSessionStore.getState().showEndModal).toBe(false);
+    });
+  });
+
+  describe("reset", () => {
+    it("should reset all state to initial values", () => {
+      const store = useSessionStore.getState();
+      // Set various state
+      store.setSession("session-1", "table-1", [mockParticipant]);
+      store.setPhase("work1");
+      store.setTimeRemaining(1500);
+      store.setWaitingRoom(new Date(), 5, false);
+      store.setLiveKitConnection("token", "wss://server.com");
+      store.setConnected(true);
+      store.setShowEndModal(true);
+
+      store.reset();
+
+      const state = useSessionStore.getState();
+      expect(state.sessionId).toBeNull();
+      expect(state.tableId).toBeNull();
+      expect(state.participants).toHaveLength(0);
+      expect(state.currentPhase).toBe("idle");
+      expect(state.timeRemaining).toBe(0);
+      expect(state.isWaiting).toBe(false);
+      expect(state.livekitToken).toBeNull();
+      expect(state.isConnected).toBe(false);
+      expect(state.showEndModal).toBe(false);
+    });
+  });
 });

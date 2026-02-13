@@ -780,6 +780,12 @@
 - [x] Milestone celebration cards (shareable images)
 - [x] Gift items to partners (buy-as-gift flow, gifted_by tracking)
 
+
+### Integration Testing
+- [ ] Integration Testing, as we are done with the core features
+
+
+
 ---
 
 ## Phase 5: MVP Launch Prep

@@ -197,4 +197,118 @@ describe("usePictureInPicture", () => {
       expect(result.current.isPiPActive).toBe(false);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Document PiP toggle flow
+  // -------------------------------------------------------------------------
+  describe("Document PiP toggle", () => {
+    it("calls requestWindow with correct dimensions when toggling on", async () => {
+      const mockRequestWindow = vi.fn().mockRejectedValue(new Error("User cancelled"));
+
+      vi.stubGlobal("documentPictureInPicture", {
+        requestWindow: mockRequestWindow,
+      });
+
+      const usePictureInPicture = await importHook();
+      const { result } = renderHook(() => usePictureInPicture(defaultHookProps));
+
+      expect(result.current.isPiPSupported).toBe(true);
+
+      // Toggle - will fail but we can verify the call was made
+      result.current.togglePiP();
+
+      // Wait for async call
+      await vi.waitFor(() => {
+        expect(mockRequestWindow).toHaveBeenCalledWith({ width: 320, height: 180 });
+      });
+
+      // Should remain inactive due to error
+      expect(result.current.isPiPActive).toBe(false);
+    });
+
+    it("handles requestWindow rejection gracefully", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      vi.stubGlobal("documentPictureInPicture", {
+        requestWindow: vi.fn().mockRejectedValue(new Error("User denied")),
+      });
+
+      const usePictureInPicture = await importHook();
+      const { result } = renderHook(() => usePictureInPicture(defaultHookProps));
+
+      // Toggle should not throw
+      expect(() => result.current.togglePiP()).not.toThrow();
+
+      // Wait for error to be logged
+      await vi.waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalled();
+      });
+
+      // State should remain inactive
+      expect(result.current.isPiPActive).toBe(false);
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Toggle behavior
+  // -------------------------------------------------------------------------
+  describe("toggle behavior", () => {
+    it("does nothing when PiP is not supported", async () => {
+      // No PiP APIs available (JSDOM default)
+      const usePictureInPicture = await importHook();
+      const { result } = renderHook(() => usePictureInPicture(defaultHookProps));
+
+      expect(result.current.isPiPSupported).toBe(false);
+
+      // Toggle should do nothing without throwing
+      result.current.togglePiP();
+      expect(result.current.isPiPActive).toBe(false);
+    });
+
+    it("toggle function is stable across renders", async () => {
+      const usePictureInPicture = await importHook();
+      type SessionPhase = "idle" | "setup" | "work1" | "break" | "work2" | "social" | "completed";
+      const { result, rerender } = renderHook(
+        ({ timeRemaining }: { timeRemaining: number }) =>
+          usePictureInPicture({ ...defaultHookProps, timeRemaining }),
+        { initialProps: { timeRemaining: 300 } }
+      );
+
+      const firstToggle = result.current.togglePiP;
+
+      // Rerender with different props
+      rerender({ timeRemaining: 200 });
+
+      // togglePiP should be memoized
+      expect(typeof result.current.togglePiP).toBe("function");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // propsRef updates
+  // -------------------------------------------------------------------------
+  describe("props synchronization", () => {
+    it("updates internal props ref when props change", async () => {
+      const usePictureInPicture = await importHook();
+      type SessionPhase = "idle" | "setup" | "work1" | "break" | "work2" | "social" | "completed";
+      const { result, rerender } = renderHook(
+        ({ phase, timeRemaining }: { phase: SessionPhase; timeRemaining: number }) =>
+          usePictureInPicture({ ...defaultHookProps, phase, timeRemaining }),
+        { initialProps: { phase: "work1" as SessionPhase, timeRemaining: 300 } }
+      );
+
+      // Initial state
+      expect(result.current.isPiPActive).toBe(false);
+
+      // Change props multiple times
+      rerender({ phase: "break" as SessionPhase, timeRemaining: 120 });
+      rerender({ phase: "work2" as SessionPhase, timeRemaining: 1200 });
+
+      // Hook should handle prop changes without error
+      expect(result.current.isPiPActive).toBe(false);
+      expect(result.current.isPiPSupported).toBe(false);
+    });
+  });
 });

@@ -995,3 +995,86 @@ class TestScheduleToInfo:
         result = schedule_service._schedule_to_info(row)
 
         assert result["partner_names"] == ["Alice", "bob_user", "Unknown"]
+
+    @pytest.mark.unit
+    def test_handles_hhmm_format_slot_time(self, schedule_service, mock_supabase) -> None:
+        """Handles slot_time in HH:MM format (without seconds)."""
+        _mock, *_, users_mock = mock_supabase
+
+        users_mock.select.return_value.in_.return_value.execute.return_value.data = []
+
+        row = {
+            "id": "sched-hhmm",
+            "creator_id": "user-123",
+            "slot_time": "14:30",  # HH:MM format (no seconds)
+        }
+
+        result = schedule_service._schedule_to_info(row)
+
+        assert result["slot_time"] == "14:30"  # Should pass through unchanged
+
+
+# =============================================================================
+# Tomorrow matching
+# =============================================================================
+
+
+class TestTomorrowMatching:
+    """Tests for tomorrow's day matching in create_scheduled_sessions."""
+
+    @pytest.mark.unit
+    @patch("app.services.schedule_service.datetime")
+    def test_creates_session_for_tomorrow(
+        self, mock_datetime, schedule_service, mock_supabase
+    ) -> None:
+        """Creates session when tomorrow's weekday matches the schedule."""
+        (
+            _mock,
+            _credits,
+            _partnerships,
+            recurring_schedules_mock,
+            sessions_mock,
+            session_participants_mock,
+            _table_invitations,
+            _users_mock,
+        ) = mock_supabase
+
+        # Fix "now" to Tuesday 2026-02-10 06:00 UTC
+        # Tomorrow (Wednesday) isoweekday=3, %7=3 -> day_of_week=3
+        fixed_now = datetime(2026, 2, 10, 6, 0, 0, tzinfo=timezone.utc)
+        mock_datetime.now.return_value = fixed_now
+        mock_datetime.side_effect = lambda *args, **kw: datetime(*args, **kw)
+        mock_datetime.combine = datetime.combine
+        mock_datetime.fromisoformat = datetime.fromisoformat
+
+        schedule_row = {
+            "id": "sched-wed-tomorrow",
+            "creator_id": "user-creator",
+            "partner_ids": [],  # No partners to simplify test
+            "days_of_week": [3],  # Wednesday (tomorrow)
+            "slot_time": "09:00:00",  # 09:00 Taipei = 01:00 UTC
+            "timezone": "Asia/Taipei",
+            "table_mode": "forced_audio",
+            "topic": "Tomorrow focus",
+            "max_seats": 4,
+            "fill_ai": True,
+            "is_active": True,
+        }
+
+        recurring_schedules_mock.select.return_value.eq.return_value.execute.return_value.data = [
+            schedule_row
+        ]
+
+        # No existing session
+        sessions_mock.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = []
+
+        # Session insert succeeds
+        sessions_mock.insert.return_value.execute.return_value.data = [{"id": "session-tomorrow"}]
+
+        # Participant insert succeeds
+        session_participants_mock.insert.return_value.execute.return_value.data = [{}]
+
+        result = schedule_service.create_scheduled_sessions(lookahead_hours=48)
+
+        assert result["sessions_created"] == 1
+        sessions_mock.insert.assert_called_once()
