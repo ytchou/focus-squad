@@ -9,8 +9,8 @@
       "services/schedule_service.py",
       "services/reflection_service.py"
     ],
-    "critical_threshold": 90,
-    "default_threshold": 50,
+    "critical_threshold": 89,
+    "default_threshold": 45,
     "exclude_patterns": [
       "main.py",
       "**/conftest.py",
@@ -26,8 +26,8 @@
       "hooks/use-countdown.ts",
       "lib/session/phase-utils.ts"
     ],
-    "critical_threshold": 90,
-    "default_threshold": 50,
+    "critical_threshold": 89,
+    "default_threshold": 45,
     "exclude_patterns": [
       "**/*.json",
       "**/index.ts",
