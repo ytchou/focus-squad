@@ -159,13 +159,14 @@ describe("usePictureInPicture", () => {
   describe("auto-close", () => {
     it("closes PiP when phase becomes completed", async () => {
       const usePictureInPicture = await importHook();
+      type SessionPhase = "idle" | "setup" | "work1" | "break" | "work2" | "social" | "completed";
       const { result, rerender } = renderHook(
-        ({ phase }) => usePictureInPicture({ ...defaultHookProps, phase }),
-        { initialProps: { phase: "work1" as const } }
+        ({ phase }: { phase: SessionPhase }) => usePictureInPicture({ ...defaultHookProps, phase }),
+        { initialProps: { phase: "work1" as SessionPhase } }
       );
 
       // Simulate phase change to completed
-      rerender({ phase: "completed" as const });
+      rerender({ phase: "completed" });
 
       // Should remain inactive (can't activate without APIs anyway)
       expect(result.current.isPiPActive).toBe(false);
