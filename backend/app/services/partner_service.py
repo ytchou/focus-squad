@@ -12,6 +12,7 @@ Handles:
 Design doc: output/plan/2026-02-12-accountability-partners-design.md
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from itertools import combinations
@@ -26,6 +27,7 @@ from app.core.constants import (
     PARTNER_SEARCH_LIMIT,
 )
 from app.core.database import get_supabase
+from app.core.redis import get_redis
 from app.models.partner import (
     AlreadyPartnersError,
     InvalidInterestTagError,
@@ -37,12 +39,15 @@ from app.models.partner import (
 
 logger = logging.getLogger(__name__)
 
+PARTNER_CACHE_TTL = 300  # 5 minutes
+
 
 class PartnerService:
     """Service for accountability partner management."""
 
-    def __init__(self, supabase: Optional[Client] = None) -> None:
+    def __init__(self, supabase: Optional[Client] = None, redis: Optional[object] = None) -> None:
         self._supabase = supabase
+        self._redis = redis
 
     @property
     def supabase(self) -> Client:
@@ -50,9 +55,68 @@ class PartnerService:
             self._supabase = get_supabase()
         return self._supabase
 
+    @property
+    def redis(self):
+        if self._redis is None:
+            self._redis = get_redis()
+        return self._redis
+
     # =========================================================================
     # Public API
     # =========================================================================
+
+    async def get_accepted_partner_ids(self, user_id: str) -> set[str]:
+        """
+        Get accepted partner IDs with Redis cache.
+
+        Uses Redis SET for O(1) membership checks.
+        TTL of 5 minutes handles missed invalidations.
+        """
+        cache_key = f"partners:{user_id}:accepted"
+
+        # Try cache first
+        cached = await self.redis.smembers(cache_key)
+        if cached:
+            return cached
+
+        # Cache miss - query DB
+        result = (
+            self.supabase.table("partnerships")
+            .select("requester_id, addressee_id")
+            .or_(f"requester_id.eq.{user_id},addressee_id.eq.{user_id}")
+            .eq("status", "accepted")
+            .execute()
+        )
+
+        partner_ids: set[str] = set()
+        for row in result.data or []:
+            other_id = row["addressee_id"] if row["requester_id"] == user_id else row["requester_id"]
+            partner_ids.add(other_id)
+
+        # Cache result (only if non-empty)
+        if partner_ids:
+            await self.redis.sadd(cache_key, *partner_ids)
+            await self.redis.expire(cache_key, PARTNER_CACHE_TTL)
+
+        return partner_ids
+
+    async def _invalidate_partner_cache(self, user_id: str) -> None:
+        """Invalidate partner cache for a user."""
+        await self.redis.delete(f"partners:{user_id}:accepted")
+
+    def _invalidate_partner_cache_sync(self, user_id: str) -> None:
+        """
+        Sync wrapper for cache invalidation.
+
+        Schedules async invalidation as a background task if in an event loop,
+        otherwise silently skips (cache will expire via TTL).
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._invalidate_partner_cache(user_id))
+        except RuntimeError:
+            # No event loop running - cache will expire via TTL
+            pass
 
     def send_request(self, requester_id: str, addressee_id: str) -> dict:
         """
@@ -100,6 +164,10 @@ class PartnerService:
             .execute()
         )
 
+        # Invalidate cache for both users
+        self._invalidate_partner_cache_sync(requester_id)
+        self._invalidate_partner_cache_sync(addressee_id)
+
         return result.data[0]
 
     def respond_to_request(self, partnership_id: str, user_id: str, accept: bool) -> dict:
@@ -136,6 +204,12 @@ class PartnerService:
             .eq("id", partnership_id)
             .execute()
         )
+
+        # Invalidate cache for both users
+        requester_id = partnership["requester_id"]
+        addressee_id = partnership["addressee_id"]
+        self._invalidate_partner_cache_sync(requester_id)
+        self._invalidate_partner_cache_sync(addressee_id)
 
         return result.data[0]
 
@@ -278,6 +352,10 @@ class PartnerService:
         )
 
         self.supabase.table("partnerships").delete().eq("id", partnership_id).execute()
+
+        # Invalidate cache for both users
+        self._invalidate_partner_cache_sync(user_id)
+        self._invalidate_partner_cache_sync(partner_id)
 
         self._cascade_remove_from_schedules(user_id, partner_id)
         self._cascade_remove_from_group_conversations(user_id, partner_id)

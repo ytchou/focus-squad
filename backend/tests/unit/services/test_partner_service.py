@@ -653,3 +653,76 @@ class TestGetPartnershipStatus:
         result = partner_service.get_partnership_status("user-a", "user-b")
 
         assert result is None
+
+
+# =============================================================================
+# TestPartnerCache
+# =============================================================================
+
+
+class TestPartnerCache:
+    """Tests for Redis partner cache."""
+
+    @pytest.fixture
+    def mock_redis(self):
+        """Mock Redis client."""
+        from unittest.mock import AsyncMock
+
+        redis = MagicMock()
+        redis.smembers = AsyncMock(return_value=set())
+        redis.sadd = AsyncMock()
+        redis.expire = AsyncMock()
+        redis.delete = AsyncMock()
+        return redis
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_get_accepted_partner_ids_cache_miss(
+        self, partner_service: PartnerService, mock_supabase, mock_redis
+    ):
+        """On cache miss, should query DB and cache result."""
+        _, partnerships_mock, _, _ = mock_supabase
+        partner_service._redis = mock_redis
+        mock_redis.smembers.return_value = set()  # Cache miss
+
+        # Mock DB response
+        (
+            partnerships_mock.select.return_value.or_.return_value.eq.return_value.execute.return_value
+        ) = MagicMock(
+            data=[
+                {"requester_id": "user-1", "addressee_id": "partner-1"},
+                {"requester_id": "partner-2", "addressee_id": "user-1"},
+            ]
+        )
+
+        result = await partner_service.get_accepted_partner_ids("user-1")
+
+        assert result == {"partner-1", "partner-2"}
+        mock_redis.sadd.assert_called_once()
+        mock_redis.expire.assert_called_once_with("partners:user-1:accepted", 300)
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_get_accepted_partner_ids_cache_hit(
+        self, partner_service: PartnerService, mock_supabase, mock_redis
+    ):
+        """On cache hit, should return cached data without DB query."""
+        _, partnerships_mock, _, _ = mock_supabase
+        partner_service._redis = mock_redis
+        mock_redis.smembers.return_value = {"partner-1", "partner-2"}  # Cache hit
+
+        result = await partner_service.get_accepted_partner_ids("user-1")
+
+        assert result == {"partner-1", "partner-2"}
+        # DB should NOT be called
+        partnerships_mock.select.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.unit
+    async def test_invalidate_partner_cache(self, partner_service: PartnerService, mock_redis):
+        """Should delete cache key for user."""
+        partner_service._redis = mock_redis
+
+        await partner_service._invalidate_partner_cache("user-1")
+
+        mock_redis.delete.assert_called_once_with("partners:user-1:accepted")
