@@ -13,6 +13,7 @@ from contextvars import ContextVar
 from typing import Optional
 
 from fastapi import Request
+from fastapi.security.utils import get_authorization_scheme_param
 from jose import JWTError, jwt
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
@@ -94,12 +95,11 @@ class JWTValidationMiddleware(BaseHTTPMiddleware):
         request.state.user = AuthOptionalUser(is_authenticated=False)
         request.state.token_error = None
 
-        # Extract token from Authorization header
-        auth_header = request.headers.get("Authorization")
+        # Extract token from Authorization header using FastAPI's utility
+        auth_header = request.headers.get("Authorization", "")
+        scheme, token = get_authorization_scheme_param(auth_header)
 
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header[7:]  # Remove "Bearer " prefix
-
+        if scheme.lower() == "bearer" and token:
             try:
                 # Validate and decode token (now async)
                 user_info = await self._validate_token(token)

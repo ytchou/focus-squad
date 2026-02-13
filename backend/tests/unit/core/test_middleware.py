@@ -123,6 +123,25 @@ class TestJWTValidationMiddleware:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
+    async def test_handles_case_insensitive_bearer_scheme(
+        self, middleware, mock_call_next, valid_jwt_token, valid_jwt_claims
+    ) -> None:
+        """Handles Bearer scheme case-insensitively (BEARER, bearer, BeArEr)."""
+        for scheme in ["BEARER", "bearer", "BeArEr"]:
+            request = MagicMock(spec=Request)
+            request.state = MagicMock()
+            request.headers = {"Authorization": f"{scheme} {valid_jwt_token}"}
+
+            with patch.object(middleware, "_validate_token", new_callable=AsyncMock) as mock_validate:
+                mock_validate.return_value = valid_jwt_claims
+
+                await middleware.dispatch(request, mock_call_next)
+
+                assert request.state.user.is_authenticated is True, f"Failed for scheme: {scheme}"
+                assert request.state.user.auth_id == valid_jwt_claims["sub"]
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
     async def test_continues_to_next_handler(self, middleware, valid_jwt_token) -> None:
         """Always calls next handler regardless of auth result."""
         request = MagicMock(spec=Request)
