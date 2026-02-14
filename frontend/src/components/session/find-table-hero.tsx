@@ -25,6 +25,7 @@ interface FindTableHeroProps {
   matchingSlot: string | null;
   credits: number;
   hasPendingRatings: boolean;
+  initialSlots?: SlotInfo[];
 }
 
 const POLL_INTERVAL_MS = 60_000;
@@ -35,13 +36,14 @@ export function FindTableHero({
   matchingSlot,
   credits,
   hasPendingRatings,
+  initialSlots,
 }: FindTableHeroProps) {
   const t = useTranslations("findTable");
 
   const [mode, setMode] = useState<TableMode>("forced_audio");
   const [topic, setTopic] = useState("");
-  const [slots, setSlots] = useState<SlotInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [slots, setSlots] = useState<SlotInfo[]>(initialSlots ?? []);
+  const [isLoading, setIsLoading] = useState(!initialSlots);
 
   const fetchSlots = useCallback(async (tableMode: TableMode) => {
     try {
@@ -56,11 +58,16 @@ export function FindTableHero({
     }
   }, []);
 
-  // Fetch on mount and when mode changes
+  // Fetch on mount and when mode changes (skip first fetch if initialSlots provided)
+  const [hasUsedInitialSlots, setHasUsedInitialSlots] = useState(!!initialSlots);
   useEffect(() => {
+    if (hasUsedInitialSlots) {
+      setHasUsedInitialSlots(false);
+      return;
+    }
     setIsLoading(true);
     fetchSlots(mode);
-  }, [mode, fetchSlots]);
+  }, [mode, fetchSlots]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Poll every 60s
   useEffect(() => {

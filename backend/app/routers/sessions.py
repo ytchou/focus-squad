@@ -13,6 +13,7 @@ Endpoints:
 - POST /{session_id}/rate/skip: Skip all ratings for a session
 """
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -182,31 +183,14 @@ async def quick_match(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Check if user is banned
+    # Check if user is banned (in-memory check, no DB call)
     if profile.banned_until and profile.banned_until > datetime.now(timezone.utc):
         raise HTTPException(
             status_code=403,
             detail="Your account is temporarily suspended. Please try again later.",
         )
 
-    # Check pending ratings (soft blocker)
-    if rating_service.has_pending_ratings(profile.id):
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "PENDING_RATINGS",
-                "message": "Please rate your tablemates from your last session before joining a new one.",
-            },
-        )
-
-    # Check credit balance
-    if not credit_service.has_sufficient_credits(profile.id, amount=1):
-        raise HTTPException(
-            status_code=402,
-            detail="Insufficient credits. You need at least 1 credit to join a session.",
-        )
-
-    # Use target slot time if provided, otherwise calculate next slot
+    # Calculate target slot (stateless, no DB call)
     if match_request.target_slot_time:
         next_slot = match_request.target_slot_time
         now = datetime.now(timezone.utc)
@@ -217,8 +201,29 @@ async def quick_match(
     else:
         next_slot = session_service.calculate_next_slot()
 
-    # Check if user already has a session at this time slot
-    existing_session = session_service.get_user_session_at_time(profile.id, next_slot)
+    # Parallel pre-validation: pending ratings, credit balance, slot conflict
+    # These are independent DB queries that can run concurrently via thread pool
+    has_pending, has_credits, existing_session = await asyncio.gather(
+        asyncio.to_thread(rating_service.has_pending_ratings, profile.id),
+        asyncio.to_thread(credit_service.has_sufficient_credits, profile.id, 1),
+        asyncio.to_thread(session_service.get_user_session_at_time, profile.id, next_slot),
+    )
+
+    if has_pending:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "PENDING_RATINGS",
+                "message": "Please rate your tablemates from your last session before joining a new one.",
+            },
+        )
+
+    if not has_credits:
+        raise HTTPException(
+            status_code=402,
+            detail="Insufficient credits. You need at least 1 credit to join a session.",
+        )
+
     if existing_session:
         raise HTTPException(
             status_code=409,
