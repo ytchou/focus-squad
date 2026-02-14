@@ -67,7 +67,8 @@ class TimelineService:
         base_url = base_url.rstrip("/")
 
         for row in result.data:
-            image_url = f"{base_url}/{row['image_path']}"
+            image_path = row["image_path"].lstrip("/")
+            image_url = f"{base_url}/{image_path}"
             snapshots.append(
                 RoomSnapshot(
                     id=row["id"],

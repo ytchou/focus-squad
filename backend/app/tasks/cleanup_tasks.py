@@ -6,7 +6,7 @@ from app.core.database import get_supabase
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="cleanup.delete_old_chat_messages")
+@celery_app.task
 def delete_old_chat_messages():
     """Daily task to delete chat messages older than 90 days."""
     try:

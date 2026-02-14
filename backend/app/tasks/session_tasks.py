@@ -46,6 +46,7 @@ def progress_session_phases() -> dict:
             supabase.table("sessions")
             .select("id, start_time, current_phase")
             .neq("current_phase", "ended")
+            .order("id")
             .range(offset, offset + BATCH_SIZE - 1)
             .execute()
         )

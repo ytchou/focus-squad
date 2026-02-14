@@ -586,5 +586,6 @@ class CreditService:
         self.supabase.table("credits").update(
             {"referrals_completed": db_record.referrals_completed + 1}
         ).eq("user_id", db_record.referred_by).execute()
+        cache_delete(f"credits:{db_record.referred_by}")
 
         return True

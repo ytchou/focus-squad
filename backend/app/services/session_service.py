@@ -19,7 +19,7 @@ from typing import Any, Optional
 from livekit import api
 from supabase import Client
 
-from app.core.cache import cache_get, cache_set
+from app.core.cache import cache_delete_pattern, cache_get, cache_set
 from app.core.config import get_settings
 from app.core.constants import (
     AI_COMPANION_NAMES,
@@ -339,16 +339,16 @@ class SessionService:
         if not session_ids:
             return sessions
 
-        # Batch fetch participant counts for all sessions in ONE query
+        # Batch fetch participant rows for all sessions in ONE query
         counts_result = (
             self.supabase.table("session_participants")
-            .select("session_id", count="exact")
+            .select("session_id")
             .in_("session_id", session_ids)
             .is_("left_at", "null")
             .execute()
         )
 
-        # Build count map from the grouped results
+        # Count occurrences of each session_id
         count_map: dict[str, int] = {}
         for row in counts_result.data or []:
             sid = row["session_id"]
@@ -734,6 +734,9 @@ class SessionService:
 
         # Add user as participant
         participant = self.add_participant(session["id"], user_id)
+
+        # Invalidate slot queue count cache (new participant changes counts)
+        cache_delete_pattern("slot_counts:*")
 
         # Refresh session data
         session = self.get_session_by_id(session["id"])

@@ -22,7 +22,7 @@ class TestRefreshDueCredits:
         """Returns zero counts when no users are due for refresh."""
         mock_supabase = MagicMock()
         mock_table = MagicMock()
-        mock_table.select.return_value.lte.return_value.range.return_value.execute.return_value.data = []
+        mock_table.select.return_value.lte.return_value.order.return_value.range.return_value.execute.return_value.data = []
         mock_supabase.table.return_value = mock_table
 
         with patch("app.tasks.credit_tasks.get_supabase", return_value=mock_supabase):
@@ -38,7 +38,7 @@ class TestRefreshDueCredits:
         """Counts only users who actually got refreshed (transaction returned)."""
         mock_supabase = MagicMock()
         mock_table = MagicMock()
-        mock_table.select.return_value.lte.return_value.range.return_value.execute.return_value.data = [
+        mock_table.select.return_value.lte.return_value.order.return_value.range.return_value.execute.return_value.data = [
             {"user_id": "user-1", "credit_cycle_start": "2025-01-01"},
             {"user_id": "user-2", "credit_cycle_start": "2025-01-01"},
         ]
@@ -68,7 +68,7 @@ class TestRefreshDueCredits:
         """Counts errors when refresh_credits_for_user raises an exception."""
         mock_supabase = MagicMock()
         mock_table = MagicMock()
-        mock_table.select.return_value.lte.return_value.range.return_value.execute.return_value.data = [
+        mock_table.select.return_value.lte.return_value.order.return_value.range.return_value.execute.return_value.data = [
             {"user_id": "user-1", "credit_cycle_start": "2025-01-01"},
         ]
         mock_supabase.table.return_value = mock_table

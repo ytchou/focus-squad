@@ -54,6 +54,7 @@ def refresh_due_credits(self) -> dict:
             supabase.table("credits")
             .select("user_id, credit_cycle_start")
             .lte("credit_cycle_start", cutoff_date)
+            .order("user_id")
             .range(offset, offset + BATCH_SIZE - 1)
             .execute()
         )

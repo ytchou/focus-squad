@@ -70,7 +70,7 @@ celery_app.conf.update(
             "schedule": crontab(hour=2, minute=0),  # Daily at 02:00 UTC
         },
         "cleanup-old-chat-messages": {
-            "task": "cleanup.delete_old_chat_messages",
+            "task": "app.tasks.cleanup_tasks.delete_old_chat_messages",
             "schedule": crontab(hour=3, minute=0),  # Daily at 03:00 UTC
         },
     },
