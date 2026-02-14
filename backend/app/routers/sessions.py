@@ -13,6 +13,7 @@ Endpoints:
 - POST /{session_id}/rate/skip: Skip all ratings for a session
 """
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -22,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
 from app.core.rate_limit import limiter
+from app.models.credit import InsufficientCreditsError
 from app.models.partner import CreatePrivateTableRequest, InvitationRespond
 from app.models.rating import (
     PendingRatingsResponse,
@@ -182,31 +184,14 @@ async def quick_match(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Check if user is banned
+    # Check if user is banned (in-memory check, no DB call)
     if profile.banned_until and profile.banned_until > datetime.now(timezone.utc):
         raise HTTPException(
             status_code=403,
             detail="Your account is temporarily suspended. Please try again later.",
         )
 
-    # Check pending ratings (soft blocker)
-    if rating_service.has_pending_ratings(profile.id):
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "PENDING_RATINGS",
-                "message": "Please rate your tablemates from your last session before joining a new one.",
-            },
-        )
-
-    # Check credit balance
-    if not credit_service.has_sufficient_credits(profile.id, amount=1):
-        raise HTTPException(
-            status_code=402,
-            detail="Insufficient credits. You need at least 1 credit to join a session.",
-        )
-
-    # Use target slot time if provided, otherwise calculate next slot
+    # Calculate target slot (stateless, no DB call)
     if match_request.target_slot_time:
         next_slot = match_request.target_slot_time
         now = datetime.now(timezone.utc)
@@ -217,8 +202,29 @@ async def quick_match(
     else:
         next_slot = session_service.calculate_next_slot()
 
-    # Check if user already has a session at this time slot
-    existing_session = session_service.get_user_session_at_time(profile.id, next_slot)
+    # Parallel pre-validation: pending ratings, credit balance, slot conflict
+    # These are independent DB queries that can run concurrently via thread pool
+    has_pending, has_credits, existing_session = await asyncio.gather(
+        asyncio.to_thread(rating_service.has_pending_ratings, profile.id),
+        asyncio.to_thread(credit_service.has_sufficient_credits, profile.id, 1),
+        asyncio.to_thread(session_service.get_user_session_at_time, profile.id, next_slot),
+    )
+
+    if has_pending:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "PENDING_RATINGS",
+                "message": "Please rate your tablemates from your last session before joining a new one.",
+            },
+        )
+
+    if not has_credits:
+        raise HTTPException(
+            status_code=402,
+            detail="Insufficient credits. You need at least 1 credit to join a session.",
+        )
+
     if existing_session:
         raise HTTPException(
             status_code=409,
@@ -250,8 +256,15 @@ async def quick_match(
             transaction_type=TransactionType.SESSION_JOIN,
             description=f"Joined session {session_data['id']}",
         )
+    except InsufficientCreditsError:
+        # TOCTOU guard: credits may have been spent between pre-check and deduction
+        session_service.remove_participant(session_data["id"], profile.id)
+        raise HTTPException(
+            status_code=402,
+            detail="Insufficient credits. You need at least 1 credit to join a session.",
+        )
     except Exception:
-        # Rollback: remove participant if credit deduction fails
+        # Rollback: remove participant if credit deduction fails for other reasons
         session_service.remove_participant(session_data["id"], profile.id)
         raise
 

@@ -833,11 +833,11 @@
 - [x] **[P2]** Add chat_messages retention (90-day cleanup task)
 - [x] **[P3]** Return updated balance + inventory in purchase responses (eliminate 2 round-trips)
 - [x] **[P3]** Fix save_reflection() extra user query — pass display_name from router
-- [ ] **[P3]** Evaluate parallel pre-validation in quick_match (after P1 caching)
+- [x] **[P3]** Parallelize pre-validation in quick_match (asyncio.gather for ratings/credits/slot checks)
 - [x] **[P4]** Lazy-load html2canvas (~120KB bundle reduction)
 - [x] **[P4]** Increase session polling interval from 3s to 5s
 - [x] **[P4]** Increase FindTableHero polling from 30s to 60s
-- [ ] **[P4]** Optional: dashboard init batch endpoint
+- [x] **[P4]** Dashboard init batch endpoint (GET /dashboard/init — 4 calls → 1)
 
 ### Test Coverage Gaps
 - [x] Add tests for JWKS cache expiration scenario

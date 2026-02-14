@@ -15,6 +15,7 @@ from app.routers import (
     analytics,
     companions,
     credits,
+    dashboard,
     essence,
     gamification,
     health,
@@ -84,6 +85,7 @@ app.include_router(
     reflections.router, prefix=f"{settings.api_prefix}/sessions", tags=["Reflections"]
 )
 app.include_router(sessions.router, prefix=f"{settings.api_prefix}/sessions", tags=["Sessions"])
+app.include_router(dashboard.router, prefix=f"{settings.api_prefix}/dashboard", tags=["Dashboard"])
 app.include_router(credits.router, prefix=f"{settings.api_prefix}/credits", tags=["Credits"])
 app.include_router(analytics.router, prefix=f"{settings.api_prefix}/analytics", tags=["Analytics"])
 app.include_router(

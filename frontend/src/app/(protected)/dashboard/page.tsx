@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -10,6 +10,9 @@ import {
   useUIStore,
   usePartnerStore,
   useGamificationStore,
+  type WeeklyStreakResponse,
+  type RateableUser,
+  type InvitationInfo,
 } from "@/stores";
 import { useSessionStore } from "@/stores/session-store";
 import { api, ApiError } from "@/lib/api/client";
@@ -26,6 +29,27 @@ import { InvitationAlert } from "@/components/partners";
 // Debug mode: session starts in 1 minute instead of next :00/:30 slot
 const DEBUG_WAIT_MINUTES = 1;
 
+interface DashboardInitResponse {
+  pending_ratings: {
+    has_pending: boolean;
+    pending: {
+      session_id: string;
+      rateable_users: RateableUser[];
+      expires_at: string;
+    } | null;
+  };
+  invitations: InvitationInfo[];
+  streak: WeeklyStreakResponse;
+  upcoming_slots: {
+    slots: Array<{
+      start_time: string;
+      queue_count: number;
+      estimated_count: number;
+      has_user_session: boolean;
+    }>;
+  };
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const t = useTranslations("dashboard");
@@ -40,21 +64,53 @@ export default function DashboardPage() {
     setLiveKitConnection,
     setQuietMode,
   } = useSessionStore();
-  const { hasPendingRatings, pendingSessionId, checkPendingRatings } = useRatingStore();
-  const { pendingInvitations, fetchInvitations, respondToInvitation } = usePartnerStore();
-  const { weeklyStreak, fetchStreak } = useGamificationStore();
+  const { hasPendingRatings, pendingSessionId, setPendingRatings } = useRatingStore();
+  const { pendingInvitations, respondToInvitation } = usePartnerStore();
+  const { weeklyStreak } = useGamificationStore();
   const openModal = useUIStore((state) => state.openModal);
   const tPartners = useTranslations("partners");
   const [isMatching, setIsMatching] = useState(false);
   const [matchingSlot, setMatchingSlot] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
+  const [initialSlots, setInitialSlots] = useState<
+    DashboardInitResponse["upcoming_slots"]["slots"] | undefined
+  >(undefined);
 
-  // Check for pending ratings, invitations, and streak on mount
+  // Batch fetch all dashboard data in a single API call
+  const fetchDashboardInit = useCallback(async () => {
+    try {
+      const data = await api.get<DashboardInitResponse>("/api/v1/dashboard/init?mode=forced_audio");
+
+      // Hydrate rating store
+      if (
+        data.pending_ratings.has_pending &&
+        data.pending_ratings.pending &&
+        data.pending_ratings.pending.rateable_users.length > 0
+      ) {
+        setPendingRatings(
+          data.pending_ratings.pending.session_id,
+          data.pending_ratings.pending.rateable_users
+        );
+      } else {
+        useRatingStore.setState({ hasPendingRatings: false, pendingSessionId: null });
+      }
+
+      // Hydrate partner store (invitations)
+      usePartnerStore.setState({ pendingInvitations: data.invitations });
+
+      // Hydrate gamification store (streak)
+      useGamificationStore.setState({ weeklyStreak: data.streak });
+
+      // Set initial slots for FindTableHero
+      setInitialSlots(data.upcoming_slots.slots);
+    } catch (err) {
+      console.warn("Dashboard init fetch failed:", err);
+    }
+  }, [setPendingRatings]);
+
   useEffect(() => {
-    checkPendingRatings();
-    fetchInvitations();
-    fetchStreak();
-  }, [checkPendingRatings, fetchInvitations, fetchStreak]);
+    fetchDashboardInit();
+  }, [fetchDashboardInit]);
 
   const handleInvitationRespond = async (
     sessionId: string,
@@ -243,6 +299,7 @@ export default function DashboardPage() {
           matchingSlot={matchingSlot}
           credits={credits}
           hasPendingRatings={hasPendingRatings}
+          initialSlots={initialSlots}
         />
 
         {/* Stats grid */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { ModeToggle } from "./mode-toggle";
@@ -25,6 +25,7 @@ interface FindTableHeroProps {
   matchingSlot: string | null;
   credits: number;
   hasPendingRatings: boolean;
+  initialSlots?: SlotInfo[];
 }
 
 const POLL_INTERVAL_MS = 60_000;
@@ -35,13 +36,14 @@ export function FindTableHero({
   matchingSlot,
   credits,
   hasPendingRatings,
+  initialSlots,
 }: FindTableHeroProps) {
   const t = useTranslations("findTable");
 
   const [mode, setMode] = useState<TableMode>("forced_audio");
   const [topic, setTopic] = useState("");
-  const [slots, setSlots] = useState<SlotInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [slots, setSlots] = useState<SlotInfo[]>(initialSlots ?? []);
+  const [isLoading, setIsLoading] = useState(!initialSlots);
 
   const fetchSlots = useCallback(async (tableMode: TableMode) => {
     try {
@@ -56,8 +58,13 @@ export function FindTableHero({
     }
   }, []);
 
-  // Fetch on mount and when mode changes
+  // Fetch on mount and when mode changes (skip first fetch if initialSlots provided)
+  const skipInitialFetch = useRef(!!initialSlots);
   useEffect(() => {
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
+      return;
+    }
     setIsLoading(true);
     fetchSlots(mode);
   }, [mode, fetchSlots]);
