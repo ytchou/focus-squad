@@ -200,7 +200,7 @@ export default function SessionPage() {
       } catch (err) {
         console.error("Failed to poll participants:", err);
       }
-    }, 3000); // Poll every 3 seconds
+    }, 5000); // Poll every 5 seconds
 
     // Stop polling after 30 seconds regardless
     const timeout = setTimeout(() => {

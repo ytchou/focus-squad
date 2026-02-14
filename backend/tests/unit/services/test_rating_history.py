@@ -44,29 +44,36 @@ def _make_history_row(
 
 
 def _setup_history_mock(mock_supabase, aggregate_data, items_data):
-    """Set up mock for get_rating_history which makes 2 queries on 'ratings' table.
+    """Set up mock for get_rating_history which makes 3 queries on 'ratings' table.
 
-    Query 1 (aggregate): .select("rating").eq().neq().execute()
-    Query 2 (items):     .select("id, session_id, rating, created_at").eq().neq().order().range().execute()
+    Query 1 (green count): .select("id", count="exact").eq().eq("rating","green").execute()
+    Query 2 (red count):   .select("id", count="exact").eq().eq("rating","red").execute()
+    Query 3 (items):       .select("id, session_id, ...").eq().neq().order().range().execute()
     """
     mock_table = MagicMock()
     mock_supabase.table.return_value = mock_table
 
-    aggregate_chain = MagicMock()
-    aggregate_chain.eq.return_value.neq.return_value.execute.return_value.data = aggregate_data
+    # Derive green/red counts from aggregate_data for backward compat with test callers
+    green_count = sum(1 for r in aggregate_data if r.get("rating") == "green")
+    red_count = sum(1 for r in aggregate_data if r.get("rating") == "red")
+
+    green_chain = MagicMock()
+    green_chain.eq.return_value.eq.return_value.execute.return_value.count = green_count
+
+    red_chain = MagicMock()
+    red_chain.eq.return_value.eq.return_value.execute.return_value.count = red_count
 
     items_chain = MagicMock()
     items_chain.eq.return_value.neq.return_value.order.return_value.range.return_value.execute.return_value.data = items_data
-    items_chain.eq.return_value.neq.return_value.order.return_value.range.return_value.execute.return_value.count = len(
-        items_data
-    )
 
     call_count = {"n": 0}
 
     def route_select(*args, **kwargs):
         call_count["n"] += 1
         if call_count["n"] == 1:
-            return aggregate_chain
+            return green_chain
+        if call_count["n"] == 2:
+            return red_chain
         return items_chain
 
     mock_table.select.side_effect = route_select

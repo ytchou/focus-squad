@@ -19,6 +19,7 @@ from app.models.room import (
     InsufficientEssenceError,
     InventoryItem,
     ItemNotFoundError,
+    PurchaseResponse,
     SelfGiftError,
     ShopItem,
 )
@@ -254,7 +255,7 @@ class TestBuyItem:
 
     @pytest.mark.unit
     def test_successful_purchase(self, service, mock_supabase) -> None:
-        """Purchases item via atomic RPC: single call handles deduction, inventory, logging."""
+        """Purchases item via atomic RPC and returns enriched PurchaseResponse."""
         # Mock atomic RPC success first (called before table access)
         rpc_mock = MagicMock()
         rpc_mock.execute.return_value = MagicMock(
@@ -268,19 +269,26 @@ class TestBuyItem:
         )
         mock_supabase.rpc.return_value = rpc_mock
 
-        # Setup table mock for item fetch after RPC
-        tables = _setup_tables(mock_supabase, ["items"])
+        # Setup table mocks for item fetch, balance fetch, and inventory count
+        tables = _setup_tables(mock_supabase, ["items", "furniture_essence", "user_items"])
         item = _sample_item(item_id="item-1", cost=5)
         tables["items"].execute.return_value = MagicMock(data=[item])
+        tables["furniture_essence"].execute.return_value = MagicMock(
+            data=[_sample_balance(balance=95, total_earned=100, total_spent=5)]
+        )
+        tables["user_items"].execute.return_value = MagicMock(data=[], count=3)
+        tables["user_items"].execute.return_value.count = 3
 
         result = service.buy_item("user-123", "item-1")
 
-        assert isinstance(result, InventoryItem)
-        assert result.id == "inv-new"
-        assert result.item_id == "item-1"
-        assert result.acquisition_type == "purchased"
-        assert result.item is not None
-        assert result.item.essence_cost == 5
+        assert isinstance(result, PurchaseResponse)
+        assert result.item.id == "inv-new"
+        assert result.item.item_id == "item-1"
+        assert result.item.acquisition_type == "purchased"
+        assert result.item.item is not None
+        assert result.item.item.essence_cost == 5
+        assert result.balance.balance == 95
+        assert result.inventory_count == 3
 
         # Verify atomic RPC was called with correct params
         mock_supabase.rpc.assert_called_once_with(
@@ -468,7 +476,7 @@ class TestGiftItem:
     @pytest.mark.unit
     def test_gift_successful(self, service, mock_supabase) -> None:
         """Happy path: partnership valid, atomic RPC handles deduction and inventory."""
-        tables = _setup_tables(mock_supabase, ["partnerships", "users"])
+        tables = _setup_tables(mock_supabase, ["partnerships", "users", "furniture_essence"])
 
         # Partnership check: accepted partnership between sender and recipient
         tables["partnerships"].execute.return_value = MagicMock(
@@ -484,6 +492,11 @@ class TestGiftItem:
         # Recipient profile lookup for response display name
         tables["users"].execute.return_value = MagicMock(
             data=[_sample_recipient_profile(user_id="user-recipient", display_name="Recipient")]
+        )
+
+        # Balance fetch after gift (for enriched response)
+        tables["furniture_essence"].execute.return_value = MagicMock(
+            data=[_sample_balance(balance=95, total_earned=100, total_spent=5)]
         )
 
         # Atomic RPC succeeds with all data
@@ -512,6 +525,8 @@ class TestGiftItem:
         assert result.item_name == "Cozy Lamp"
         assert result.recipient_name == "Recipient"
         assert result.essence_spent == 5
+        assert result.balance is not None
+        assert result.balance.balance == 95
 
         # Verify atomic RPC was called with gift params
         mock_supabase.rpc.assert_called_once_with(

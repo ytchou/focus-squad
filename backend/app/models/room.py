@@ -197,6 +197,14 @@ class GiftPurchaseRequest(BaseModel):
     gift_message: Optional[str] = Field(None, max_length=200)
 
 
+class PurchaseResponse(BaseModel):
+    """Enriched response after purchasing an item (includes updated balance and inventory count)."""
+
+    item: InventoryItem
+    balance: EssenceBalance
+    inventory_count: int
+
+
 class GiftPurchaseResponse(BaseModel):
     """Response after gifting an item."""
 
@@ -204,6 +212,7 @@ class GiftPurchaseResponse(BaseModel):
     item_name: str
     recipient_name: str
     essence_spent: int
+    balance: Optional[EssenceBalance] = None
 
 
 class PartnerRoomResponse(BaseModel):

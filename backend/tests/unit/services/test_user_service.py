@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -13,6 +13,17 @@ from app.services.user_service import (
     UserService,
     UserServiceError,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_cache():
+    """Patch cache functions so unit tests never touch real Redis."""
+    with (
+        patch("app.services.user_service.cache_get", return_value=None),
+        patch("app.services.user_service.cache_set"),
+        patch("app.services.user_service.cache_delete"),
+    ):
+        yield
 
 
 @pytest.fixture

@@ -39,6 +39,8 @@ def mock_profile():
     """Mock user profile."""
     profile = MagicMock()
     profile.id = "user-123"
+    profile.display_name = "Test User"
+    profile.username = "testuser"
     return profile
 
 
@@ -107,6 +109,7 @@ class TestSaveReflection:
             user_id="user-123",
             phase=ReflectionPhase.SETUP,
             content="My goal",
+            display_name="Test User",
         )
 
     @pytest.mark.asyncio

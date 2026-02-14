@@ -22,6 +22,7 @@ from app.models.room import (
     InsufficientEssenceError,
     InventoryItem,
     ItemNotFoundError,
+    PurchaseResponse,
     SelfGiftError,
     ShopItem,
 )
@@ -84,7 +85,7 @@ class EssenceService:
 
         return items
 
-    def buy_item(self, user_id: str, item_id: str) -> InventoryItem:
+    def buy_item(self, user_id: str, item_id: str) -> PurchaseResponse:
         """
         Purchase an item using atomic RPC.
 
@@ -96,6 +97,9 @@ class EssenceService:
         - Transaction logging
 
         All in a single atomic transaction - if any step fails, nothing is committed.
+
+        Returns enriched PurchaseResponse with updated balance and inventory count,
+        eliminating the need for extra round-trips from the frontend.
         """
         result = self.supabase.rpc(
             "purchase_item_atomic",
@@ -127,12 +131,28 @@ class EssenceService:
         item_result = self.supabase.table("items").select("*").eq("id", item_id).execute()
         item_data = item_result.data[0] if item_result.data else {}
 
-        return InventoryItem(
+        inventory_item = InventoryItem(
             id=data["inventory_id"],
             item_id=item_id,
             item=ShopItem(**item_data) if item_data else None,
             acquired_at=None,  # Will be set by DB default
             acquisition_type="purchased",
+        )
+
+        # Fetch updated balance and inventory count to eliminate extra round-trips
+        balance = self.get_balance(user_id)
+        inventory_count_result = (
+            self.supabase.table("user_items")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        inventory_count = inventory_count_result.count if inventory_count_result.count else 0
+
+        return PurchaseResponse(
+            item=inventory_item,
+            balance=balance,
+            inventory_count=inventory_count,
         )
 
     def gift_item(
@@ -205,11 +225,15 @@ class EssenceService:
             else:
                 raise EssenceServiceError(f"Gift purchase failed: {error}")
 
+        # Fetch updated balance to eliminate extra round-trip
+        balance = self.get_balance(sender_id)
+
         return GiftPurchaseResponse(
             inventory_item_id=data["inventory_id"],
             item_name=data.get("item_name", "Item"),
             recipient_name=recipient_name,
             essence_spent=data.get("cost", 0),
+            balance=balance,
         )
 
     def get_inventory(self, user_id: str) -> list[InventoryItem]:

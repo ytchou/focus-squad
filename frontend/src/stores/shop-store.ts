@@ -16,11 +16,18 @@ export interface EssenceBalance {
 // Gift response
 // =============================================================================
 
+export interface PurchaseResponse {
+  item: InventoryItem;
+  balance: EssenceBalance;
+  inventory_count: number;
+}
+
 export interface GiftPurchaseResponse {
   inventory_item_id: string;
   item_name: string;
   recipient_name: string;
   essence_spent: number;
+  balance: EssenceBalance | null;
 }
 
 // =============================================================================
@@ -102,13 +109,17 @@ export const useShopStore = create<ShopStoreState>()((set, get) => ({
   buyItem: async (itemId: string) => {
     set({ isPurchasing: true, error: null });
     try {
-      const item = await api.post<InventoryItem>("/api/v1/essence/buy", {
+      const response = await api.post<PurchaseResponse>("/api/v1/essence/buy", {
         item_id: itemId,
       });
-      // Refresh balance and inventory after purchase
-      await Promise.all([get().fetchBalance(), get().fetchInventory()]);
-      set({ isPurchasing: false });
-      return item;
+      // Use enriched response directly instead of extra round-trips
+      set({
+        essenceBalance: response.balance,
+        isPurchasing: false,
+      });
+      // Refresh inventory to get full list (response only has the new item)
+      await get().fetchInventory();
+      return response.item;
     } catch {
       set({ error: "Purchase failed", isPurchasing: false });
       return null;
@@ -123,8 +134,16 @@ export const useShopStore = create<ShopStoreState>()((set, get) => ({
         recipient_id: recipientId,
         gift_message: message || null,
       });
-      await Promise.all([get().fetchBalance(), get().fetchInventory()]);
-      set({ isPurchasing: false, isGifting: false, selectedRecipientId: null });
+      // Use balance from response directly instead of extra round-trip
+      const updates: Partial<ShopStoreState> = {
+        isPurchasing: false,
+        isGifting: false,
+        selectedRecipientId: null,
+      };
+      if (result.balance) {
+        updates.essenceBalance = result.balance;
+      }
+      set(updates);
       return result;
     } catch {
       set({

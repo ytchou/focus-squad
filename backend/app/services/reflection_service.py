@@ -59,6 +59,7 @@ class ReflectionService:
         user_id: str,
         phase: ReflectionPhase,
         content: str,
+        display_name: Optional[str] = None,
     ) -> ReflectionResponse:
         """
         Save or update a reflection for a session phase.
@@ -69,6 +70,9 @@ class ReflectionService:
         Validates:
         - Session exists
         - User is a participant in the session
+
+        Args:
+            display_name: If provided, used directly instead of querying the DB.
         """
         self._verify_session_exists(session_id)
         self._verify_user_is_participant(session_id, user_id)
@@ -88,7 +92,8 @@ class ReflectionService:
         )
 
         record = result.data[0]
-        display_name = self._get_display_name(user_id)
+        if not display_name:
+            display_name = self._get_display_name(user_id)
 
         return ReflectionResponse(
             id=record["id"],

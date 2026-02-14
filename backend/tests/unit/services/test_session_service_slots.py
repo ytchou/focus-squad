@@ -23,6 +23,16 @@ from app.core.constants import (
 # =============================================================================
 
 
+@pytest.fixture(autouse=True)
+def mock_cache():
+    """Patch cache functions so unit tests never touch real Redis."""
+    with (
+        patch("app.services.session_service.cache_get", return_value=None),
+        patch("app.services.session_service.cache_set"),
+    ):
+        yield
+
+
 @pytest.fixture
 def mock_supabase():
     """Mock Supabase client."""

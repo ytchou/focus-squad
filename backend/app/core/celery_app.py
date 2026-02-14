@@ -25,6 +25,7 @@ celery_app = Celery(
         "app.tasks.schedule_tasks",
         "app.tasks.rating_tasks",
         "app.tasks.analytics_tasks",
+        "app.tasks.cleanup_tasks",
     ],
 )
 
@@ -45,7 +46,7 @@ celery_app.conf.update(
     result_expires=3600,  # Results expire after 1 hour
     # Worker
     worker_prefetch_multiplier=1,  # Fair task distribution
-    worker_concurrency=4,  # Concurrent tasks per worker
+    worker_concurrency=8,  # Concurrent tasks per worker (I/O-bound)
     # Beat schedule for periodic tasks
     beat_schedule={
         "refresh-credits-daily": {
@@ -67,6 +68,10 @@ celery_app.conf.update(
         "cleanup-old-analytics": {
             "task": "app.tasks.analytics_tasks.cleanup_old_analytics",
             "schedule": crontab(hour=2, minute=0),  # Daily at 02:00 UTC
+        },
+        "cleanup-old-chat-messages": {
+            "task": "app.tasks.cleanup_tasks.delete_old_chat_messages",
+            "schedule": crontab(hour=3, minute=0),  # Daily at 03:00 UTC
         },
     },
 )

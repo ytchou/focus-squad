@@ -1,7 +1,7 @@
 """Unit tests for CreditService."""
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -15,6 +15,17 @@ from app.models.credit import (
     UserTier,
 )
 from app.services.credit_service import CreditService
+
+
+@pytest.fixture(autouse=True)
+def mock_cache():
+    """Patch cache functions so unit tests never touch real Redis."""
+    with (
+        patch("app.services.credit_service.cache_get", return_value=None),
+        patch("app.services.credit_service.cache_set"),
+        patch("app.services.credit_service.cache_delete"),
+    ):
+        yield
 
 
 @pytest.fixture

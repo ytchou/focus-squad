@@ -46,7 +46,10 @@ class TimelineService:
         return self._supabase
 
     def get_timeline(self, user_id: str, page: int = 1, per_page: int = 10) -> TimelineResponse:
-        """Get paginated timeline of room snapshots, newest first."""
+        """Get paginated timeline of room snapshots, newest first.
+
+        Computes storage base URL once and concatenates per row.
+        """
         offset = (page - 1) * per_page
 
         result = (
@@ -61,10 +64,14 @@ class TimelineService:
         total = result.count if result.count is not None else 0
         snapshots = []
 
+        # Compute base URL once instead of calling get_public_url() per row
+        base_url = self.supabase.storage.from_(STORAGE_BUCKET).get_public_url("")
+        # Strip trailing slash/empty-path artifacts for clean concatenation
+        base_url = base_url.rstrip("/")
+
         for row in result.data:
-            image_url = self.supabase.storage.from_(STORAGE_BUCKET).get_public_url(
-                row["image_path"]
-            )
+            image_path = row["image_path"].lstrip("/")
+            image_url = f"{base_url}/{image_path}"
             snapshots.append(
                 RoomSnapshot(
                     id=row["id"],

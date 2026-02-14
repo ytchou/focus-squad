@@ -8,6 +8,7 @@ Handles:
 - Associated records creation (credits, essence, notifications)
 """
 
+import logging
 import random
 import string
 from datetime import datetime
@@ -15,8 +16,13 @@ from typing import Any, Optional, cast
 
 from supabase import Client
 
+from app.core.cache import cache_delete, cache_get, cache_set
 from app.core.database import get_supabase
 from app.models.user import UserProfile, UserProfileUpdate, UserPublicProfile
+
+logger = logging.getLogger(__name__)
+
+USER_CACHE_TTL = 60  # seconds
 
 
 class UserServiceError(Exception):
@@ -164,6 +170,14 @@ class UserService:
         Returns:
             UserProfile if found, None otherwise
         """
+        cache_key = f"user:auth:{auth_id}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            try:
+                return UserProfile(**cached)
+            except Exception:
+                logger.debug("Failed to reconstruct UserProfile from cache, fetching from DB")
+
         result = self.supabase.table("users").select("*").eq("auth_id", auth_id).execute()
 
         if not result.data:
@@ -186,7 +200,9 @@ class UserService:
             user_data["credit_tier"] = credit_row.get("tier", "free")
             user_data["credit_refresh_date"] = credit_row.get("credit_cycle_start")
 
-        return UserProfile(**user_data)
+        profile = UserProfile(**user_data)
+        cache_set(cache_key, profile.model_dump(mode="json"), USER_CACHE_TTL)
+        return profile
 
     def get_user_by_id(self, user_id: str) -> Optional[UserProfile]:
         """
@@ -383,6 +399,7 @@ class UserService:
         if not result.data:
             raise UserServiceError("Failed to update user profile")
 
+        cache_delete(f"user:auth:{auth_id}")
         return UserProfile(**result.data[0])
 
     def soft_delete_user(self, auth_id: str) -> datetime:
@@ -416,6 +433,7 @@ class UserService:
         if not result.data:
             raise UserNotFoundError(f"User with auth_id {auth_id} not found")
 
+        cache_delete(f"user:auth:{auth_id}")
         return scheduled
 
     def cancel_account_deletion(self, auth_id: str) -> UserProfile:

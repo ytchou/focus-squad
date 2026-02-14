@@ -196,6 +196,7 @@ async def save_reflection(
         user_id=profile.id,
         phase=reflection_request.phase,
         content=reflection_request.content,
+        display_name=profile.display_name or profile.username,
     )
 
 

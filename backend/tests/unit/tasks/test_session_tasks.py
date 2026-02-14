@@ -25,7 +25,7 @@ class TestProgressSessionPhases:
 
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
-        mock_table.select.return_value.neq.return_value.execute.return_value.data = []
+        mock_table.select.return_value.neq.return_value.order.return_value.range.return_value.execute.return_value.data = []
 
         with (
             patch("app.tasks.session_tasks.get_supabase", return_value=mock_supabase),
@@ -51,7 +51,9 @@ class TestProgressSessionPhases:
 
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
-        mock_table.select.return_value.neq.return_value.execute.return_value.data = [session_data]
+        mock_table.select.return_value.neq.return_value.order.return_value.range.return_value.execute.return_value.data = [
+            session_data
+        ]
 
         with (
             patch("app.tasks.session_tasks.get_supabase", return_value=mock_supabase),
@@ -86,7 +88,9 @@ class TestProgressSessionPhases:
 
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
-        mock_table.select.return_value.neq.return_value.execute.return_value.data = [session_data]
+        mock_table.select.return_value.neq.return_value.order.return_value.range.return_value.execute.return_value.data = [
+            session_data
+        ]
 
         with (
             patch("app.tasks.session_tasks.get_supabase", return_value=mock_supabase),
@@ -115,7 +119,9 @@ class TestProgressSessionPhases:
 
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
-        mock_table.select.return_value.neq.return_value.execute.return_value.data = [session_data]
+        mock_table.select.return_value.neq.return_value.order.return_value.range.return_value.execute.return_value.data = [
+            session_data
+        ]
 
         with (
             patch("app.tasks.session_tasks.get_supabase", return_value=mock_supabase),

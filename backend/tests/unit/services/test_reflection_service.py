@@ -199,6 +199,46 @@ class TestSaveReflection:
         assert len(upsert_args["content"]) == 500
 
     @pytest.mark.unit
+    def test_save_reflection_skips_db_when_display_name_provided(
+        self, service, mock_supabase
+    ) -> None:
+        """Skips _get_display_name DB query when display_name is provided."""
+        sessions_mock = MagicMock()
+        participants_mock = MagicMock()
+        reflections_mock = MagicMock()
+        users_mock = MagicMock()
+
+        _setup_table_router(
+            mock_supabase,
+            {
+                "sessions": sessions_mock,
+                "session_participants": participants_mock,
+                "session_reflections": reflections_mock,
+                "users": users_mock,
+            },
+        )
+
+        sessions_mock.select.return_value.eq.return_value.execute.return_value.data = [
+            {"id": "session-1"}
+        ]
+        participants_mock.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
+            {"id": "p-1"}
+        ]
+        reflections_mock.upsert.return_value.execute.return_value.data = [_make_reflection_row()]
+
+        result = service.save_reflection(
+            session_id="session-1",
+            user_id="user-1",
+            phase=ReflectionPhase.SETUP,
+            content="Working on thesis",
+            display_name="Provided Name",
+        )
+
+        assert result.display_name == "Provided Name"
+        # Users table should NOT be queried when display_name is provided
+        users_mock.select.assert_not_called()
+
+    @pytest.mark.unit
     def test_save_reflection_falls_back_to_username(self, service, mock_supabase) -> None:
         """Uses username when display_name is None."""
         sessions_mock = MagicMock()
