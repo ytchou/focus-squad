@@ -241,12 +241,8 @@ class TestDashboardInit:
         )
 
         mock_session_service.get_slot_queue_counts.assert_called_once()
-        call_args = mock_session_service.get_slot_queue_counts.call_args
-        assert (
-            call_args[1].get("mode") == "quiet" or call_args[0][1] == "quiet"
-            if len(call_args[0]) > 1
-            else call_args[1].get("mode") == "quiet"
-        )
+        call_kwargs = mock_session_service.get_slot_queue_counts.call_args.kwargs
+        assert call_kwargs["mode"] == "quiet"
 
     @pytest.mark.unit
     @pytest.mark.asyncio

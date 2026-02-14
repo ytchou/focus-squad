@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { ModeToggle } from "./mode-toggle";
@@ -59,15 +59,15 @@ export function FindTableHero({
   }, []);
 
   // Fetch on mount and when mode changes (skip first fetch if initialSlots provided)
-  const [hasUsedInitialSlots, setHasUsedInitialSlots] = useState(!!initialSlots);
+  const skipInitialFetch = useRef(!!initialSlots);
   useEffect(() => {
-    if (hasUsedInitialSlots) {
-      setHasUsedInitialSlots(false);
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
       return;
     }
     setIsLoading(true);
     fetchSlots(mode);
-  }, [mode, fetchSlots]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, fetchSlots]);
 
   // Poll every 60s
   useEffect(() => {

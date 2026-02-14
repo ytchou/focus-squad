@@ -7,7 +7,7 @@ to reduce HTTP round-trips on dashboard load (5 calls → 1).
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -54,7 +54,7 @@ def get_streak_service() -> StreakService:
 
 
 def _build_invitations(
-    raw_invitations: list[dict],
+    raw_invitations: list[dict[str, Any]],
     user_service: UserService,
 ) -> list[InvitationInfo]:
     """Transform raw invitation data into InvitationInfo models."""

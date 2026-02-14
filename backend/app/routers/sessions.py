@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
 from app.core.rate_limit import limiter
+from app.models.credit import InsufficientCreditsError
 from app.models.partner import CreatePrivateTableRequest, InvitationRespond
 from app.models.rating import (
     PendingRatingsResponse,
@@ -255,8 +256,15 @@ async def quick_match(
             transaction_type=TransactionType.SESSION_JOIN,
             description=f"Joined session {session_data['id']}",
         )
+    except InsufficientCreditsError:
+        # TOCTOU guard: credits may have been spent between pre-check and deduction
+        session_service.remove_participant(session_data["id"], profile.id)
+        raise HTTPException(
+            status_code=402,
+            detail="Insufficient credits. You need at least 1 credit to join a session.",
+        )
     except Exception:
-        # Rollback: remove participant if credit deduction fails
+        # Rollback: remove participant if credit deduction fails for other reasons
         session_service.remove_participant(session_data["id"], profile.id)
         raise
 

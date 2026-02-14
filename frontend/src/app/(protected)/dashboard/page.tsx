@@ -103,8 +103,8 @@ export default function DashboardPage() {
 
       // Set initial slots for FindTableHero
       setInitialSlots(data.upcoming_slots.slots);
-    } catch {
-      // Non-critical — individual components handle their own empty states
+    } catch (err) {
+      console.warn("Dashboard init fetch failed:", err);
     }
   }, [setPendingRatings]);
 

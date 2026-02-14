@@ -472,18 +472,19 @@ class TestQuickMatch:
     @pytest.mark.unit
     @pytest.mark.asyncio
     @patch("app.routers.sessions._schedule_livekit_tasks")
-    async def test_deduct_credit_fails_triggers_rollback_and_propagates(
+    async def test_deduct_credit_fails_triggers_rollback_and_returns_402(
         self, mock_schedule
     ) -> None:
-        """InsufficientCreditsError during deduct_credit triggers remove_participant and re-raises."""
+        """InsufficientCreditsError during deduct_credit triggers remove_participant and returns 402."""
         mocks = self._setup_mocks()
         mocks["credit_service"].deduct_credit.side_effect = InsufficientCreditsError(
             user_id="user-123", required=1, available=0
         )
 
-        with pytest.raises(InsufficientCreditsError):
+        with pytest.raises(HTTPException) as exc_info:
             await quick_match(**mocks)
 
+        assert exc_info.value.status_code == 402
         mocks["session_service"].remove_participant.assert_called_once_with(
             "session-abc", "user-123"
         )
