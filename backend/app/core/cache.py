@@ -41,7 +41,7 @@ def cache_get(key: str) -> Optional[Any]:
             return None
         return json.loads(raw)
     except Exception:
-        logger.debug("Cache get failed for key=%s", key, exc_info=True)
+        logger.warning("Cache get failed for key=%s", key, exc_info=True)
         return None
 
 
@@ -50,7 +50,7 @@ def cache_set(key: str, value: Any, ttl: int = 60) -> None:
     try:
         _get_cache_client().set(key, json.dumps(value, default=str), ex=ttl)
     except Exception:
-        logger.debug("Cache set failed for key=%s", key, exc_info=True)
+        logger.warning("Cache set failed for key=%s", key, exc_info=True)
 
 
 def cache_delete(key: str) -> None:
@@ -58,7 +58,7 @@ def cache_delete(key: str) -> None:
     try:
         _get_cache_client().delete(key)
     except Exception:
-        logger.debug("Cache delete failed for key=%s", key, exc_info=True)
+        logger.warning("Cache delete failed for key=%s", key, exc_info=True)
 
 
 def cache_delete_pattern(pattern: str) -> None:
@@ -73,7 +73,7 @@ def cache_delete_pattern(pattern: str) -> None:
             if cursor == 0:
                 break
     except Exception:
-        logger.debug("Cache delete pattern failed for pattern=%s", pattern, exc_info=True)
+        logger.warning("Cache delete pattern failed for pattern=%s", pattern, exc_info=True)
 
 
 def reset_cache_client() -> None:

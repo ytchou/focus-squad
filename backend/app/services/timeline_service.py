@@ -46,7 +46,10 @@ class TimelineService:
         return self._supabase
 
     def get_timeline(self, user_id: str, page: int = 1, per_page: int = 10) -> TimelineResponse:
-        """Get paginated timeline of room snapshots, newest first."""
+        """Get paginated timeline of room snapshots, newest first.
+
+        Computes storage base URL once and concatenates per row.
+        """
         offset = (page - 1) * per_page
 
         result = (

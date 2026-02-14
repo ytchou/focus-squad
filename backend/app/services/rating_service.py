@@ -382,11 +382,13 @@ class RatingService:
     ) -> RatingHistoryResponse:
         """Get paginated history of ratings received by this user.
 
+        Uses SQL COUNT queries for O(1) memory aggregation.
         Returns privacy-safe items (no rater identity) plus aggregate summary.
         """
         offset = (page - 1) * per_page
 
-        # Aggregate counts via SQL — O(1) memory regardless of total ratings
+        # Aggregate counts via SQL — O(1) memory regardless of total ratings.
+        # Supabase errors bubble up to the global catch-all handler (exceptions.py).
         green_result = (
             self.supabase.table("ratings")
             .select("id", count="exact")

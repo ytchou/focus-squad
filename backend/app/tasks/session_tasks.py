@@ -31,7 +31,7 @@ def progress_session_phases() -> dict:
     Processes sessions in batches of BATCH_SIZE to avoid unbounded memory usage.
 
     Returns:
-        Dict with count of sessions progressed
+        Dict with total sessions checked across all batches and count progressed
     """
     supabase = get_supabase()
     session_service = SessionService(supabase=supabase)

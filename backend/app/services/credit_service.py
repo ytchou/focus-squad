@@ -582,7 +582,9 @@ class CreditService:
             cap_at_max=False,
         )
 
-        # Increment referrer's referrals_completed
+        # Increment referrer's referrals_completed — this mutates the credits row
+        # after add_credit already invalidated the cache, so re-invalidate to cover
+        # the window where cache could be repopulated between add_credit and this update.
         self.supabase.table("credits").update(
             {"referrals_completed": db_record.referrals_completed + 1}
         ).eq("user_id", db_record.referred_by).execute()

@@ -65,9 +65,6 @@ def _setup_history_mock(mock_supabase, aggregate_data, items_data):
 
     items_chain = MagicMock()
     items_chain.eq.return_value.neq.return_value.order.return_value.range.return_value.execute.return_value.data = items_data
-    items_chain.eq.return_value.neq.return_value.order.return_value.range.return_value.execute.return_value.count = len(
-        aggregate_data
-    )
 
     call_count = {"n": 0}
 

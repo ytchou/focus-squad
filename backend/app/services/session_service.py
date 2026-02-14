@@ -311,11 +311,13 @@ class SessionService:
         """
         Get upcoming sessions the user is participating in.
 
+        Uses a batch query for participant counts to avoid N+1 queries.
+
         Args:
             user_id: Internal user UUID
 
         Returns:
-            List of session data dicts
+            List of session data dicts with participant_count
         """
         # Find sessions where user is an active participant
         result = (

@@ -1,7 +1,6 @@
 -- Scalability indexes for alpha launch (200-1000+ users)
--- All indexes use CONCURRENTLY to avoid write locks on production tables.
--- Note: CONCURRENTLY cannot run inside a transaction block.
--- If running via supabase db push (which wraps in transaction), remove CONCURRENTLY.
+-- CONCURRENTLY omitted because supabase db push wraps migrations in a transaction.
+-- For production with heavy write load, run these manually with CONCURRENTLY outside a transaction.
 
 -- User session history (session_service.get_user_sessions)
 CREATE INDEX IF NOT EXISTS idx_session_participants_user_created
