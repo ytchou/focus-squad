@@ -27,7 +27,7 @@ interface FindTableHeroProps {
   hasPendingRatings: boolean;
 }
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 60_000;
 
 export function FindTableHero({
   onJoinSlot,
@@ -62,7 +62,7 @@ export function FindTableHero({
     fetchSlots(mode);
   }, [mode, fetchSlots]);
 
-  // Poll every 30s
+  // Poll every 60s
   useEffect(() => {
     const interval = setInterval(() => fetchSlots(mode), POLL_INTERVAL_MS);
     return () => clearInterval(interval);

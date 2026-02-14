@@ -205,9 +205,9 @@ class TestPurchaseItem:
     async def test_purchase_success(
         self, mock_request, mock_user, essence_service, user_service, mock_profile
     ) -> None:
-        """Happy path: item purchased and InventoryItem returned."""
-        expected_item = MagicMock()
-        essence_service.buy_item.return_value = expected_item
+        """Happy path: item purchased and PurchaseResponse returned."""
+        expected_response = MagicMock()
+        essence_service.buy_item.return_value = expected_response
         purchase = PurchaseRequest(item_id="item-desk-001")
 
         result = await purchase_item(
@@ -218,7 +218,7 @@ class TestPurchaseItem:
             essence_service=essence_service,
         )
 
-        assert result is expected_item
+        assert result is expected_response
         user_service.get_user_by_auth_id.assert_called_once_with(mock_user.auth_id)
         essence_service.buy_item.assert_called_once_with(
             user_id=mock_profile.id, item_id="item-desk-001"

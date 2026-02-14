@@ -12,11 +12,13 @@ Handles:
 Design doc: output/plan/2025-02-06-credit-system-redesign.md
 """
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from supabase import Client
 
+from app.core.cache import cache_delete, cache_get, cache_set
 from app.core.database import get_supabase
 from app.models.credit import (
     TIER_CONFIG,
@@ -35,6 +37,10 @@ from app.models.credit import (
     SelfReferralError,
     TransactionType,
 )
+
+logger = logging.getLogger(__name__)
+
+CREDIT_CACHE_TTL = 30  # seconds
 
 
 class CreditService:
@@ -79,6 +85,14 @@ class CreditService:
         Raises:
             CreditNotFoundError: If no credit record exists for user
         """
+        cache_key = f"credits:{user_id}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            try:
+                return CreditBalance(**cached)
+            except Exception:
+                logger.debug("Failed to reconstruct CreditBalance from cache, fetching from DB")
+
         db_record = self._get_db_record(user_id)
         tier_config = TIER_CONFIG[db_record.tier]
 
@@ -90,7 +104,7 @@ class CreditService:
             tzinfo=timezone.utc,
         )
 
-        return CreditBalance(
+        balance = CreditBalance(
             user_id=db_record.user_id,
             tier=db_record.tier,
             credits_remaining=db_record.credits_remaining,
@@ -102,6 +116,8 @@ class CreditService:
             next_refresh=next_refresh,
             referral_code=db_record.referral_code,
         )
+        cache_set(cache_key, balance.model_dump(mode="json"), CREDIT_CACHE_TTL)
+        return balance
 
     def has_sufficient_credits(self, user_id: str, amount: int = 1) -> bool:
         """
@@ -162,6 +178,8 @@ class CreditService:
             "user_id", user_id
         ).execute()
 
+        cache_delete(f"credits:{user_id}")
+
         # Log transaction (negative amount for deduction)
         transaction_data = {
             "user_id": user_id,
@@ -216,6 +234,8 @@ class CreditService:
         self.supabase.table("credits").update({"credits_remaining": new_remaining}).eq(
             "user_id", user_id
         ).execute()
+
+        cache_delete(f"credits:{user_id}")
 
         # Log transaction
         transaction_data = {
@@ -318,6 +338,8 @@ class CreditService:
             }
         ).eq("user_id", user_id).execute()
 
+        cache_delete(f"credits:{user_id}")
+
         # Log transaction
         transaction_data = {
             "user_id": user_id,
@@ -414,6 +436,9 @@ class CreditService:
         self.supabase.table("credits").update(
             {"gifts_sent_this_week": sender_record.gifts_sent_this_week + amount}
         ).eq("user_id", sender_id).execute()
+
+        cache_delete(f"credits:{sender_id}")
+        cache_delete(f"credits:{recipient_id}")
 
         new_balance = result.data[0]["sender_new_balance"] if result.data else 0
 

@@ -9,6 +9,8 @@ Handles:
 - AI companion seat filling
 """
 
+import hashlib
+import logging
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -17,6 +19,7 @@ from typing import Any, Optional
 from livekit import api
 from supabase import Client
 
+from app.core.cache import cache_get, cache_set
 from app.core.config import get_settings
 from app.core.constants import (
     AI_COMPANION_NAMES,
@@ -36,6 +39,10 @@ from app.models.session import (
     SessionPhase,
     TableMode,
 )
+
+logger = logging.getLogger(__name__)
+
+SLOT_COUNTS_CACHE_TTL = 15  # seconds
 
 # =============================================================================
 # Exceptions
@@ -177,6 +184,16 @@ class SessionService:
 
         iso_times = [t.isoformat() for t in slot_times]
 
+        # Build cache key from mode + sorted slot times
+        slots_hash = hashlib.md5("|".join(sorted(iso_times)).encode()).hexdigest()[:12]
+        cache_key = f"slot_counts:{mode or 'all'}:{slots_hash}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            try:
+                return cached
+            except Exception:
+                logger.debug("Failed to use cached slot counts, fetching from DB")
+
         # Query sessions at these start times that haven't ended
         query = (
             self.supabase.table("sessions")
@@ -203,6 +220,8 @@ class SessionService:
             participant_count = (session.get("session_participants") or [{}])[0].get("count", 0)
             if start_key in counts:
                 counts[start_key] += participant_count
+
+        cache_set(cache_key, counts, SLOT_COUNTS_CACHE_TTL)
         return counts
 
     def get_slot_estimates(self, slot_times: list[datetime]) -> dict[str, int]:
@@ -309,21 +328,34 @@ class SessionService:
         )
 
         sessions = []
+        session_ids = []
         for row in result.data or []:
             if row.get("sessions"):
                 session = row["sessions"]
                 session["my_seat_number"] = row["seat_number"]
-
-                # Count participants
-                count_result = (
-                    self.supabase.table("session_participants")
-                    .select("id", count="exact")
-                    .eq("session_id", session["id"])
-                    .is_("left_at", "null")
-                    .execute()
-                )
-                session["participant_count"] = count_result.count or 0
                 sessions.append(session)
+                session_ids.append(session["id"])
+
+        if not session_ids:
+            return sessions
+
+        # Batch fetch participant counts for all sessions in ONE query
+        counts_result = (
+            self.supabase.table("session_participants")
+            .select("session_id", count="exact")
+            .in_("session_id", session_ids)
+            .is_("left_at", "null")
+            .execute()
+        )
+
+        # Build count map from the grouped results
+        count_map: dict[str, int] = {}
+        for row in counts_result.data or []:
+            sid = row["session_id"]
+            count_map[sid] = count_map.get(sid, 0) + 1
+
+        for session in sessions:
+            session["participant_count"] = count_map.get(session["id"], 0)
 
         return sessions
 

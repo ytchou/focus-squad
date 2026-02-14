@@ -1,5 +1,3 @@
-import html2canvas from "html2canvas";
-
 export interface MilestoneCardData {
   snapshotImageUrl: string;
   milestoneLabel: string;
@@ -71,6 +69,7 @@ export async function generateMilestoneCard(
   document.body.appendChild(container);
 
   try {
+    const { default: html2canvas } = await import("html2canvas");
     const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
       scale: 2,
       useCORS: true,

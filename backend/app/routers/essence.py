@@ -22,6 +22,7 @@ from app.models.room import (
     GiftPurchaseResponse,
     InventoryItem,
     PurchaseRequest,
+    PurchaseResponse,
     ShopItem,
 )
 from app.services.essence_service import EssenceService
@@ -66,7 +67,7 @@ async def get_shop_catalog(
     return essence_service.get_shop_items(category=category, tier=tier)
 
 
-@router.post("/buy", response_model=InventoryItem)
+@router.post("/buy", response_model=PurchaseResponse)
 @limiter.limit("10/minute")
 async def purchase_item(
     request: Request,
@@ -74,8 +75,8 @@ async def purchase_item(
     user: AuthUser = Depends(require_auth_from_state),
     user_service: UserService = Depends(get_user_service),
     essence_service: EssenceService = Depends(get_essence_service),
-) -> InventoryItem:
-    """Purchase an item from the shop."""
+) -> PurchaseResponse:
+    """Purchase an item from the shop. Returns item, updated balance, and inventory count."""
     profile = user_service.get_user_by_auth_id(user.auth_id)
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")

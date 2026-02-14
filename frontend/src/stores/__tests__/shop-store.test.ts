@@ -11,7 +11,7 @@ vi.mock("@/lib/api/client", () => ({
 
 describe("Shop Store", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     useShopStore.setState({
       catalog: [],
       inventory: [],
@@ -25,20 +25,17 @@ describe("Shop Store", () => {
   });
 
   describe("giftItem", () => {
-    it("should call both fetchBalance and fetchInventory after gifting", async () => {
+    it("should use balance from response directly without extra API calls", async () => {
+      const mockBalance = { balance: 90, total_earned: 100, total_spent: 10 };
       const mockGiftResponse = {
         inventory_item_id: "inv-123",
         item_name: "Cozy Lamp",
         recipient_name: "Friend",
         essence_spent: 10,
+        balance: mockBalance,
       };
-      const mockBalance = { balance: 90, total_earned: 100, total_spent: 10 };
-      const mockInventory = [{ id: "inv-456", item_id: "item-1" }];
 
       (api.post as Mock).mockResolvedValueOnce(mockGiftResponse);
-      (api.get as Mock)
-        .mockResolvedValueOnce(mockBalance) // fetchBalance
-        .mockResolvedValueOnce(mockInventory); // fetchInventory
 
       const store = useShopStore.getState();
       const result = await store.giftItem("item-1", "recipient-123", "Enjoy!");
@@ -50,15 +47,12 @@ describe("Shop Store", () => {
         gift_message: "Enjoy!",
       });
 
-      // Verify both fetchBalance AND fetchInventory were called
-      expect(api.get).toHaveBeenCalledTimes(2);
-      expect(api.get).toHaveBeenCalledWith("/api/v1/essence/balance");
-      expect(api.get).toHaveBeenCalledWith("/api/v1/essence/inventory");
+      // No extra api.get calls — balance comes from response
+      expect(api.get).not.toHaveBeenCalled();
 
-      // Verify state updated
+      // Verify state updated from response
       const state = useShopStore.getState();
       expect(state.essenceBalance).toEqual(mockBalance);
-      expect(state.inventory).toEqual(mockInventory);
       expect(state.isPurchasing).toBe(false);
       expect(state.isGifting).toBe(false);
     });
@@ -79,21 +73,30 @@ describe("Shop Store", () => {
   });
 
   describe("buyItem", () => {
-    it("should call both fetchBalance and fetchInventory after purchase", async () => {
+    it("should use balance from response and only fetch inventory", async () => {
       const mockItem = { id: "inv-123", item_id: "item-1" };
       const mockBalance = { balance: 90, total_earned: 100, total_spent: 10 };
       const mockInventory = [mockItem];
 
-      (api.post as Mock).mockResolvedValueOnce(mockItem);
-      (api.get as Mock).mockResolvedValueOnce(mockBalance).mockResolvedValueOnce(mockInventory);
+      // buyItem now returns PurchaseResponse with balance included
+      (api.post as Mock).mockResolvedValueOnce({
+        item: mockItem,
+        balance: mockBalance,
+        inventory_count: 1,
+      });
+      // Only fetchInventory is called (balance comes from response)
+      (api.get as Mock).mockResolvedValueOnce(mockInventory);
 
       const store = useShopStore.getState();
       const result = await store.buyItem("item-1");
 
       expect(result).toEqual(mockItem);
-      expect(api.get).toHaveBeenCalledTimes(2);
-      expect(api.get).toHaveBeenCalledWith("/api/v1/essence/balance");
+      // Only 1 api.get call (inventory), not 2 — balance from response
+      expect(api.get).toHaveBeenCalledTimes(1);
       expect(api.get).toHaveBeenCalledWith("/api/v1/essence/inventory");
+
+      const state = useShopStore.getState();
+      expect(state.essenceBalance).toEqual(mockBalance);
     });
   });
 

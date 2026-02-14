@@ -15,6 +15,9 @@ from app.services.session_service import SessionService
 logger = logging.getLogger(__name__)
 
 
+BATCH_SIZE = 50
+
+
 @celery_app.task
 def progress_session_phases() -> dict:
     """
@@ -25,53 +28,65 @@ def progress_session_phases() -> dict:
     2. Update current_phase and phase_started_at if changed
     3. If session should be ended, mark it and schedule cleanup
 
+    Processes sessions in batches of BATCH_SIZE to avoid unbounded memory usage.
+
     Returns:
         Dict with count of sessions progressed
     """
     supabase = get_supabase()
     session_service = SessionService(supabase=supabase)
 
-    # Query all active (non-ended) sessions
-    result = (
-        supabase.table("sessions")
-        .select("id, start_time, current_phase")
-        .neq("current_phase", "ended")
-        .execute()
-    )
-
-    sessions = result.data or []
-    if not sessions:
-        return {"checked": 0, "progressed": 0}
-
     now = datetime.now(timezone.utc)
+    total_checked = 0
     progressed = 0
+    offset = 0
 
-    for session in sessions:
-        current_phase = session["current_phase"]
-        expected_phase = session_service.calculate_current_phase(session)
+    while True:
+        result = (
+            supabase.table("sessions")
+            .select("id, start_time, current_phase")
+            .neq("current_phase", "ended")
+            .range(offset, offset + BATCH_SIZE - 1)
+            .execute()
+        )
 
-        if expected_phase.value != current_phase:
-            supabase.table("sessions").update(
-                {
-                    "current_phase": expected_phase.value,
-                    "phase_started_at": now.isoformat(),
-                }
-            ).eq("id", session["id"]).execute()
+        sessions = result.data or []
+        if not sessions:
+            break
 
-            progressed += 1
-            logger.info(f"Session {session['id']}: {current_phase} -> {expected_phase.value}")
+        total_checked += len(sessions)
 
-            # If transitioning to ended, schedule cleanup
-            if expected_phase.value == "ended":
-                try:
-                    from app.tasks.livekit_tasks import cleanup_ended_session
+        for session in sessions:
+            current_phase = session["current_phase"]
+            expected_phase = session_service.calculate_current_phase(session)
 
-                    cleanup_ended_session.apply_async(
-                        args=[session["id"]],
-                        countdown=60,
-                    )
-                    logger.info(f"Scheduled cleanup for ended session {session['id']}")
-                except Exception as e:
-                    logger.warning(f"Failed to schedule cleanup: {e}")
+            if expected_phase.value != current_phase:
+                supabase.table("sessions").update(
+                    {
+                        "current_phase": expected_phase.value,
+                        "phase_started_at": now.isoformat(),
+                    }
+                ).eq("id", session["id"]).execute()
 
-    return {"checked": len(sessions), "progressed": progressed}
+                progressed += 1
+                logger.info(f"Session {session['id']}: {current_phase} -> {expected_phase.value}")
+
+                # If transitioning to ended, schedule cleanup
+                if expected_phase.value == "ended":
+                    try:
+                        from app.tasks.livekit_tasks import cleanup_ended_session
+
+                        cleanup_ended_session.apply_async(
+                            args=[session["id"]],
+                            countdown=60,
+                        )
+                        logger.info(f"Scheduled cleanup for ended session {session['id']}")
+                    except Exception as e:
+                        logger.warning(f"Failed to schedule cleanup: {e}")
+
+        if len(sessions) < BATCH_SIZE:
+            break
+
+        offset += BATCH_SIZE
+
+    return {"checked": total_checked, "progressed": progressed}

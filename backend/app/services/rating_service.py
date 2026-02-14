@@ -386,23 +386,30 @@ class RatingService:
         """
         offset = (page - 1) * per_page
 
-        # Query 1: Aggregate counts (all non-skip ratings for this user)
-        all_ratings = (
+        # Aggregate counts via SQL — O(1) memory regardless of total ratings
+        green_result = (
             self.supabase.table("ratings")
-            .select("rating")
+            .select("id", count="exact")
             .eq("ratee_id", user_id)
-            .neq("rating", "skip")
+            .eq("rating", "green")
+            .execute()
+        )
+        red_result = (
+            self.supabase.table("ratings")
+            .select("id", count="exact")
+            .eq("ratee_id", user_id)
+            .eq("rating", "red")
             .execute()
         )
 
-        green_count = sum(1 for r in all_ratings.data if r["rating"] == "green")
-        red_count = sum(1 for r in all_ratings.data if r["rating"] == "red")
+        green_count = green_result.count or 0
+        red_count = red_result.count or 0
         total_received = green_count + red_count
         green_percentage = (
             round((green_count / total_received) * 100, 1) if total_received > 0 else 0.0
         )
 
-        # Query 2: Paginated items (most recent first)
+        # Paginated items (most recent first)
         items_result = (
             self.supabase.table("ratings")
             .select("id, session_id, rating, created_at")

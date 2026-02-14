@@ -817,9 +817,27 @@
 - [x] Add retry logic for referral code collision (`user_service.py`) - Max 5 attempts
 
 ### Scalability Improvements
-- [ ] Optimize session page polling (increase interval or use WebSocket)
 - [x] Add analytics table TTL (1-year retention via Celery)
 - [x] Optimize RLS partner subqueries (Redis cache)
+- [x] **[P0]** Add missing composite indexes (session_participants, credit_transactions, analytics_events, pending_ratings, messages, ratings, session_analytics_events)
+- [x] **[P0]** Fix N+1 query in `get_user_sessions()` — embed participant count in single query
+- [x] **[P0]** Fix in-Python aggregation in `get_rating_history()` — use SQL count
+- [x] **[P0]** Fix timeline storage URL loop — compute base URL once
+- [x] **[P1]** Create `core/cache.py` Redis cache utility (following partner_service.py pattern)
+- [x] **[P1]** Cache user profile lookups (60s TTL, invalidate on update)
+- [x] **[P1]** Cache credit balances (30s TTL, invalidate on deduct/refund/refresh)
+- [x] **[P1]** Cache slot queue counts (15s TTL, invalidate on quick-match)
+- [x] **[P2]** Paginate phase progression Celery task (batch size 50)
+- [x] **[P2]** Paginate credit refresh Celery task (batch size 100)
+- [x] **[P2]** Increase Celery worker concurrency from 4 to 8
+- [x] **[P2]** Add chat_messages retention (90-day cleanup task)
+- [x] **[P3]** Return updated balance + inventory in purchase responses (eliminate 2 round-trips)
+- [x] **[P3]** Fix save_reflection() extra user query — pass display_name from router
+- [ ] **[P3]** Evaluate parallel pre-validation in quick_match (after P1 caching)
+- [x] **[P4]** Lazy-load html2canvas (~120KB bundle reduction)
+- [x] **[P4]** Increase session polling interval from 3s to 5s
+- [x] **[P4]** Increase FindTableHero polling from 30s to 60s
+- [ ] **[P4]** Optional: dashboard init batch endpoint
 
 ### Test Coverage Gaps
 - [x] Add tests for JWKS cache expiration scenario
