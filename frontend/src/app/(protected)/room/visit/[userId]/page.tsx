@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout";
 import { Loader2 } from "lucide-react";
 import { useRoomStore } from "@/stores/room-store";
 import { PartnerRoomView } from "@/components/room/partner-room-view";
+import { trackRoomVisitViewed } from "@/lib/posthog/events";
 
 export default function VisitPartnerRoomPage() {
   const params = useParams<{ userId: string }>();
@@ -20,6 +21,7 @@ export default function VisitPartnerRoomPage() {
 
   useEffect(() => {
     if (params.userId) {
+      trackRoomVisitViewed(params.userId);
       fetchPartnerRoom(params.userId);
     }
     return () => clearPartnerRoom();

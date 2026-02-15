@@ -34,6 +34,7 @@ import { SessionEndModal } from "@/components/session/session-end-modal";
 import { useBoardStore, type BoardMessage, type ReflectionPhase } from "@/stores/board-store";
 import { toast } from "sonner";
 import { Loader2, Bug } from "lucide-react";
+import { trackMicToggled } from "@/lib/posthog/events";
 import type { SessionPhase } from "@/stores/session-store";
 
 // Debug: Phase minute offsets (how many minutes into session each phase starts)
@@ -215,27 +216,15 @@ export default function SessionPage() {
 
   // Phase change handler
   const handlePhaseChange = useCallback(
-    (newPhase: SessionPhase, previousPhase: SessionPhase) => {
+    (newPhase: SessionPhase, _previousPhase: SessionPhase) => {
       setPhase(newPhase);
 
       // Show end modal when entering social or completed phase
       if (newPhase === "social" || newPhase === "completed") {
         setShowEndModal(true);
       }
-
-      // Track phase transition analytics
-      api
-        .post("/analytics/track", {
-          event_type: "session_phase_changed",
-          session_id: sessionId,
-          metadata: {
-            from_phase: previousPhase,
-            to_phase: newPhase,
-          },
-        })
-        .catch(() => {});
     },
-    [sessionId, setPhase, setShowEndModal]
+    [setPhase, setShowEndModal]
   );
 
   // Session timer
@@ -579,6 +568,12 @@ function SessionPageContent({
   const currentUser = participants.find((p) => p.isCurrentUser);
   const currentUserDisplayName = currentUser?.displayName || currentUser?.username || t("you");
 
+  // Wrap mic toggle with PostHog tracking
+  const handleToggleMute = useCallback(() => {
+    trackMicToggled(sessionId, phase, !isMuted);
+    toggleMute();
+  }, [sessionId, phase, isMuted, toggleMute]);
+
   // Picture-in-Picture mini view
   const { isPiPActive, isPiPSupported, togglePiP } = usePictureInPicture({
     phase,
@@ -642,7 +637,7 @@ function SessionPageContent({
           speakingParticipantIds={speakingParticipantIds}
           isMuted={isMuted}
           isQuietMode={isQuietMode || disableAudio}
-          onToggleMute={toggleMute}
+          onToggleMute={handleToggleMute}
           onLeave={onLeave}
           onBroadcastMessage={handleBroadcast}
           isPiPActive={isPiPActive}
@@ -682,7 +677,7 @@ function SessionPageContent({
           <ControlBar
             isMuted={isMuted}
             isQuietMode={isQuietMode || disableAudio}
-            onToggleMute={toggleMute}
+            onToggleMute={handleToggleMute}
             presenceState={currentUser?.presenceState}
             isPiPActive={isPiPActive}
             isPiPSupported={isPiPSupported}

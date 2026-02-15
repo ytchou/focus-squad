@@ -10,6 +10,8 @@ import {
 } from "@livekit/components-react";
 import { RoomEvent, ConnectionState, DataPacket_Kind } from "livekit-client";
 import { ConnectionStatus } from "./connection-status";
+import { useSessionStore } from "@/stores/session-store";
+import { trackAudioConnected, trackAudioDisconnected } from "@/lib/posthog/events";
 
 interface LiveKitRoomProviderProps {
   token: string;
@@ -43,11 +45,13 @@ export function LiveKitRoomProvider({
   const handleConnectionStateChange = useCallback(
     (state: ConnectionState) => {
       let mappedState: "connected" | "connecting" | "reconnecting" | "disconnected";
+      const sessionId = useSessionStore.getState().sessionId;
 
       switch (state) {
         case ConnectionState.Connected:
           mappedState = "connected";
           setDisconnectedAt(null);
+          if (sessionId) trackAudioConnected(sessionId);
           break;
         case ConnectionState.Connecting:
           mappedState = "connecting";
@@ -60,6 +64,7 @@ export function LiveKitRoomProvider({
           break;
         case ConnectionState.Disconnected:
           mappedState = "disconnected";
+          if (sessionId) trackAudioDisconnected(sessionId, "disconnected");
           if (!disconnectedAt) {
             setDisconnectedAt(new Date());
           }

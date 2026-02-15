@@ -16,6 +16,7 @@ import {
 import { useDebounce } from "@/hooks/use-debounce";
 import { useGamificationStore } from "@/stores";
 import { toast } from "sonner";
+import { trackDiaryViewed, trackReflectionSubmitted } from "@/lib/posthog/events";
 
 type ViewMode = "timeline" | "calendar";
 
@@ -65,6 +66,11 @@ export default function DiaryPage() {
     [debouncedSearch, dateRange.from, dateRange.to, t]
   );
 
+  // Track diary page view on mount
+  useEffect(() => {
+    trackDiaryViewed();
+  }, []);
+
   // Initial load + refetch on filter change
   useEffect(() => {
     setPage(1);
@@ -82,6 +88,8 @@ export default function DiaryPage() {
 
   const handleSaveNote = async (sessionId: string, note: string, tags: string[]) => {
     try {
+      trackReflectionSubmitted(sessionId, note.trim().length > 0);
+
       const response = await api.post<DiaryNoteWithReactionResponse>(
         `/sessions/diary/${sessionId}/note`,
         { note, tags }

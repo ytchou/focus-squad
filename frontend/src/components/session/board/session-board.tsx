@@ -6,6 +6,8 @@ import { useBoardStore, type BoardMessage, type ReflectionPhase } from "@/stores
 import { ChatMessage } from "./chat-message";
 import { ReflectionCard } from "./reflection-card";
 import { BoardInput } from "./board-input";
+import { trackBoardMessageSent } from "@/lib/posthog/events";
+import { useSessionStore } from "@/stores/session-store";
 
 interface SessionBoardProps {
   sessionId: string;
@@ -39,6 +41,9 @@ export function SessionBoard({
 
   const handleSendChat = useCallback(
     (content: string) => {
+      const currentPhase = useSessionStore.getState().currentPhase ?? "unknown";
+      trackBoardMessageSent(sessionId, currentPhase);
+
       const message: BoardMessage = {
         id: `chat-${currentUserId}-${Date.now()}`,
         type: "chat",
@@ -50,11 +55,13 @@ export function SessionBoard({
       addMessage(message);
       onBroadcastMessage(message);
     },
-    [currentUserId, currentUserDisplayName, addMessage, onBroadcastMessage]
+    [sessionId, currentUserId, currentUserDisplayName, addMessage, onBroadcastMessage]
   );
 
   const handleSendReflection = useCallback(
     (phase: ReflectionPhase, content: string) => {
+      trackBoardMessageSent(sessionId, phase);
+
       const message: BoardMessage = {
         id: `reflection-${currentUserId}-${phase}-${Date.now()}`,
         type: "reflection",

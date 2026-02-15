@@ -21,6 +21,7 @@ import { ChatInput } from "@/components/messages/chat-input";
 import { CreateGroupModal } from "@/components/messages/create-group-modal";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { toast } from "sonner";
+import { trackPartnerListViewed } from "@/lib/posthog/events";
 import { useDebounce } from "@/hooks/use-debounce";
 
 type Tab = "partners" | "requests" | "invitations" | "messages";
@@ -66,6 +67,7 @@ export default function PartnersPage() {
 
   // Fetch all data on mount
   useEffect(() => {
+    trackPartnerListViewed();
     fetchPartners();
     fetchRequests();
     fetchInvitations();

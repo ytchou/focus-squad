@@ -30,6 +30,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { InterestTagPicker } from "@/components/partners";
 import { toast } from "sonner";
+import { trackProfileViewed, trackProfileUpdated } from "@/lib/posthog/events";
 
 // ─── Interest Tags Section ──────────────────────────────────────────────────
 
@@ -105,12 +106,18 @@ function IdentitySection({ user }: { user: UserProfile }) {
     setIsSaving(true);
     setError(null);
     try {
+      const fieldsChanged: string[] = [];
+      if (username !== user.username) fieldsChanged.push("username");
+      if (displayName !== (user.display_name || "")) fieldsChanged.push("display_name");
+      if (bio !== (user.bio || "")) fieldsChanged.push("bio");
+
       const profile = await api.patch<UserProfile>("/users/me", {
         username: username.toLowerCase(),
         display_name: displayName || username,
         bio: bio || null,
       });
       useUserStore.getState().setUser(profile);
+      if (fieldsChanged.length > 0) trackProfileUpdated(fieldsChanged);
       setIsEditing(false);
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
@@ -496,6 +503,10 @@ function AccountSection({ user }: { user: UserProfile }) {
 export default function ProfilePage() {
   const t = useTranslations("profile");
   const user = useUserStore((state) => state.user);
+
+  useEffect(() => {
+    trackProfileViewed();
+  }, []);
 
   if (!user) {
     return (

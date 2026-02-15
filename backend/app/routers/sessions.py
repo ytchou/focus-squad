@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
+from app.core.posthog import capture as posthog_capture
 from app.core.rate_limit import limiter
 from app.models.credit import InsufficientCreditsError
 from app.models.partner import CreatePrivateTableRequest, InvitationRespond
@@ -49,7 +50,6 @@ from app.models.session import (
     UpcomingSessionsResponse,
     UpcomingSlotsResponse,
 )
-from app.services.analytics_service import AnalyticsService
 from app.services.credit_service import (
     CreditService,
     TransactionType,
@@ -86,13 +86,6 @@ def get_user_service() -> UserService:
 def get_rating_service() -> RatingService:
     """Get RatingService instance."""
     return RatingService()
-
-
-def get_analytics_service() -> AnalyticsService:
-    """Get AnalyticsService instance."""
-    from app.core.database import get_supabase
-
-    return AnalyticsService(supabase=get_supabase())
 
 
 # =============================================================================
@@ -163,7 +156,6 @@ async def quick_match(
     session_service: SessionService = Depends(get_session_service),
     credit_service: CreditService = Depends(get_credit_service),
     user_service: UserService = Depends(get_user_service),
-    analytics_service: AnalyticsService = Depends(get_analytics_service),
     rating_service: RatingService = Depends(get_rating_service),
 ):
     """
@@ -285,16 +277,15 @@ async def quick_match(
     wait_minutes = max(0, int(wait_seconds / 60))  # Round down, never negative
     is_immediate = wait_minutes < 1
 
-    # Track analytics event (fire-and-forget)
-    await analytics_service.track_event(
-        user_id=profile.id,
-        session_id=session_data["id"],
-        event_type="waiting_room_entered",
-        metadata={
+    posthog_capture(
+        user_id=str(profile.id),
+        event="session_match_succeeded",
+        properties={
+            "mode": match_request.filters.mode if match_request.filters else "forced_audio",
             "wait_minutes": wait_minutes,
             "is_immediate": is_immediate,
-            "mode": session_data["mode"],
         },
+        session_id=str(session_data["id"]),
     )
 
     return QuickMatchResponse(
@@ -694,6 +685,27 @@ async def leave_session(
         reason=leave_request.reason,
     )
 
+    # Calculate minutes completed from session start
+    minutes_completed = 0
+    start_time_str = session_data.get("start_time")
+    if start_time_str:
+        try:
+            start_time = datetime.fromisoformat(start_time_str.replace("Z", "+00:00"))
+            minutes_completed = int((datetime.now(timezone.utc) - start_time).total_seconds() / 60)
+        except (ValueError, TypeError):
+            pass
+
+    posthog_capture(
+        user_id=str(profile.id),
+        event="session_left_early",
+        properties={
+            "reason": leave_request.reason if leave_request and leave_request.reason else "unknown",
+            "phase_at_exit": session_data.get("current_phase", "unknown"),
+            "minutes_completed": minutes_completed,
+        },
+        session_id=str(session_id),
+    )
+
     return LeaveSessionResponse(status="left", session_id=session_id)
 
 
@@ -773,6 +785,13 @@ async def cancel_session(
         minutes_until = int(time_until_start.total_seconds() / 60)
         message = f"Session cancelled. No refund (cancelled {minutes_until} minutes before start, minimum 60 required)."
 
+    posthog_capture(
+        user_id=str(profile.id),
+        event="session_cancelled",
+        properties={"credit_refunded": credit_refunded},
+        session_id=str(session_id),
+    )
+
     return CancelSessionResponse(
         status="cancelled",
         session_id=session_id,
@@ -796,6 +815,14 @@ async def rate_participants(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
+    for r in ratings_request.ratings:
+        posthog_capture(
+            user_id=str(profile.id),
+            event="rating_submitted",
+            properties={"rating": r.rating},
+            session_id=str(session_id),
+        )
+
     return rating_service.submit_ratings(
         session_id=session_id,
         rater_id=profile.id,
@@ -818,6 +845,13 @@ async def skip_ratings(
         raise HTTPException(status_code=404, detail="User not found")
 
     rating_service.skip_all_ratings(session_id, profile.id)
+
+    posthog_capture(
+        user_id=str(profile.id),
+        event="rating_prompt_dismissed",
+        session_id=str(session_id),
+    )
+
     return {"success": True, "message": "Ratings skipped"}
 
 

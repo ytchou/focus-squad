@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.database import get_supabase
+from app.core.posthog import capture as posthog_capture
 from app.core.rate_limit import limiter
 from app.models.credit import (
     ApplyReferralRequest,
@@ -83,6 +84,15 @@ async def gift_credits(
     profile = user_service.get_user_by_auth_id(user.auth_id)
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
+
+    posthog_capture(
+        user_id=str(profile.id),
+        event="credit_gifted",
+        properties={
+            "recipient_user_id": str(gift_request.recipient_user_id),
+            "amount": gift_request.amount,
+        },
+    )
 
     return credit_service.gift_credit(
         sender_id=profile.id,

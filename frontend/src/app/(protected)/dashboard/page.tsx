@@ -16,6 +16,7 @@ import {
 } from "@/stores";
 import { useSessionStore } from "@/stores/session-store";
 import { api, ApiError } from "@/lib/api/client";
+import { trackFindTableClicked } from "@/lib/posthog/events";
 import { AppShell } from "@/components/layout";
 import { StatCard } from "@/components/ui/stat-card";
 import { ReliabilityBadge } from "@/components/ui/reliability-badge";
@@ -147,6 +148,7 @@ export default function DashboardPage() {
     try {
       setIsMatching(true);
       setMatchingSlot(slotTime);
+      trackFindTableClicked(mode);
 
       const data = await api.post<{
         session: { id: string; start_time: string; mode: string };

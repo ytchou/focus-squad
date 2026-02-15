@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useSessionStore } from "@/stores/session-store";
 import { api } from "@/lib/api/client";
+import { trackWaitingRoomEntered, trackWaitingRoomAbandoned } from "@/lib/posthog/events";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,34 +17,13 @@ export default function WaitingRoomPage() {
   const t = useTranslations("waitingRoom");
   const sessionId = params.sessionId as string;
 
-  const { sessionStartTime, isWaiting, clearWaitingRoom } = useSessionStore();
+  const { sessionStartTime, isWaiting, waitMinutes, clearWaitingRoom } = useSessionStore();
 
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [showGetReady, setShowGetReady] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const hasRedirected = useRef(false);
-
-  // Track "waiting_room_resumed" event on mount (page reload)
-  // We intentionally only run this once on mount to track page reloads, not re-renders
-  useEffect(() => {
-    if (sessionId && sessionStartTime) {
-      const minutesBeforeStart = Math.floor(
-        (new Date(sessionStartTime).getTime() - Date.now()) / 60000
-      );
-
-      // Fire-and-forget analytics tracking
-      api
-        .post("/analytics/track", {
-          event_type: "waiting_room_resumed",
-          session_id: sessionId,
-          metadata: {
-            minutes_before_start: minutesBeforeStart,
-          },
-        })
-        .catch(() => {}); // Ignore errors
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
+  const initialTimeRef = useRef<number | null>(null);
 
   // Calculate time remaining and handle countdown
   useEffect(() => {
@@ -68,15 +48,6 @@ export default function WaitingRoomPage() {
         hasRedirected.current = true;
         clearInterval(interval);
 
-        // Track successful join
-        api
-          .post("/analytics/track", {
-            event_type: "session_joined_from_waiting_room",
-            session_id: sessionId,
-            metadata: {},
-          })
-          .catch(() => {});
-
         clearWaitingRoom();
         router.push(`/session/${sessionId}`);
         return;
@@ -99,6 +70,19 @@ export default function WaitingRoomPage() {
     return () => clearInterval(interval);
   }, [sessionStartTime, sessionId, router, clearWaitingRoom]);
 
+  // Track initial time remaining for abandon calculation
+  useEffect(() => {
+    if (timeRemaining > 0 && initialTimeRef.current === null) {
+      initialTimeRef.current = timeRemaining;
+    }
+  }, [timeRemaining]);
+
+  // Track waiting room entered
+  useEffect(() => {
+    trackWaitingRoomEntered(sessionId, waitMinutes ?? 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Format time as MM:SS
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -110,21 +94,8 @@ export default function WaitingRoomPage() {
   const handleLeave = async () => {
     setIsLeaving(true);
     try {
-      // Track abandonment (fire-and-forget)
-      const minutesBeforeStart = sessionStartTime
-        ? Math.floor((new Date(sessionStartTime).getTime() - Date.now()) / 60000)
-        : 0;
-
-      api
-        .post("/analytics/track", {
-          event_type: "waiting_room_abandoned",
-          session_id: sessionId,
-          metadata: {
-            minutes_before_start: minutesBeforeStart,
-            reason: "user_clicked_leave",
-          },
-        })
-        .catch(() => {});
+      const waitedSeconds = (initialTimeRef.current ?? 0) - timeRemaining;
+      trackWaitingRoomAbandoned(sessionId, waitedSeconds, timeRemaining);
 
       // Call leave session API (FastAPI backend)
       await api.post(`/sessions/${sessionId}/leave`);

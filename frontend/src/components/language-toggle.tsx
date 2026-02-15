@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { api } from "@/lib/api/client";
 import { useUserStore } from "@/stores/user-store";
+import { trackLanguageSwitched } from "@/lib/posthog/events";
 
 type Locale = "en" | "zh-TW";
 
@@ -24,6 +25,7 @@ export function LanguageToggle({ variant = "segmented", skipApi = false }: Langu
   async function handleChange(newLocale: Locale) {
     if (newLocale === currentLocale) return;
 
+    trackLanguageSwitched(currentLocale, newLocale);
     setLocaleCookie(newLocale);
 
     // Update user profile in DB (fire-and-forget unless skipApi)

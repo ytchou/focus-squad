@@ -7,6 +7,7 @@ import { Clock, CheckCircle, Coffee, Headphones, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useUserStore, type UserProfile } from "@/stores/user-store";
+import { trackBanPageViewed } from "@/lib/posthog/events";
 
 function parseBannedUntil(user: UserProfile | null, searchParams: URLSearchParams): Date | null {
   const paramValue = searchParams.get("until");
@@ -69,6 +70,13 @@ export default function BannedPage() {
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [bannedUntil]);
+
+  // Track ban page view on mount
+  useEffect(() => {
+    const remainingHours = Math.ceil(initial.seconds / 3600);
+    trackBanPageViewed(remainingHours);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

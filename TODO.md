@@ -846,17 +846,32 @@
 - [x] Add tests for essence purchase race condition
 - [x] Add tests for message pagination cursor reset
 
-### Standard Hardening
-- [ ] Security audit with Shannon AI scanner ($5-25/scan) - Manual fixes done, ready for scan
-- [x] Convert JWKS fetch to async (`httpx.AsyncClient`)
-- [ ] Performance testing
-- [ ] Mobile responsiveness check
-- [ ] Accessibility audit (basic)
+### Analytics Integration (PostHog)
+> **Design Doc:** [docs/plans/2026-02-15-posthog-analytics-design.md](docs/plans/2026-02-15-posthog-analytics-design.md)
+> **Implementation Plan:** [docs/plans/2026-02-15-posthog-analytics-plan.md](docs/plans/2026-02-15-posthog-analytics-plan.md)
 
-### Analytics Integration
-- [ ] Integrate PostHog (or Amplitude/Mixpanel)
-- [ ] Instrument key events (session_start, session_complete, rating_submitted, etc.)
-- [ ] Add user identification and properties
+**Infrastructure:**
+- [x] Task 1: Install PostHog dependencies (posthog-js, posthog-python, env vars, config)
+- [x] Task 2: Create frontend PostHog client + provider (client.ts, identify.ts, PostHogProvider)
+- [x] Task 3: Add identify() to auth flow + consent (auth-provider.tsx)
+- [x] Task 4: Create backend PostHog helper (core/posthog.py, init in lifespan)
+- [x] Task 5: Create type-safe frontend event helpers (events.ts, ~35 capture functions)
+
+**Migration:**
+- [x] Task 6: Remove old analytics system (delete analytics router/service, remove frontend calls)
+
+**Server-Side Events:**
+- [x] Task 7: Instrument backend server-side events (sessions, users, credits, ratings routers)
+
+**Client-Side Events:**
+- [x] Task 8: Instrument frontend session flow (dashboard, waiting room, session, session end)
+- [x] Task 9: Instrument frontend engagement & settings (diary, profile, room, partners, banned)
+- [x] Task 10: Add tab focus tracking (visibilitychange in PostHogProvider)
+
+**Quality & Verification:**
+- [x] Task 11: Backend tests for PostHog helper (test_posthog.py)
+- [x] Task 12: Build verification + manual test (lint, build, all tests pass)
+- [x] Task 13: Update environment configuration (.env.example, deployment docs)
 
 ### Legal & Compliance
 - [ ] Legal audit (any legality issues?)
@@ -867,6 +882,14 @@
 - [ ] Create admin moderation queue (view/action on reports)
 - [ ] Basic user lookup tool (search by email/username)
 - [ ] Credit adjustment tool (add/deduct credits for support)
+
+### Standard Hardening
+- [ ] Security audit with Shannon AI scanner ($5-25/scan) - Manual fixes done, ready for scan
+- [x] Convert JWKS fetch to async (`httpx.AsyncClient`)
+- [ ] Performance testing
+- [ ] Mobile responsiveness check
+- [ ] Accessibility audit (basic)
+
 
 ---
 

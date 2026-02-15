@@ -6,7 +6,7 @@ Tests:
 """
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -220,9 +220,6 @@ class TestQuickMatchWithTargetSlot:
         rating_service = MagicMock()
         rating_service.has_pending_ratings.return_value = False
 
-        analytics_service = MagicMock()
-        analytics_service.track_event = AsyncMock()
-
         session_data = {
             "id": "session-abc",
             "start_time": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
@@ -239,7 +236,7 @@ class TestQuickMatchWithTargetSlot:
         mock_session_service.get_user_session_at_time.return_value = None
         mock_session_service.generate_livekit_token.return_value = "test-token"
 
-        return credit_service, rating_service, analytics_service
+        return credit_service, rating_service
 
     @pytest.mark.asyncio
     @pytest.mark.unit
@@ -247,7 +244,7 @@ class TestQuickMatchWithTargetSlot:
         self, auth_user, mock_user_service, mock_profile, mock_session_service
     ) -> None:
         """When target_slot_time is provided, it's used instead of calculate_next_slot."""
-        credit_service, rating_service, analytics_service = self._setup_quick_match_mocks(
+        credit_service, rating_service = self._setup_quick_match_mocks(
             mock_session_service, mock_profile
         )
 
@@ -266,7 +263,6 @@ class TestQuickMatchWithTargetSlot:
             session_service=mock_session_service,
             credit_service=credit_service,
             user_service=mock_user_service,
-            analytics_service=analytics_service,
             rating_service=rating_service,
         )
 
@@ -279,7 +275,7 @@ class TestQuickMatchWithTargetSlot:
         self, auth_user, mock_user_service, mock_profile, mock_session_service
     ) -> None:
         """Raises 400 when target_slot_time is in the past."""
-        credit_service, rating_service, analytics_service = self._setup_quick_match_mocks(
+        credit_service, rating_service = self._setup_quick_match_mocks(
             mock_session_service, mock_profile
         )
 
@@ -298,7 +294,6 @@ class TestQuickMatchWithTargetSlot:
                 session_service=mock_session_service,
                 credit_service=credit_service,
                 user_service=mock_user_service,
-                analytics_service=analytics_service,
                 rating_service=rating_service,
             )
         assert exc_info.value.status_code == 400
@@ -310,7 +305,7 @@ class TestQuickMatchWithTargetSlot:
         self, auth_user, mock_user_service, mock_profile, mock_session_service
     ) -> None:
         """Raises 400 when target_slot_time is not at :00 or :30."""
-        credit_service, rating_service, analytics_service = self._setup_quick_match_mocks(
+        credit_service, rating_service = self._setup_quick_match_mocks(
             mock_session_service, mock_profile
         )
 
@@ -329,7 +324,6 @@ class TestQuickMatchWithTargetSlot:
                 session_service=mock_session_service,
                 credit_service=credit_service,
                 user_service=mock_user_service,
-                analytics_service=analytics_service,
                 rating_service=rating_service,
             )
         assert exc_info.value.status_code == 400
@@ -341,7 +335,7 @@ class TestQuickMatchWithTargetSlot:
         self, auth_user, mock_user_service, mock_profile, mock_session_service
     ) -> None:
         """When target_slot_time is None, calls calculate_next_slot()."""
-        credit_service, rating_service, analytics_service = self._setup_quick_match_mocks(
+        credit_service, rating_service = self._setup_quick_match_mocks(
             mock_session_service, mock_profile
         )
 
@@ -360,7 +354,6 @@ class TestQuickMatchWithTargetSlot:
             session_service=mock_session_service,
             credit_service=credit_service,
             user_service=mock_user_service,
-            analytics_service=analytics_service,
             rating_service=rating_service,
         )
 
