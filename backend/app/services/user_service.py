@@ -14,11 +14,10 @@ import string
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional, cast
 
-from supabase import Client
-
 from app.core.cache import cache_delete, cache_get, cache_set
 from app.core.database import get_supabase
 from app.models.user import UserProfile, UserProfileUpdate, UserPublicProfile
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +199,11 @@ class UserService:
             user_data["credit_tier"] = credit_row.get("tier", "free")
             cycle_start_raw = credit_row.get("credit_cycle_start")
             if cycle_start_raw:
-                cycle_start = date.fromisoformat(cycle_start_raw) if isinstance(cycle_start_raw, str) else cycle_start_raw
+                cycle_start = (
+                    date.fromisoformat(cycle_start_raw)
+                    if isinstance(cycle_start_raw, str)
+                    else cycle_start_raw
+                )
                 next_refresh = datetime.combine(
                     cycle_start + timedelta(days=7),
                     datetime.min.time(),
@@ -244,7 +247,11 @@ class UserService:
             user_data["credit_tier"] = credit_row.get("tier", "free")
             cycle_start_raw = credit_row.get("credit_cycle_start")
             if cycle_start_raw:
-                cycle_start = date.fromisoformat(cycle_start_raw) if isinstance(cycle_start_raw, str) else cycle_start_raw
+                cycle_start = (
+                    date.fromisoformat(cycle_start_raw)
+                    if isinstance(cycle_start_raw, str)
+                    else cycle_start_raw
+                )
                 next_refresh = datetime.combine(
                     cycle_start + timedelta(days=7),
                     datetime.min.time(),
