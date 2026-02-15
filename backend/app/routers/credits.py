@@ -26,6 +26,7 @@ from app.models.credit import (
     NotifyInterestResponse,
     ReferralInfo,
 )
+from app.core.posthog import capture as posthog_capture
 from app.services.credit_service import CreditService
 from app.services.user_service import UserService
 
@@ -83,6 +84,15 @@ async def gift_credits(
     profile = user_service.get_user_by_auth_id(user.auth_id)
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
+
+    posthog_capture(
+        user_id=str(profile.id),
+        event="credit_gifted",
+        properties={
+            "recipient_user_id": str(gift_request.recipient_user_id),
+            "amount": gift_request.amount,
+        },
+    )
 
     return credit_service.gift_credit(
         sender_id=profile.id,

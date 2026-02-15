@@ -18,6 +18,7 @@ from app.models.user import (
     UserProfileUpdate,
     UserPublicProfile,
 )
+from app.core.posthog import capture as posthog_capture
 from app.services.user_service import UserService
 
 router = APIRouter()
@@ -48,6 +49,13 @@ async def get_my_profile(
         email=current_user.email,
     )
 
+    if profile.session_count == 0 and not profile.is_onboarded:
+        posthog_capture(
+            user_id=str(profile.id),
+            event="auth_signed_up",
+            properties={"auth_provider": "google"},
+        )
+
     return profile
 
 
@@ -69,6 +77,15 @@ async def update_my_profile(
         400: If username is already taken
         404: If user not found (shouldn't happen with valid auth)
     """
+    profile = user_service.get_user_by_auth_id(current_user.auth_id)
+    if profile:
+        changed_fields = [f for f in update.model_dump(exclude_unset=True).keys()]
+        posthog_capture(
+            user_id=str(profile.id),
+            event="profile_updated",
+            properties={"fields_changed": changed_fields},
+        )
+
     return user_service.update_user_profile(
         auth_id=current_user.auth_id,
         update=update,
