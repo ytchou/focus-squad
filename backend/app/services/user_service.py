@@ -11,7 +11,7 @@ Handles:
 import logging
 import random
 import string
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional, cast
 
 from supabase import Client
@@ -198,7 +198,15 @@ class UserService:
             user_data["credits_remaining"] = credit_row.get("credits_remaining", 0)
             user_data["credits_used_this_week"] = 0  # Deprecated - calculated from transactions now
             user_data["credit_tier"] = credit_row.get("tier", "free")
-            user_data["credit_refresh_date"] = credit_row.get("credit_cycle_start")
+            cycle_start_raw = credit_row.get("credit_cycle_start")
+            if cycle_start_raw:
+                cycle_start = date.fromisoformat(cycle_start_raw) if isinstance(cycle_start_raw, str) else cycle_start_raw
+                next_refresh = datetime.combine(
+                    cycle_start + timedelta(days=7),
+                    datetime.min.time(),
+                    tzinfo=timezone.utc,
+                )
+                user_data["credit_refresh_date"] = next_refresh.isoformat()
 
         profile = UserProfile(**user_data)
         cache_set(cache_key, profile.model_dump(mode="json"), USER_CACHE_TTL)
@@ -234,7 +242,15 @@ class UserService:
             user_data["credits_remaining"] = credit_row.get("credits_remaining", 0)
             user_data["credits_used_this_week"] = 0  # Deprecated - calculated from transactions now
             user_data["credit_tier"] = credit_row.get("tier", "free")
-            user_data["credit_refresh_date"] = credit_row.get("credit_cycle_start")
+            cycle_start_raw = credit_row.get("credit_cycle_start")
+            if cycle_start_raw:
+                cycle_start = date.fromisoformat(cycle_start_raw) if isinstance(cycle_start_raw, str) else cycle_start_raw
+                next_refresh = datetime.combine(
+                    cycle_start + timedelta(days=7),
+                    datetime.min.time(),
+                    tzinfo=timezone.utc,
+                )
+                user_data["credit_refresh_date"] = next_refresh.isoformat()
 
         return UserProfile(**user_data)
 

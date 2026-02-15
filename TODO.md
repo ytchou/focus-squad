@@ -873,6 +873,20 @@
 - [x] Task 12: Build verification + manual test (lint, build, all tests pass)
 - [x] Task 13: Update environment configuration (.env.example, deployment docs)
 
+### Fixes from Testing
+> Manual QA findings from local server testing (2026-02-15)
+
+- [x] **Missing `/api/v1` prefix on many API calls**: Many frontend API calls (quick-match, `/users/me`, `/sessions/*`, board reflections) were missing the `/api/v1` prefix. Fixed by adding `normalizeEndpoint()` in `client.ts` that auto-prepends the prefix if missing. Calls appeared to work because user data was cached in localStorage.
+- [x] **Reliability badge shows decimal**: "100.0% Trusted" → rounded to "100%" with `Math.round()` in `reliability-badge.tsx`
+- [x] **Dashboard crash: `weekly_streaks` table not found**: `streak_service.get_weekly_streak()` crashed because migration `028_diary_integration.sql` hasn't been pushed to Supabase yet. This killed the entire `/dashboard/init` endpoint (all 4 parallel queries fail together). Fixed by adding try/except in `get_weekly_streak()` to return default zeros when table doesn't exist. Migration still needs to be pushed before alpha.
+- [x] **Fix scalability index migration**: `034_scalability_indexes.sql` referenced `session_participants.created_at` which doesn't exist — the column is `joined_at`. Fixed index name and column.
+- [x] **Fix multi-statement migration failures**: Migrations `031_atomic_essence_purchase.sql` and `032_analytics_retention.sql` had `COMMENT ON FUNCTION` as a separate statement after `CREATE FUNCTION`, which Supabase can't run in a single prepared statement. Removed the `COMMENT ON` statements. Need to re-push migrations.
+- [ ] **Push pending migrations to Supabase**: Migrations 028+ (diary integration, gamification tables like `weekly_streaks`, `room_snapshots`) haven't been pushed. Run `supabase db push` before alpha launch.
+- [ ] **Rethink "What are you working on?" topic input**: Currently in FindTableHero but unclear UX — no visible submit action, topic doesn't affect matching, and value proposition is weak. Options: (1) use topic for matching users with similar focus areas, (2) show it more prominently to tablemates for conversation starters, (3) remove it until we have a real use case. Needs design rethink.
+- [ ] **Sessions page + future scheduling**: Build `/sessions` page (sidebar link exists but page is missing). Dashboard should have a tile/link saying "Schedule future tables" that redirects to the sessions page. The sessions page lets users browse and join upcoming :00/:30 time slots beyond the immediate next ones shown on the dashboard.
+- [x] **Credit refresh countdown shows "--" instead of actual time**: Fixed backend data mapping — `user_service.py` was returning `credit_cycle_start` (past date) instead of computing `cycle_start + 7 days` (next refresh). Frontend was already correct.
+- [ ] **Zero-credit modal flashes on initial load**: When dashboard first loads and user/credit data is still fetching, the "out of credits" modal appears prematurely before real data arrives. Options to brainstorm: (1) change default credit state so zero isn't assumed, or (2) add a loading screen/skeleton so dashboard isn't shown until data is fetched.
+
 ### Legal & Compliance
 - [ ] Legal audit (any legality issues?)
 - [ ] Taiwan PDPA compliance review

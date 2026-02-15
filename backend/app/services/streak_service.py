@@ -34,13 +34,24 @@ class StreakService:
         """Get current week's session count and bonus status."""
         week_start = self._get_current_week_start()
 
-        result = (
-            self.supabase.table("weekly_streaks")
-            .select("session_count, week_start, bonus_3_awarded, bonus_5_awarded")
-            .eq("user_id", user_id)
-            .eq("week_start", week_start.isoformat())
-            .execute()
-        )
+        try:
+            result = (
+                self.supabase.table("weekly_streaks")
+                .select("session_count, week_start, bonus_3_awarded, bonus_5_awarded")
+                .eq("user_id", user_id)
+                .eq("week_start", week_start.isoformat())
+                .execute()
+            )
+        except Exception as e:
+            logger.warning(f"weekly_streaks query failed (table may not exist yet): {e}")
+            return WeeklyStreakResponse(
+                session_count=0,
+                week_start=week_start,
+                next_bonus_at=3,
+                bonus_3_awarded=False,
+                bonus_5_awarded=False,
+                total_bonus_earned=0,
+            )
 
         if not result.data:
             return WeeklyStreakResponse(

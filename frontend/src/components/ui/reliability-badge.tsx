@@ -75,7 +75,7 @@ export function ReliabilityBadge({
     >
       <TierIcon className={iconSizes[size]} />
       {showLabel && <span>{t(TIER_LABEL_KEYS[tier])}</span>}
-      {tier !== "new" && <span className="tabular-nums">{score}%</span>}
+      {tier !== "new" && <span className="tabular-nums">{Math.round(score)}%</span>}
     </div>
   );
 }

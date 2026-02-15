@@ -31,6 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         try {
           const profile = await api.get<UserProfile>("/users/me");
+          console.log(
+            "[AuthProvider] profile loaded, credits_remaining:",
+            profile.credits_remaining,
+            "tier:",
+            profile.credit_tier
+          );
 
           // Onboarding gate: redirect un-onboarded users to the wizard
           if (!profile.is_onboarded) {
@@ -76,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           identifyUser(activeProfile);
           setUserOptOut(!activeProfile.activity_tracking_enabled);
         } catch (err) {
+          console.error("[AuthProvider] Failed to load profile:", err);
           if (err instanceof ApiError) {
             useUserStore.getState().setError(err.message);
           } else {
