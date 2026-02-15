@@ -9,11 +9,10 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
-from supabase import Client
-
 from app.core.constants import STREAK_BONUS_THRESHOLDS
 from app.core.database import get_supabase
 from app.models.gamification import StreakBonusResult, WeeklyStreakResponse
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -34,24 +33,13 @@ class StreakService:
         """Get current week's session count and bonus status."""
         week_start = self._get_current_week_start()
 
-        try:
-            result = (
-                self.supabase.table("weekly_streaks")
-                .select("session_count, week_start, bonus_3_awarded, bonus_5_awarded")
-                .eq("user_id", user_id)
-                .eq("week_start", week_start.isoformat())
-                .execute()
-            )
-        except Exception as e:
-            logger.warning(f"weekly_streaks query failed (table may not exist yet): {e}")
-            return WeeklyStreakResponse(
-                session_count=0,
-                week_start=week_start,
-                next_bonus_at=3,
-                bonus_3_awarded=False,
-                bonus_5_awarded=False,
-                total_bonus_earned=0,
-            )
+        result = (
+            self.supabase.table("weekly_streaks")
+            .select("session_count, week_start, bonus_3_awarded, bonus_5_awarded")
+            .eq("user_id", user_id)
+            .eq("week_start", week_start.isoformat())
+            .execute()
+        )
 
         if not result.data:
             return WeeklyStreakResponse(
