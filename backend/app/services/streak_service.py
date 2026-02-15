@@ -9,10 +9,11 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
+from supabase import Client
+
 from app.core.constants import STREAK_BONUS_THRESHOLDS
 from app.core.database import get_supabase
 from app.models.gamification import StreakBonusResult, WeeklyStreakResponse
-from supabase import Client
 
 logger = logging.getLogger(__name__)
 

@@ -14,10 +14,11 @@ import string
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional, cast
 
+from supabase import Client
+
 from app.core.cache import cache_delete, cache_get, cache_set
 from app.core.database import get_supabase
 from app.models.user import UserProfile, UserProfileUpdate, UserPublicProfile
-from supabase import Client
 
 logger = logging.getLogger(__name__)
 
