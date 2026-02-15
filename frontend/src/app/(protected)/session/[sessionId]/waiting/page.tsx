@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useSessionStore } from "@/stores/session-store";
 import { api } from "@/lib/api/client";
+import { trackWaitingRoomEntered, trackWaitingRoomAbandoned } from "@/lib/posthog/events";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +17,13 @@ export default function WaitingRoomPage() {
   const t = useTranslations("waitingRoom");
   const sessionId = params.sessionId as string;
 
-  const { sessionStartTime, isWaiting, clearWaitingRoom } = useSessionStore();
+  const { sessionStartTime, isWaiting, waitMinutes, clearWaitingRoom } = useSessionStore();
 
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [showGetReady, setShowGetReady] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const hasRedirected = useRef(false);
+  const initialTimeRef = useRef<number | null>(null);
 
   // Calculate time remaining and handle countdown
   useEffect(() => {
@@ -68,6 +70,19 @@ export default function WaitingRoomPage() {
     return () => clearInterval(interval);
   }, [sessionStartTime, sessionId, router, clearWaitingRoom]);
 
+  // Track initial time remaining for abandon calculation
+  useEffect(() => {
+    if (timeRemaining > 0 && initialTimeRef.current === null) {
+      initialTimeRef.current = timeRemaining;
+    }
+  }, [timeRemaining]);
+
+  // Track waiting room entered
+  useEffect(() => {
+    trackWaitingRoomEntered(sessionId, waitMinutes ?? 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Format time as MM:SS
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -79,6 +94,9 @@ export default function WaitingRoomPage() {
   const handleLeave = async () => {
     setIsLeaving(true);
     try {
+      const waitedSeconds = (initialTimeRef.current ?? 0) - timeRemaining;
+      trackWaitingRoomAbandoned(sessionId, waitedSeconds, timeRemaining);
+
       // Call leave session API (FastAPI backend)
       await api.post(`/sessions/${sessionId}/leave`);
 

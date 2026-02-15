@@ -34,6 +34,7 @@ import { SessionEndModal } from "@/components/session/session-end-modal";
 import { useBoardStore, type BoardMessage, type ReflectionPhase } from "@/stores/board-store";
 import { toast } from "sonner";
 import { Loader2, Bug } from "lucide-react";
+import { trackMicToggled, trackAudioConnected, trackAudioDisconnected } from "@/lib/posthog/events";
 import type { SessionPhase } from "@/stores/session-store";
 
 // Debug: Phase minute offsets (how many minutes into session each phase starts)
@@ -568,6 +569,12 @@ function SessionPageContent({
   const currentUser = participants.find((p) => p.isCurrentUser);
   const currentUserDisplayName = currentUser?.displayName || currentUser?.username || t("you");
 
+  // Wrap mic toggle with PostHog tracking
+  const handleToggleMute = useCallback(() => {
+    trackMicToggled(sessionId, phase, isMuted); // isMuted is current state; after toggle it will be !isMuted
+    toggleMute();
+  }, [sessionId, phase, isMuted, toggleMute]);
+
   // Picture-in-Picture mini view
   const { isPiPActive, isPiPSupported, togglePiP } = usePictureInPicture({
     phase,
@@ -631,7 +638,7 @@ function SessionPageContent({
           speakingParticipantIds={speakingParticipantIds}
           isMuted={isMuted}
           isQuietMode={isQuietMode || disableAudio}
-          onToggleMute={toggleMute}
+          onToggleMute={handleToggleMute}
           onLeave={onLeave}
           onBroadcastMessage={handleBroadcast}
           isPiPActive={isPiPActive}
@@ -671,7 +678,7 @@ function SessionPageContent({
           <ControlBar
             isMuted={isMuted}
             isQuietMode={isQuietMode || disableAudio}
-            onToggleMute={toggleMute}
+            onToggleMute={handleToggleMute}
             presenceState={currentUser?.presenceState}
             isPiPActive={isPiPActive}
             isPiPSupported={isPiPSupported}
