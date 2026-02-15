@@ -19,7 +19,7 @@ export function initPostHog(): typeof posthog {
     capture_pageleave: true,
     autocapture: true,
     persistence: "localStorage+cookie",
-    loaded: (ph) => {
+    loaded: (_ph) => {
       if (process.env.NODE_ENV === "development") {
         console.log("[PostHog] Initialized in development mode");
       }

@@ -34,7 +34,7 @@ import { SessionEndModal } from "@/components/session/session-end-modal";
 import { useBoardStore, type BoardMessage, type ReflectionPhase } from "@/stores/board-store";
 import { toast } from "sonner";
 import { Loader2, Bug } from "lucide-react";
-import { trackMicToggled, trackAudioConnected, trackAudioDisconnected } from "@/lib/posthog/events";
+import { trackMicToggled } from "@/lib/posthog/events";
 import type { SessionPhase } from "@/stores/session-store";
 
 // Debug: Phase minute offsets (how many minutes into session each phase starts)
@@ -216,7 +216,7 @@ export default function SessionPage() {
 
   // Phase change handler
   const handlePhaseChange = useCallback(
-    (newPhase: SessionPhase, previousPhase: SessionPhase) => {
+    (newPhase: SessionPhase, _previousPhase: SessionPhase) => {
       setPhase(newPhase);
 
       // Show end modal when entering social or completed phase
@@ -225,7 +225,7 @@ export default function SessionPage() {
       }
 
     },
-    [sessionId, setPhase, setShowEndModal]
+    [setPhase, setShowEndModal]
   );
 
   // Session timer
