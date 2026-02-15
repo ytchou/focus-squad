@@ -17,6 +17,7 @@ import { VisitorNotification } from "@/components/room/visitor-notification";
 import { GiftNotificationToast } from "@/components/room/gift-notification-toast";
 import { captureRoomSnapshot } from "@/lib/room/capture-snapshot";
 import { toast } from "sonner";
+import { trackRoomViewed } from "@/lib/posthog/events";
 import type { VisitorResult } from "@/stores/room-store";
 
 export default function RoomPage() {
@@ -45,6 +46,7 @@ export default function RoomPage() {
   const [isCapturing, setIsCapturing] = useState(false);
 
   useEffect(() => {
+    trackRoomViewed(true);
     fetchRoom().then((data) => {
       if (data?.visitors && data.visitors.length > 0) {
         setPendingVisitor(data.visitors[0]);
