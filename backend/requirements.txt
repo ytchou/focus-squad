@@ -38,3 +38,6 @@ httpx>=0.26.0
 
 # Type checking
 mypy>=1.8.0
+
+# Analytics
+posthog>=3.0.0

@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     # Rate limiting
     rate_limit_enabled: bool = True
 
+    # PostHog Analytics
+    posthog_api_key: str = ""
+    posthog_host: str = "https://us.i.posthog.com"
+    posthog_enabled: bool = True
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
