@@ -29,6 +29,3 @@ BEGIN
     RETURN json_build_object('deleted', v_deleted);
 END;
 $$;
-
-COMMENT ON FUNCTION delete_old_analytics IS
-'Batch delete analytics events older than cutoff_interval. Uses FOR UPDATE SKIP LOCKED to avoid contention. Returns count of deleted rows.';

@@ -3,8 +3,8 @@
 -- For production with heavy write load, run these manually with CONCURRENTLY outside a transaction.
 
 -- User session history (session_service.get_user_sessions)
-CREATE INDEX IF NOT EXISTS idx_session_participants_user_created
-  ON session_participants(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_session_participants_user_joined
+  ON session_participants(user_id, joined_at DESC);
 
 -- Credit history pagination
 CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_created

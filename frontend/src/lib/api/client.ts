@@ -1,7 +1,16 @@
 import { createClient } from "@/lib/supabase/client";
 import { getAuthToken } from "@/lib/auth-token";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_PREFIX = "/api/v1";
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = RAW_API_URL.endsWith(API_PREFIX)
+  ? RAW_API_URL.slice(0, -API_PREFIX.length)
+  : RAW_API_URL;
+
+function normalizeEndpoint(endpoint: string): string {
+  if (endpoint.startsWith(API_PREFIX)) return endpoint;
+  return `${API_PREFIX}${endpoint}`;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -44,7 +53,7 @@ class ApiClient {
 
   async get<T>(endpoint: string): Promise<T> {
     const headers = await this.getAuthHeaders();
-    const response = await fetch(`${API_URL}${endpoint}`, { headers });
+    const response = await fetch(`${API_URL}${normalizeEndpoint(endpoint)}`, { headers });
 
     if (!response.ok) {
       const text = await response.text();
@@ -56,7 +65,7 @@ class ApiClient {
 
   async patch<T>(endpoint: string, data: unknown): Promise<T> {
     const headers = await this.getAuthHeaders();
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetch(`${API_URL}${normalizeEndpoint(endpoint)}`, {
       method: "PATCH",
       headers,
       body: JSON.stringify(data),
@@ -72,7 +81,7 @@ class ApiClient {
 
   async post<T>(endpoint: string, data?: unknown): Promise<T> {
     const headers = await this.getAuthHeaders();
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetch(`${API_URL}${normalizeEndpoint(endpoint)}`, {
       method: "POST",
       headers,
       body: data ? JSON.stringify(data) : undefined,
@@ -88,7 +97,7 @@ class ApiClient {
 
   async put<T>(endpoint: string, data?: unknown): Promise<T> {
     const headers = await this.getAuthHeaders();
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetch(`${API_URL}${normalizeEndpoint(endpoint)}`, {
       method: "PUT",
       headers,
       body: data ? JSON.stringify(data) : undefined,
@@ -104,7 +113,7 @@ class ApiClient {
 
   async delete<T>(endpoint: string): Promise<T> {
     const headers = await this.getAuthHeaders();
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetch(`${API_URL}${normalizeEndpoint(endpoint)}`, {
       method: "DELETE",
       headers,
     });

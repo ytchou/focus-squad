@@ -155,7 +155,7 @@ export default function DashboardPage() {
         livekit_token: string;
         wait_minutes: number;
         is_immediate: boolean;
-      }>("/sessions/quick-match", {
+      }>("/api/v1/sessions/quick-match", {
         filters: { mode, topic: topic || undefined },
         target_slot_time: slotTime,
       });

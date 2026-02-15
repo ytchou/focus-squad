@@ -86,7 +86,3 @@ BEGIN
     );
 END;
 $$;
-
--- Add comment for documentation
-COMMENT ON FUNCTION purchase_item_atomic IS
-'Atomic item purchase that wraps essence deduction, inventory insert, and transaction logging in a single transaction. Uses FOR UPDATE row lock to prevent race conditions.';
