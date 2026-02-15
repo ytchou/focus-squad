@@ -2,8 +2,6 @@
 
 from unittest.mock import patch
 
-import pytest
-
 
 class TestPostHogCapture:
     """Test posthog capture helper functions."""

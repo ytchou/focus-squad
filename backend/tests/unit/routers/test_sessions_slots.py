@@ -263,7 +263,6 @@ class TestQuickMatchWithTargetSlot:
             session_service=mock_session_service,
             credit_service=credit_service,
             user_service=mock_user_service,
-
             rating_service=rating_service,
         )
 
@@ -295,7 +294,6 @@ class TestQuickMatchWithTargetSlot:
                 session_service=mock_session_service,
                 credit_service=credit_service,
                 user_service=mock_user_service,
-    
                 rating_service=rating_service,
             )
         assert exc_info.value.status_code == 400
@@ -326,7 +324,6 @@ class TestQuickMatchWithTargetSlot:
                 session_service=mock_session_service,
                 credit_service=credit_service,
                 user_service=mock_user_service,
-    
                 rating_service=rating_service,
             )
         assert exc_info.value.status_code == 400
@@ -357,7 +354,6 @@ class TestQuickMatchWithTargetSlot:
             session_service=mock_session_service,
             credit_service=credit_service,
             user_service=mock_user_service,
-
             rating_service=rating_service,
         )
 

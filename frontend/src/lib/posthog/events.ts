@@ -13,7 +13,7 @@ function capture(event: string, properties?: Record<string, unknown>): void {
 function captureWithGroup(
   event: string,
   sessionId: string,
-  properties?: Record<string, unknown>,
+  properties?: Record<string, unknown>
 ): void {
   if (!posthog.__loaded) return;
   posthog.group("session", sessionId);
@@ -41,7 +41,7 @@ export function trackOnboardingStepViewed(step: number, stepName: string): void 
 export function trackOnboardingStepCompleted(
   step: number,
   stepName: string,
-  selection?: string,
+  selection?: string
 ): void {
   capture("onboarding_step_completed", { step, step_name: stepName, selection });
 }
@@ -59,7 +59,7 @@ export function trackWaitingRoomEntered(sessionId: string, waitMinutes: number):
 export function trackWaitingRoomAbandoned(
   sessionId: string,
   waitedSeconds: number,
-  remainingSeconds: number,
+  remainingSeconds: number
 ): void {
   captureWithGroup("waiting_room_abandoned", sessionId, {
     waited_seconds: waitedSeconds,

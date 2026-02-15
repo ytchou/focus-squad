@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.constants import ROOM_CLEANUP_DELAY_MINUTES, ROOM_CREATION_LEAD_TIME_SECONDS
+from app.core.posthog import capture as posthog_capture
 from app.core.rate_limit import limiter
 from app.models.credit import InsufficientCreditsError
 from app.models.partner import CreatePrivateTableRequest, InvitationRespond
@@ -49,7 +50,6 @@ from app.models.session import (
     UpcomingSessionsResponse,
     UpcomingSlotsResponse,
 )
-from app.core.posthog import capture as posthog_capture
 from app.services.credit_service import (
     CreditService,
     TransactionType,
@@ -688,7 +688,9 @@ async def leave_session(
     posthog_capture(
         user_id=str(profile.id),
         event="session_left_early",
-        properties={"reason": leave_request.reason if leave_request and leave_request.reason else "unknown"},
+        properties={
+            "reason": leave_request.reason if leave_request and leave_request.reason else "unknown"
+        },
         session_id=str(session_id),
     )
 

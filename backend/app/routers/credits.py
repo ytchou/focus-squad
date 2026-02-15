@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from app.core.auth import AuthUser, require_auth_from_state
 from app.core.database import get_supabase
+from app.core.posthog import capture as posthog_capture
 from app.core.rate_limit import limiter
 from app.models.credit import (
     ApplyReferralRequest,
@@ -26,7 +27,6 @@ from app.models.credit import (
     NotifyInterestResponse,
     ReferralInfo,
 )
-from app.core.posthog import capture as posthog_capture
 from app.services.credit_service import CreditService
 from app.services.user_service import UserService
 

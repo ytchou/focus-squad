@@ -19,7 +19,8 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     if (!POSTHOG_KEY) return;
     if (!posthog.__loaded) return;
 
-    const url = window.origin + pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
+    const url =
+      window.origin + pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
     posthog.capture("$pageview", { $current_url: url });
   }, [pathname, searchParams]);
 

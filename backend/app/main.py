@@ -9,8 +9,8 @@ from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import setup_logging
 from app.core.middleware import CorrelationIDMiddleware, JWTValidationMiddleware
-from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.posthog import init_posthog, shutdown_posthog
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.redis import close_redis, init_redis
 from app.routers import (
     companions,

@@ -10,6 +10,7 @@ Endpoints:
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.core.auth import AuthUser, require_auth_from_state
+from app.core.posthog import capture as posthog_capture
 from app.core.rate_limit import limiter
 from app.models.partner import UpdateInterestTagsRequest
 from app.models.user import (
@@ -18,7 +19,6 @@ from app.models.user import (
     UserProfileUpdate,
     UserPublicProfile,
 )
-from app.core.posthog import capture as posthog_capture
 from app.services.user_service import UserService
 
 router = APIRouter()
@@ -79,7 +79,7 @@ async def update_my_profile(
     """
     profile = user_service.get_user_by_auth_id(current_user.auth_id)
     if profile:
-        changed_fields = [f for f in update.model_dump(exclude_unset=True).keys()]
+        changed_fields = list(update.model_dump(exclude_unset=True).keys())
         posthog_capture(
             user_id=str(profile.id),
             event="profile_updated",

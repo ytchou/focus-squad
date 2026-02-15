@@ -223,7 +223,6 @@ export default function SessionPage() {
       if (newPhase === "social" || newPhase === "completed") {
         setShowEndModal(true);
       }
-
     },
     [setPhase, setShowEndModal]
   );
