@@ -10,6 +10,7 @@ from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import setup_logging
 from app.core.middleware import CorrelationIDMiddleware, JWTValidationMiddleware
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
+from app.core.posthog import init_posthog, shutdown_posthog
 from app.core.redis import close_redis, init_redis
 from app.routers import (
     analytics,
@@ -41,8 +42,10 @@ async def lifespan(app: FastAPI):
     logger.info("Starting %s...", settings.app_name)
     await init_redis()
     logger.info("Redis connection initialized")
+    init_posthog()
     yield
     logger.info("Shutting down %s...", settings.app_name)
+    shutdown_posthog()
     await close_redis()
     logger.info("Redis connection closed")
 
