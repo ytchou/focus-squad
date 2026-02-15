@@ -23,6 +23,26 @@ from app.models.user import UserProfile, UserProfileUpdate, UserPublicProfile
 logger = logging.getLogger(__name__)
 
 USER_CACHE_TTL = 60  # seconds
+CREDIT_CYCLE_DAYS = 7
+
+
+def _compute_next_refresh(cycle_start_raw: Any) -> Optional[str]:
+    """Compute next credit refresh ISO timestamp from a cycle start date."""
+    try:
+        cycle_start = (
+            date.fromisoformat(cycle_start_raw)
+            if isinstance(cycle_start_raw, str)
+            else cycle_start_raw
+        )
+        next_refresh = datetime.combine(
+            cycle_start + timedelta(days=CREDIT_CYCLE_DAYS),
+            datetime.min.time(),
+            tzinfo=timezone.utc,
+        )
+        return next_refresh.isoformat()
+    except (ValueError, TypeError, AttributeError):
+        logger.warning("Failed to compute credit_refresh_date from %r", cycle_start_raw)
+        return None
 
 
 class UserServiceError(Exception):
@@ -198,19 +218,9 @@ class UserService:
             user_data["credits_remaining"] = credit_row.get("credits_remaining", 0)
             user_data["credits_used_this_week"] = 0  # Deprecated - calculated from transactions now
             user_data["credit_tier"] = credit_row.get("tier", "free")
-            cycle_start_raw = credit_row.get("credit_cycle_start")
-            if cycle_start_raw:
-                cycle_start = (
-                    date.fromisoformat(cycle_start_raw)
-                    if isinstance(cycle_start_raw, str)
-                    else cycle_start_raw
-                )
-                next_refresh = datetime.combine(
-                    cycle_start + timedelta(days=7),
-                    datetime.min.time(),
-                    tzinfo=timezone.utc,
-                )
-                user_data["credit_refresh_date"] = next_refresh.isoformat()
+            refresh_date = _compute_next_refresh(credit_row.get("credit_cycle_start"))
+            if refresh_date:
+                user_data["credit_refresh_date"] = refresh_date
 
         profile = UserProfile(**user_data)
         cache_set(cache_key, profile.model_dump(mode="json"), USER_CACHE_TTL)
@@ -246,19 +256,9 @@ class UserService:
             user_data["credits_remaining"] = credit_row.get("credits_remaining", 0)
             user_data["credits_used_this_week"] = 0  # Deprecated - calculated from transactions now
             user_data["credit_tier"] = credit_row.get("tier", "free")
-            cycle_start_raw = credit_row.get("credit_cycle_start")
-            if cycle_start_raw:
-                cycle_start = (
-                    date.fromisoformat(cycle_start_raw)
-                    if isinstance(cycle_start_raw, str)
-                    else cycle_start_raw
-                )
-                next_refresh = datetime.combine(
-                    cycle_start + timedelta(days=7),
-                    datetime.min.time(),
-                    tzinfo=timezone.utc,
-                )
-                user_data["credit_refresh_date"] = next_refresh.isoformat()
+            refresh_date = _compute_next_refresh(credit_row.get("credit_cycle_start"))
+            if refresh_date:
+                user_data["credit_refresh_date"] = refresh_date
 
         return UserProfile(**user_data)
 
