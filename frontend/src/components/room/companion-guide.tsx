@@ -13,6 +13,8 @@ import { useRoomStore } from "@/stores/room-store";
 import { cn } from "@/lib/utils";
 import type { CompanionInfo } from "@/stores/room-store";
 
+const EMPTY_COMPANIONS: CompanionInfo[] = [];
+
 const ALL_COMPANIONS = [
   { type: "cat", emoji: "🐱", starter: true },
   { type: "dog", emoji: "🐕", starter: true },
@@ -29,7 +31,7 @@ export function CompanionGuide() {
   const activeModal = useUIStore((s) => s.activeModal);
   const closeModal = useUIStore((s) => s.closeModal);
   const isOpen = activeModal === "companionGuide";
-  const companions = useRoomStore((s) => s.roomData?.companions || []);
+  const companions = useRoomStore((s) => s.roomData?.companions ?? EMPTY_COMPANIONS);
 
   const isDiscovered = (type: string) =>
     companions.some((c: CompanionInfo) => c.companion_type === type);
