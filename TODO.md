@@ -851,27 +851,27 @@
 > **Implementation Plan:** [docs/plans/2026-02-15-posthog-analytics-plan.md](docs/plans/2026-02-15-posthog-analytics-plan.md)
 
 **Infrastructure:**
-- [ ] Task 1: Install PostHog dependencies (posthog-js, posthog-python, env vars, config)
-- [ ] Task 2: Create frontend PostHog client + provider (client.ts, identify.ts, PostHogProvider)
-- [ ] Task 3: Add identify() to auth flow + consent (auth-provider.tsx)
-- [ ] Task 4: Create backend PostHog helper (core/posthog.py, init in lifespan)
-- [ ] Task 5: Create type-safe frontend event helpers (events.ts, ~35 capture functions)
+- [x] Task 1: Install PostHog dependencies (posthog-js, posthog-python, env vars, config)
+- [x] Task 2: Create frontend PostHog client + provider (client.ts, identify.ts, PostHogProvider)
+- [x] Task 3: Add identify() to auth flow + consent (auth-provider.tsx)
+- [x] Task 4: Create backend PostHog helper (core/posthog.py, init in lifespan)
+- [x] Task 5: Create type-safe frontend event helpers (events.ts, ~35 capture functions)
 
 **Migration:**
-- [ ] Task 6: Remove old analytics system (delete analytics router/service, remove frontend calls)
+- [x] Task 6: Remove old analytics system (delete analytics router/service, remove frontend calls)
 
 **Server-Side Events:**
-- [ ] Task 7: Instrument backend server-side events (sessions, users, credits, ratings routers)
+- [x] Task 7: Instrument backend server-side events (sessions, users, credits, ratings routers)
 
 **Client-Side Events:**
-- [ ] Task 8: Instrument frontend session flow (dashboard, waiting room, session, session end)
-- [ ] Task 9: Instrument frontend engagement & settings (diary, profile, room, partners, banned)
-- [ ] Task 10: Add tab focus tracking (visibilitychange in PostHogProvider)
+- [x] Task 8: Instrument frontend session flow (dashboard, waiting room, session, session end)
+- [x] Task 9: Instrument frontend engagement & settings (diary, profile, room, partners, banned)
+- [x] Task 10: Add tab focus tracking (visibilitychange in PostHogProvider)
 
 **Quality & Verification:**
-- [ ] Task 11: Backend tests for PostHog helper (test_posthog.py)
-- [ ] Task 12: Build verification + manual test (lint, build, all tests pass)
-- [ ] Task 13: Update environment configuration (.env.example, deployment docs)
+- [x] Task 11: Backend tests for PostHog helper (test_posthog.py)
+- [x] Task 12: Build verification + manual test (lint, build, all tests pass)
+- [x] Task 13: Update environment configuration (.env.example, deployment docs)
 
 ### Legal & Compliance
 - [ ] Legal audit (any legality issues?)
