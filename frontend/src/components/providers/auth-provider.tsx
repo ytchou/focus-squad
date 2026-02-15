@@ -6,6 +6,7 @@ import { useUserStore, type UserProfile } from "@/stores/user-store";
 import { useCreditsStore, type CreditTier } from "@/stores/credits-store";
 import { api, ApiError } from "@/lib/api/client";
 import { setAuthToken, clearAuthToken } from "@/lib/auth-token";
+import { identifyUser, resetUser, setUserOptOut } from "@/lib/posthog/identify";
 
 /**
  * AuthProvider initializes auth state and syncs user/credits on app load.
@@ -38,6 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             useUserStore.getState().setUser(profile);
             useUserStore.getState().setLoading(false);
+            identifyUser(profile);
+            setUserOptOut(!profile.activity_tracking_enabled);
             if (
               typeof window !== "undefined" &&
               !window.location.pathname.startsWith("/onboarding")
@@ -70,6 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (activeProfile.credit_refresh_date) {
             useCreditsStore.getState().setRefreshDate(activeProfile.credit_refresh_date);
           }
+          identifyUser(activeProfile);
+          setUserOptOut(!activeProfile.activity_tracking_enabled);
         } catch (err) {
           if (err instanceof ApiError) {
             useUserStore.getState().setError(err.message);
@@ -82,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (event === "SIGNED_OUT") {
         clearAuthToken();
         useUserStore.getState().clearUser();
+        resetUser();
       }
     });
 
