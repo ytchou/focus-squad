@@ -570,7 +570,7 @@ function SessionPageContent({
 
   // Wrap mic toggle with PostHog tracking
   const handleToggleMute = useCallback(() => {
-    trackMicToggled(sessionId, phase, isMuted); // isMuted is current state; after toggle it will be !isMuted
+    trackMicToggled(sessionId, phase, !isMuted);
     toggleMute();
   }, [sessionId, phase, isMuted, toggleMute]);
 

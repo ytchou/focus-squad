@@ -685,11 +685,23 @@ async def leave_session(
         reason=leave_request.reason,
     )
 
+    # Calculate minutes completed from session start
+    minutes_completed = 0
+    start_time_str = session_data.get("start_time")
+    if start_time_str:
+        try:
+            start_time = datetime.fromisoformat(start_time_str.replace("Z", "+00:00"))
+            minutes_completed = int((datetime.now(timezone.utc) - start_time).total_seconds() / 60)
+        except (ValueError, TypeError):
+            pass
+
     posthog_capture(
         user_id=str(profile.id),
         event="session_left_early",
         properties={
-            "reason": leave_request.reason if leave_request and leave_request.reason else "unknown"
+            "reason": leave_request.reason if leave_request and leave_request.reason else "unknown",
+            "phase_at_exit": session_data.get("current_phase", "unknown"),
+            "minutes_completed": minutes_completed,
         },
         session_id=str(session_id),
     )
