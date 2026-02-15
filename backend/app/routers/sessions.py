@@ -49,7 +49,6 @@ from app.models.session import (
     UpcomingSessionsResponse,
     UpcomingSlotsResponse,
 )
-from app.services.analytics_service import AnalyticsService
 from app.services.credit_service import (
     CreditService,
     TransactionType,
@@ -86,13 +85,6 @@ def get_user_service() -> UserService:
 def get_rating_service() -> RatingService:
     """Get RatingService instance."""
     return RatingService()
-
-
-def get_analytics_service() -> AnalyticsService:
-    """Get AnalyticsService instance."""
-    from app.core.database import get_supabase
-
-    return AnalyticsService(supabase=get_supabase())
 
 
 # =============================================================================
@@ -163,7 +155,6 @@ async def quick_match(
     session_service: SessionService = Depends(get_session_service),
     credit_service: CreditService = Depends(get_credit_service),
     user_service: UserService = Depends(get_user_service),
-    analytics_service: AnalyticsService = Depends(get_analytics_service),
     rating_service: RatingService = Depends(get_rating_service),
 ):
     """
@@ -284,18 +275,6 @@ async def quick_match(
     wait_seconds = (matched_session_start - now).total_seconds()
     wait_minutes = max(0, int(wait_seconds / 60))  # Round down, never negative
     is_immediate = wait_minutes < 1
-
-    # Track analytics event (fire-and-forget)
-    await analytics_service.track_event(
-        user_id=profile.id,
-        session_id=session_data["id"],
-        event_type="waiting_room_entered",
-        metadata={
-            "wait_minutes": wait_minutes,
-            "is_immediate": is_immediate,
-            "mode": session_data["mode"],
-        },
-    )
 
     return QuickMatchResponse(
         session=session_info,

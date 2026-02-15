@@ -13,7 +13,6 @@ from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.posthog import init_posthog, shutdown_posthog
 from app.core.redis import close_redis, init_redis
 from app.routers import (
-    analytics,
     companions,
     credits,
     dashboard,
@@ -90,7 +89,6 @@ app.include_router(
 app.include_router(sessions.router, prefix=f"{settings.api_prefix}/sessions", tags=["Sessions"])
 app.include_router(dashboard.router, prefix=f"{settings.api_prefix}/dashboard", tags=["Dashboard"])
 app.include_router(credits.router, prefix=f"{settings.api_prefix}/credits", tags=["Credits"])
-app.include_router(analytics.router, prefix=f"{settings.api_prefix}/analytics", tags=["Analytics"])
 app.include_router(
     moderation.router, prefix=f"{settings.api_prefix}/moderation", tags=["Moderation"]
 )

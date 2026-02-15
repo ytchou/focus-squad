@@ -223,17 +223,6 @@ export default function SessionPage() {
         setShowEndModal(true);
       }
 
-      // Track phase transition analytics
-      api
-        .post("/analytics/track", {
-          event_type: "session_phase_changed",
-          session_id: sessionId,
-          metadata: {
-            from_phase: previousPhase,
-            to_phase: newPhase,
-          },
-        })
-        .catch(() => {});
     },
     [sessionId, setPhase, setShowEndModal]
   );

@@ -8,7 +8,7 @@ Tests:
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -308,8 +308,6 @@ class TestQuickMatch:
         user_service = MagicMock()
         credit_service = MagicMock()
         session_service = MagicMock()
-        analytics_service = MagicMock()
-        analytics_service.track_event = AsyncMock(return_value=None)
         rating_service = MagicMock()
         rating_service.has_pending_ratings.return_value = False
 
@@ -338,7 +336,6 @@ class TestQuickMatch:
             "session_service": session_service,
             "credit_service": credit_service,
             "user_service": user_service,
-            "analytics_service": analytics_service,
             "rating_service": rating_service,
         }
 
@@ -359,7 +356,6 @@ class TestQuickMatch:
 
         mocks["credit_service"].deduct_credit.assert_called_once()
         mocks["session_service"].generate_livekit_token.assert_called_once()
-        mocks["analytics_service"].track_event.assert_awaited_once()
         mock_schedule.assert_called_once()
 
     @pytest.mark.unit

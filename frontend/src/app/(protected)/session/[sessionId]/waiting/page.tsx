@@ -23,28 +23,6 @@ export default function WaitingRoomPage() {
   const [isLeaving, setIsLeaving] = useState(false);
   const hasRedirected = useRef(false);
 
-  // Track "waiting_room_resumed" event on mount (page reload)
-  // We intentionally only run this once on mount to track page reloads, not re-renders
-  useEffect(() => {
-    if (sessionId && sessionStartTime) {
-      const minutesBeforeStart = Math.floor(
-        (new Date(sessionStartTime).getTime() - Date.now()) / 60000
-      );
-
-      // Fire-and-forget analytics tracking
-      api
-        .post("/analytics/track", {
-          event_type: "waiting_room_resumed",
-          session_id: sessionId,
-          metadata: {
-            minutes_before_start: minutesBeforeStart,
-          },
-        })
-        .catch(() => {}); // Ignore errors
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
-
   // Calculate time remaining and handle countdown
   useEffect(() => {
     if (!sessionStartTime) {
@@ -67,15 +45,6 @@ export default function WaitingRoomPage() {
       if (remaining === 0) {
         hasRedirected.current = true;
         clearInterval(interval);
-
-        // Track successful join
-        api
-          .post("/analytics/track", {
-            event_type: "session_joined_from_waiting_room",
-            session_id: sessionId,
-            metadata: {},
-          })
-          .catch(() => {});
 
         clearWaitingRoom();
         router.push(`/session/${sessionId}`);
@@ -110,22 +79,6 @@ export default function WaitingRoomPage() {
   const handleLeave = async () => {
     setIsLeaving(true);
     try {
-      // Track abandonment (fire-and-forget)
-      const minutesBeforeStart = sessionStartTime
-        ? Math.floor((new Date(sessionStartTime).getTime() - Date.now()) / 60000)
-        : 0;
-
-      api
-        .post("/analytics/track", {
-          event_type: "waiting_room_abandoned",
-          session_id: sessionId,
-          metadata: {
-            minutes_before_start: minutesBeforeStart,
-            reason: "user_clicked_leave",
-          },
-        })
-        .catch(() => {});
-
       // Call leave session API (FastAPI backend)
       await api.post(`/sessions/${sessionId}/leave`);
 
