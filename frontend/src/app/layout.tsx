@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Press_Start_2P } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { PostHogProvider } from "@/components/providers/posthog-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -39,7 +40,9 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${pressStart2P.variable} antialiased`}
       >
-        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider messages={messages}>
+          <PostHogProvider>{children}</PostHogProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
